@@ -1,0 +1,30 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type DemoGraphql {
+  """Example field (placeholder)"""
+  input: Int!
+}
+
+type Query {
+  demoGraphql: [DemoGraphql!]!
+  demoGraphqlId(id: Int!): DemoGraphql!
+}
+
+type Mutation {
+  createDemoGraphql(createDemoGraphqlInput: CreateDemoGraphqlInput!): DemoGraphql!
+  updateDemoGraphql(updateDemoGraphqlInput: UpdateDemoGraphqlInput!): DemoGraphql!
+  removeDemoGraphql(id: Int!): DemoGraphql!
+}
+
+input CreateDemoGraphqlInput {
+  """Example field (placeholder)"""
+  input: Int!
+}
+
+input UpdateDemoGraphqlInput {
+  """Example field (placeholder)"""
+  input: Int
+  id: Int!
+}
