@@ -43,7 +43,7 @@ $ npm run start:dev
 # production mode
 $ npm run start:prod
 
-#SWC builder and watch mode
+# SWC builder and watch mode
 $ nest start -b swc -w
 ```
 
