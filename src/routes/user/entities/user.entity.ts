@@ -1,10 +1,11 @@
 import { ObjectType, Field, Int } from '@nestjs/graphql';
-import { Role, Status } from 'src/shared/constants/enum';
+import { RoleName, RoleNameType, Status, StatusType } from 'src/shared/constants/role.constant';
+import { UserType } from 'src/shared/models/share-user.model';
 
 @ObjectType()
-export class User {
-  @Field(() => Int)
-  id: number;
+export class User implements UserType {
+  @Field(() => String)
+  id: string;
 
   @Field(() => String)
   email: string;
@@ -22,10 +23,10 @@ export class User {
   password: string;
 
   @Field(() => String)
-  role: Role;
+  role: RoleNameType;
 
   @Field(() => String)
-  status: Status;
+  status: StatusType;
 
   @Field(() => Int, { nullable: true })
   cigarettes_per_day?: number;
