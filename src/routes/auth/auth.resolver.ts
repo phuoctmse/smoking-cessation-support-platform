@@ -1,0 +1,21 @@
+import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
+import { AuthService } from './auth.service';
+import { User } from '../user/entities/user.entity';
+import { LoginInput, LoginResponse, SignupInput } from './dto/auth.dto';
+import { ZodSerializerDto } from 'nestjs-zod';
+
+@Resolver(() => User)
+export class AuthResolver {
+  constructor(private readonly authService: AuthService) {}
+
+  @Mutation(() => User)
+  async signup(@Args('signupInput') signupInput: SignupInput) {
+    return this.authService.signup(signupInput);
+  }
+
+  @Mutation(() => User)
+  @ZodSerializerDto(LoginResponse)
+  async login(@Args('loginInput') loginInput: LoginInput) {
+    return this.authService.login(loginInput);
+  }
+}
