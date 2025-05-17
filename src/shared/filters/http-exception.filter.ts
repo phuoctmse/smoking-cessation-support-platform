@@ -1,17 +1,21 @@
-import { Logger, Catch, ArgumentsHost, HttpException } from '@nestjs/common';
-import { BaseExceptionFilter } from '@nestjs/core';
-import { ZodSerializationException } from 'nestjs-zod';
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
+import { Response } from 'express';
 
 @Catch(HttpException)
-export class HttpExceptionFilter extends BaseExceptionFilter {
-    private readonly logger = new Logger(HttpExceptionFilter.name);
+export class HttpExceptionFilter implements ExceptionFilter {
+  catch(exception: HttpException, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const status = exception.getStatus ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    catch(exception: HttpException, host: ArgumentsHost) {
-        if (exception instanceof ZodSerializationException) {
-            const zodError = exception.getZodError();
-            this.logger.error(`ZodSerializationException: ${zodError.message}`);
-        }
+    const errorResponse = {
+      statusCode: status,
+      timestamp: new Date().toISOString(),
+      path: ctx.getRequest().url,
+      message: exception.message || 'Internal server error',
+    };
 
-        super.catch(exception, host);
-    }
+    console.log(errorResponse)
+    response.status(status).json(errorResponse);
+  }
 }

@@ -1,8 +1,7 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/shared/services/prisma.service";
-import { LoginInput, SignupInput } from "./auth.dto";
 import { UserType } from "src/shared/models/share-user.model";
-import { User } from "generated/prisma";
+
 
 @Injectable()
 export class AuthRepository {
@@ -20,7 +19,7 @@ export class AuthRepository {
 
     }
 
-    async findUserByEmail(email: string): Promise<Pick<UserType, 'email' | 'password'>> {
+    async findUserByEmail(email: string): Promise<Pick<UserType, 'email' | 'password' | 'status'>> {
         const user = await this.prismaService.user.findUnique({
             where: { email },
         });

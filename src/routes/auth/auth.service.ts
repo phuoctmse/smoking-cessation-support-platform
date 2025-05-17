@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { LoginInput, SignupInput } from './auth.dto';
+import { Injectable } from '@nestjs/common';
 import { AuthRepository } from './auth.repository';
 import { HashingService } from 'src/shared/services/hashing.service';
 import { LoginBodyType, SignupBodyType } from './auth.model';
+import { isUniqueConstraintPrismaError } from 'src/shared/error-handlers/helpers';
+import { EmailNotFoundException, FieldAlreadyExistsException, InvalidPasswordException } from './auth.error';
 
 @Injectable()
 export class AuthService {
@@ -22,7 +23,12 @@ export class AuthService {
       })
       return user
     } catch (error) {
-      throw new BadRequestException(error)
+      if (isUniqueConstraintPrismaError(error) && Array.isArray(error.meta?.target)) {
+        const target = error.meta.target[0]
+        throw FieldAlreadyExistsException(target)
+      }
+
+      throw error
     }
 
   }
@@ -30,12 +36,14 @@ export class AuthService {
   async login(body: LoginBodyType) {
     const user = await this.authRepository.findUserByEmail(body.email)
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials')
+      throw EmailNotFoundException
     }
     const isPasswordValid = await this.hashingService.compare(body.password, user.password)
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials')
+      throw InvalidPasswordException
     }
+    // xử lí trường hợp status khác ACTIVE
+    // if(user.status) {}
     return user
   }
 }
