@@ -4,16 +4,19 @@ import { HashingService } from 'src/shared/services/hashing.service';
 import { LoginBodyType, SignupBodyType } from './auth.model';
 import { isUniqueConstraintPrismaError } from 'src/shared/error-handlers/helpers';
 import { EmailNotFoundException, FieldAlreadyExistsException, InvalidPasswordException } from './auth.error';
+import { JwtService } from '@nestjs/jwt';
+import { User } from 'generated';
+import { TokenService } from 'src/shared/services/token.service';
 
 @Injectable()
 export class AuthService {
   constructor(private readonly authRepository: AuthRepository,
-    private readonly hashingService: HashingService
+    private readonly hashingService: HashingService,
+    private readonly tokenService: TokenService
   ) { }
 
   async signup(body: SignupBodyType) {
     try {
-      console.log(body)
       const hashedPassword = await this.hashingService.hash(body.password)
       const user = await this.authRepository.createUser({
         email: body.email,
@@ -44,6 +47,24 @@ export class AuthService {
     }
     // xử lí trường hợp status khác ACTIVE
     // if(user.status) {}
-    return user
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.tokenService.signAccessToken({
+        user_id: user.id,
+        email: user.email,
+        role: user.role,
+        username: user.username,
+        status: user.status
+      }),
+
+      this.tokenService.signRefreshToken({
+        user_id: user.id
+      })
+    ])
+
+    return {
+      accessToken,
+      refreshToken
+    }
   }
 }

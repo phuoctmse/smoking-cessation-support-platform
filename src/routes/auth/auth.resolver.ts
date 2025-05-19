@@ -13,7 +13,7 @@ export class AuthResolver {
     return this.authService.signup(signupInput);
   }
 
-  @Mutation(() => User)
+  @Mutation(() => LoginResDTO)
   // @ZodSerializerDto(LoginResDTO)
   async login(@Args('loginInput') loginInput: LoginBodyDTO) {
     return this.authService.login(loginInput);

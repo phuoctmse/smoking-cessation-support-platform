@@ -30,8 +30,9 @@ export const LoginBodySchema = UserSchema.pick({
     password: true,
 })
 
-export const LoginResSchema = UserSchema.omit({
-    password: true,
+export const LoginResSchema = z.object({
+    accessToken: z.string(),
+    refreshToken: z.string(),
 })
 // export const LoginResSchema = z.object({
 //     accessToken: z.string(),

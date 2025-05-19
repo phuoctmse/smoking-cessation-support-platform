@@ -31,4 +31,11 @@ export class LoginBodyDTO extends createZodDto(LoginBodySchema) {
 }
 
 export class SignupResDTO extends createZodDto(SignupResSchema) { }
-export class LoginResDTO extends createZodDto(LoginResSchema) { }
+@ObjectType()
+export class LoginResDTO extends createZodDto(LoginResSchema) {
+  @Field(() => String)
+  accessToken: string;
+
+  @Field(() => String)
+  refreshToken: string;
+}

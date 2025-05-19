@@ -19,7 +19,7 @@ export class AuthRepository {
 
     }
 
-    async findUserByEmail(email: string): Promise<Pick<UserType, 'email' | 'password' | 'status'>> {
+    async findUserByEmail(email: string): Promise<UserType> {
         const user = await this.prismaService.user.findUnique({
             where: { email },
         });

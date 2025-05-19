@@ -8,10 +8,11 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
 import { join } from 'path';
 import { UserModule } from './routes/user/user.module';
 import { AuthModule } from './routes/auth/auth.module';
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import CustomZodValidationPipe from './shared/pipes/custom-zod-validation.pipe';
 import { ZodSerializerInterceptor } from 'nestjs-zod';
 import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
+import { JwtAuthGuard } from './shared/guards/jwt-auth.guard';
 
 @Module({
   imports: [SharedModule,
@@ -38,6 +39,7 @@ import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
     //   provide: APP_FILTER,
     //   useClass: HttpExceptionFilter,
     // },
+   
   ],
 })
 export class AppModule { }
