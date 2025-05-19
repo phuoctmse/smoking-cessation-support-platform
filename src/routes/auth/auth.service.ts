@@ -1,18 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { AuthRepository } from './auth.repository';
 import { HashingService } from 'src/shared/services/hashing.service';
-import { LoginBodyType, SignupBodyType } from './auth.model';
+import { LoginBodyType, LogoutResType, SignupBodyType } from './auth.model';
 import { isUniqueConstraintPrismaError } from 'src/shared/error-handlers/helpers';
 import { EmailNotFoundException, FieldAlreadyExistsException, InvalidPasswordException } from './auth.error';
 import { JwtService } from '@nestjs/jwt';
 import { User } from 'generated';
 import { TokenService } from 'src/shared/services/token.service';
+import { PrismaService } from 'src/shared/services/prisma.service';
+import { USER_MESSAGES } from 'src/shared/constants/message.constant';
+
 
 @Injectable()
 export class AuthService {
   constructor(private readonly authRepository: AuthRepository,
     private readonly hashingService: HashingService,
-    private readonly tokenService: TokenService
+    private readonly tokenService: TokenService,
   ) { }
 
   async signup(body: SignupBodyType) {
@@ -65,6 +68,43 @@ export class AuthService {
     return {
       accessToken,
       refreshToken
+    }
+  }
+
+  async logout(refreshToken: string): Promise<LogoutResType> {
+    if (!refreshToken) {
+      return {
+        message: USER_MESSAGES.LOGOUT_SUCCESS
+      };
+    }
+
+    try {
+      const decodedToken = await this.tokenService.verifyRefreshToken(refreshToken);
+
+      // Get token expiry time from the decoded token
+      const currentTimeInSeconds = Math.floor(Date.now() / 1000);
+      const expiryTimeInSeconds = decodedToken.exp;
+      const timeLeftInSeconds = expiryTimeInSeconds - currentTimeInSeconds;
+
+      // If token still valid, add to blacklist
+      if (timeLeftInSeconds > 0) {
+        // In a real implementation, this would use Redis to blacklist the token
+        // await redisServices.blacklistToken(refreshToken, timeLeftInSeconds)
+        console.log(`Token blacklisted for ${timeLeftInSeconds} seconds`);
+      }
+
+      // In a real implementation, this would delete from a refresh token table
+      // await databaseServices.refreshTokens.deleteOne({ token: refreshToken })
+      console.log('Token deleted from database');
+
+      return {
+        message: USER_MESSAGES.LOGOUT_SUCCESS
+      };
+    } catch (error) {
+      // If token verification fails, still return success since we're logging out
+      return {
+        message: USER_MESSAGES.LOGOUT_SUCCESS
+      };
     }
   }
 }

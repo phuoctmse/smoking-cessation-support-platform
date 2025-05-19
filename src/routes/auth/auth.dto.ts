@@ -1,7 +1,7 @@
 import { InputType, Int, Field, ObjectType } from '@nestjs/graphql';
 import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
-import { LoginBodySchema, LoginResSchema, SignupBodySchema, SignupResSchema } from './auth.model';
+import { LoginBodySchema, LoginResSchema, LogoutResSchema, SignupBodySchema, SignupResSchema } from './auth.model';
 
 @InputType()
 export class SignupBodyDTO extends createZodDto(SignupBodySchema) {
@@ -30,6 +30,7 @@ export class LoginBodyDTO extends createZodDto(LoginBodySchema) {
   password: string;
 }
 
+
 export class SignupResDTO extends createZodDto(SignupResSchema) { }
 @ObjectType()
 export class LoginResDTO extends createZodDto(LoginResSchema) {
@@ -38,4 +39,10 @@ export class LoginResDTO extends createZodDto(LoginResSchema) {
 
   @Field(() => String)
   refreshToken: string;
+}
+
+@ObjectType()
+export class LogoutResDTO extends createZodDto(LogoutResSchema) {
+  @Field(() => String)
+  message: string;
 }

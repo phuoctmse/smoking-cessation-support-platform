@@ -34,12 +34,13 @@ export const LoginResSchema = z.object({
     accessToken: z.string(),
     refreshToken: z.string(),
 })
-// export const LoginResSchema = z.object({
-//     accessToken: z.string(),
-//     refreshToken: z.string(),
-// })
+
+export const LogoutResSchema = z.object({
+    message: z.string(),
+})
 
 export type SignupBodyType = z.infer<typeof SignupBodySchema>
 export type SignupResType = z.infer<typeof SignupResSchema>
 export type LoginBodyType = z.infer<typeof LoginBodySchema>
 export type LoginResType = z.infer<typeof LoginResSchema>
+export type LogoutResType = z.infer<typeof LogoutResSchema>
