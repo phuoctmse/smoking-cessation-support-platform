@@ -1,48 +1,60 @@
-import { InputType, Int, Field, ObjectType } from '@nestjs/graphql';
+import { InputType, Int, Field, ObjectType } from '@nestjs/graphql'
 import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
-import { LoginBodySchema, LoginResSchema, LogoutResSchema, SignupBodySchema, SignupResSchema } from './auth.model';
+import {
+  LoginBodySchema,
+  LoginResSchema,
+  LogoutResSchema,
+  RefreshTokenResSchema,
+  SignupBodySchema,
+  SignupResSchema,
+} from './auth.model'
 
 @InputType()
 export class SignupBodyDTO extends createZodDto(SignupBodySchema) {
   @Field(() => String)
-  email: string;
+  email: string
 
   @Field(() => String)
-  password: string;
+  password: string
 
   @Field(() => String)
-  username: string;
+  username: string
 
   @Field(() => String)
-  name: string;
+  name: string
 
   @Field(() => String)
-  confirmPassword: string;
+  confirmPassword: string
 }
 
 @InputType()
 export class LoginBodyDTO extends createZodDto(LoginBodySchema) {
   @Field(() => String)
-  email: string;
+  email: string
 
   @Field(() => String)
-  password: string;
+  password: string
 }
 
-
-export class SignupResDTO extends createZodDto(SignupResSchema) { }
+export class SignupResDTO extends createZodDto(SignupResSchema) {}
 @ObjectType()
 export class LoginResDTO extends createZodDto(LoginResSchema) {
   @Field(() => String)
-  accessToken: string;
+  accessToken: string
 
   @Field(() => String)
-  refreshToken: string;
+  refreshToken: string
 }
 
 @ObjectType()
 export class LogoutResDTO extends createZodDto(LogoutResSchema) {
   @Field(() => String)
-  message: string;
+  message: string
+}
+
+@ObjectType()
+export class RefreshTokenResDTO extends createZodDto(RefreshTokenResSchema) {
+  @Field(() => String)
+  accessToken: string
 }
