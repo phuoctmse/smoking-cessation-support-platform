@@ -41,18 +41,15 @@ export class AuthResolver {
 
   @Query(() => LogoutResDTO)
   async logout(
-      // @Args('logoutInput') logoutInput: LogoutBodyDTO,
+    // @Args('logoutInput') logoutInput: LogoutBodyDTO,
     @Context() context
   ) {
     // Get refreshToken from cookies
     const refreshToken = context.req.cookies?.refreshToken;
+    const accessToken = context.req.headers.authorization.split(' ')[1];
 
-    console.log(refreshToken)
+    const result = await this.authService.logout(refreshToken, accessToken);
 
-    // Call the service to handle logout logic
-    const result = await this.authService.logout(refreshToken);
-
-    // Clear the cookie if response object exists
     if (context.req.res && typeof context.req.res.clearCookie === 'function') {
       context.req.res.clearCookie('refreshToken');
     }

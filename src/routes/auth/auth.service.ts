@@ -9,6 +9,7 @@ import { User } from 'generated';
 import { TokenService } from 'src/shared/services/token.service';
 import { PrismaService } from 'src/shared/services/prisma.service';
 import { USER_MESSAGES } from 'src/shared/constants/message.constant';
+import { BlacklistGuard } from 'src/shared/guards/blacklist.guard';
 
 
 @Injectable()
@@ -16,6 +17,7 @@ export class AuthService {
   constructor(private readonly authRepository: AuthRepository,
     private readonly hashingService: HashingService,
     private readonly tokenService: TokenService,
+    private readonly blacklistGuard: BlacklistGuard
   ) { }
 
   async signup(body: SignupBodyType) {
@@ -71,7 +73,7 @@ export class AuthService {
     }
   }
 
-  async logout(refreshToken: string): Promise<LogoutResType> {
+  async logout(refreshToken: string, accessToken: string): Promise<LogoutResType> {
     if (!refreshToken) {
       return {
         message: USER_MESSAGES.LOGOUT_SUCCESS
@@ -79,29 +81,31 @@ export class AuthService {
     }
 
     try {
-      const decodedToken = await this.tokenService.verifyRefreshToken(refreshToken);
+      const decodedRefreshToken = await this.tokenService.verifyRefreshToken(refreshToken);
+      const decodedAccessToken = await this.tokenService.verifyAccessToken(accessToken);
 
       // Get token expiry time from the decoded token
       const currentTimeInSeconds = Math.floor(Date.now() / 1000);
-      const expiryTimeInSeconds = decodedToken.exp;
-      const timeLeftInSeconds = expiryTimeInSeconds - currentTimeInSeconds;
-
+      const refreshTokenExpiryTime  = decodedRefreshToken.exp;
+      const accessTokenExpiryTime = decodedAccessToken.exp;
+      const timeLeftInSecondsRefreshToken = refreshTokenExpiryTime - currentTimeInSeconds;
+      const timeLeftInSecondsAccessToken = accessTokenExpiryTime - currentTimeInSeconds;
       // If token still valid, add to blacklist
-      if (timeLeftInSeconds > 0) {
-        // In a real implementation, this would use Redis to blacklist the token
-        // await redisServices.blacklistToken(refreshToken, timeLeftInSeconds)
-        console.log(`Token blacklisted for ${timeLeftInSeconds} seconds`);
+      if (timeLeftInSecondsRefreshToken > 0) {
+        await this.blacklistGuard.setBlackList(refreshToken, timeLeftInSecondsRefreshToken)
+        console.log(`Token blacklisted for ${timeLeftInSecondsRefreshToken} seconds`);
       }
 
-      // In a real implementation, this would delete from a refresh token table
-      // await databaseServices.refreshTokens.deleteOne({ token: refreshToken })
-      console.log('Token deleted from database');
+      if (timeLeftInSecondsAccessToken > 0) {
+        await this.blacklistGuard.setBlackList(accessToken, timeLeftInSecondsAccessToken)
+        console.log(`Token blacklisted for ${timeLeftInSecondsAccessToken} seconds`);
+      }
 
       return {
         message: USER_MESSAGES.LOGOUT_SUCCESS
       };
     } catch (error) {
-      // If token verification fails, still return success since we're logging out
+      console.log(error)
       return {
         message: USER_MESSAGES.LOGOUT_SUCCESS
       };

@@ -3,9 +3,11 @@ import { PrismaService } from "src/shared/services/prisma.service";
 import { UserType } from "src/shared/models/share-user.model";
 
 
+
 @Injectable()
 export class AuthRepository {
-    constructor(private readonly prismaService: PrismaService) { }
+    constructor(private readonly prismaService: PrismaService,
+    ) { }
 
     async createUser(user: UserType) {
         return await this.prismaService.user.create({
@@ -25,4 +27,5 @@ export class AuthRepository {
         });
         return user
     }
+
 }
