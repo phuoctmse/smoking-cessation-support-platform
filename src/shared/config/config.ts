@@ -13,14 +13,14 @@ if (!fs.existsSync(path.resolve('.env'))) {
 }
 
 const configSchema = z.object({
-    DATABASE_URL: z.string(),
-    ACCESS_TOKEN_SECRET_KEY: z.string(),
-    REFRESH_TOKEN_SECRET_KEY: z.string(),
-    ACCESS_TOKEN_EXPIRE_IN: z.string(),
-    REFRESH_TOKEN_EXPIRE_IN: z.string(),
-    COOKIES_MAX_AGE: z.string(),
-    REDIS_URL: z.string(),
-    TOKEN_BLACKLIST_PREFIX: z.string(),
+  DATABASE_URL: z.string(),
+  ACCESS_TOKEN_SECRET_KEY: z.string(),
+  REFRESH_TOKEN_SECRET_KEY: z.string(),
+  ACCESS_TOKEN_EXPIRE_IN: z.string(),
+  REFRESH_TOKEN_EXPIRE_IN: z.string(),
+  COOKIES_MAX_AGE: z.string(),
+  REDIS_URL: z.string(),
+  TOKEN_BLACKLIST_PREFIX: z.string(),
 })
 
 const configServer = configSchema.safeParse(process.env)

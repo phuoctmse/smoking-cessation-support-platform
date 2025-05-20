@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 
-import { AccessTokenPayload, AccessTokenPayloadGenerate, RefreshTokenPayload, RefreshTokenPayloadGenerate } from '../types/jwt.type'
+import {
+  AccessTokenPayload,
+  AccessTokenPayloadGenerate,
+  RefreshTokenPayload,
+  RefreshTokenPayloadGenerate,
+} from '../types/jwt.type'
 import envConfig from '../config/config'
 
 @Injectable()
