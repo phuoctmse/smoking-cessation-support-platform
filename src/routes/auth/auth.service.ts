@@ -11,7 +11,6 @@ import {
   UserNotFoundException,
 } from './auth.error'
 import { JwtService } from '@nestjs/jwt'
-import { User } from 'generated'
 import { TokenService } from 'src/shared/services/token.service'
 import { PrismaService } from 'src/shared/services/prisma.service'
 import { USER_MESSAGES } from 'src/shared/constants/message.constant'
