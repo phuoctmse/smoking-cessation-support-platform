@@ -6,10 +6,11 @@ import { ZodSerializerDto } from 'nestjs-zod'
 import { Response } from 'express'
 import { Res } from '@nestjs/common'
 import envConfig from 'src/shared/config/config'
+import { InvalidAuthorizationHeaderException } from './auth.error'
 
 @Resolver(() => User)
 export class AuthResolver {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Mutation(() => User)
   async signup(@Args('signupInput') signupInput: SignupBodyDTO) {
@@ -39,7 +40,11 @@ export class AuthResolver {
   async logout(@Context() context) {
     // Get refreshToken from cookies
     const refreshToken = context.req.cookies?.refreshToken
-    const accessToken = context.req.headers.authorization.split(' ')[1]
+    const authorizationHeader = context.req.headers.authorization
+    if (!authorizationHeader || typeof authorizationHeader !== 'string' || !authorizationHeader.startsWith('Bearer ')) {
+      throw InvalidAuthorizationHeaderException
+    }
+    const accessToken = authorizationHeader.split(' ')[1]
 
     const result = await this.authService.logout(refreshToken, accessToken)
 

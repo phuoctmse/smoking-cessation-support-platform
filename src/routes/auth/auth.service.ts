@@ -7,6 +7,7 @@ import {
   EmailNotFoundException,
   FieldAlreadyExistsException,
   InvalidPasswordException,
+  RefreshTokenBlacklistedException,
   UserNotFoundException,
 } from './auth.error'
 import { JwtService } from '@nestjs/jwt'
@@ -23,7 +24,7 @@ export class AuthService {
     private readonly hashingService: HashingService,
     private readonly tokenService: TokenService,
     private readonly blacklistGuard: BlacklistGuard,
-  ) {}
+  ) { }
 
   async signup(body: SignupBodyType) {
     try {
@@ -117,10 +118,14 @@ export class AuthService {
   }
 
   async refreshToken(refreshToken: string): Promise<RefreshTokenResType> {
-    const decodedRefreshToken = await this.tokenService.verifyRefreshToken(refreshToken)
-    const user = await this.authRepository.findUserById(decodedRefreshToken.user_id)
+    const isBlacklisted = await this.blacklistGuard.isBlackList(refreshToken);
+    if (isBlacklisted) {
+      throw RefreshTokenBlacklistedException
+    }
+    const decodedRefreshToken = await this.tokenService.verifyRefreshToken(refreshToken);
+    const user = await this.authRepository.findUserById(decodedRefreshToken.user_id);
     if (!user) {
-      throw UserNotFoundException
+      throw UserNotFoundException;
     }
     const accessToken = await this.tokenService.signAccessToken({
       user_id: decodedRefreshToken.user_id,

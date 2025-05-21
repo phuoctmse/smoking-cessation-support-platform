@@ -28,3 +28,25 @@ export const UserNotFoundException = new UnprocessableEntityException([
     path: 'user',
   },
 ])
+
+export const InvalidAuthorizationHeaderException = new UnprocessableEntityException([
+  {
+    message: 'Error.InvalidAuthorizationHeader',
+    path: 'authorization',
+  },
+])
+
+export const AccessTokenBlacklistedException = new UnprocessableEntityException([
+  {
+    message: 'Error.AccessTokenBlacklisted',
+    path: 'accessToken',
+  },
+])
+
+export const RefreshTokenBlacklistedException = new UnprocessableEntityException([
+  {
+    message: 'Error.RefreshTokenBlacklisted',
+    path: 'refreshToken',
+  },
+])
+
