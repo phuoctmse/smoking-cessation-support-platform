@@ -6,13 +6,14 @@ import {
   UnsupportedMediaTypeException,
 } from '@nestjs/common'
 import { BlogRepository } from './blog.repository'
-import { BlogQueryParamsType, CreateBlogType, UpdateBlogType } from './model/blog.model'
+import { CreateBlogType, UpdateBlogType } from './model/blog.model'
 import { RoleName } from '../../shared/constants/role.constant'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { ALLOWED_IMAGE_FORMATS, FILE_FORMAT_EXTENSIONS } from '../../shared/constants/upload.constant'
 import { processUploadedFile } from '../../shared/utils/file-upload.util'
 import { validateAndNormalizeMimeType } from '../../shared/utils/mime-type-detection.util'
 import { SupabaseStorageService } from '../../shared/services/supabase-storage.service'
+import { PaginationParamsType } from '../../shared/models/pagination.model'
 
 @Injectable()
 export class BlogService {
@@ -23,7 +24,7 @@ export class BlogService {
     private readonly supabaseStorage: SupabaseStorageService,
   ) {}
 
-  async findAll(params: BlogQueryParamsType) {
+  async findAll(params: PaginationParamsType) {
     return await this.blogRepository.findAll(params)
   }
 

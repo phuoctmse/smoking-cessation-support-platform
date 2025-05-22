@@ -1,14 +1,15 @@
-import { BlogQueryParamsType, CreateBlogType, UpdateBlogType } from './model/blog.model'
+import { CreateBlogType, UpdateBlogType } from './model/blog.model'
 import { PrismaService } from '../../shared/services/prisma.service'
 import { Injectable } from '@nestjs/common'
 import { generateSlug } from '../../shared/utils/string.util'
 import { Prisma } from '@prisma/client'
+import { PaginationParamsType } from '../../shared/models/pagination.model'
 
 @Injectable()
 export class BlogRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(params: BlogQueryParamsType) {
+  async findAll(params: PaginationParamsType) {
     const { page, limit, search, orderBy, sortOrder } = params
     const skip = (page - 1) * limit
 
