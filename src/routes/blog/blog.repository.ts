@@ -102,6 +102,7 @@ export class BlogRepository {
         title: data.title,
         content: data.content,
         cover_image: data.cover_image,
+        cover_image_path: data.cover_image_path,
         slug,
         author: {
           connect: {

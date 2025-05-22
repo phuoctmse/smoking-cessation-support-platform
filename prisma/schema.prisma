@@ -27,16 +27,17 @@ model User {
 }
 
 model Blog {
-  id         String   @id @default(uuid())
-  author_id  String
-  author     User     @relation(fields: [author_id], references: [id])
-  title      String
-  slug       String   @unique @db.VarChar(255)
-  content    String   @db.Text()
-  cover_image String?
-  is_deleted Boolean  @default(false)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id               String   @id @default(uuid())
+  author_id        String
+  author           User     @relation(fields: [author_id], references: [id])
+  title            String
+  slug             String   @unique @db.VarChar(255)
+  content          String   @db.Text()
+  cover_image      String?
+  cover_image_path String?
+  is_deleted       Boolean  @default(false)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 }
 
 enum Role {
