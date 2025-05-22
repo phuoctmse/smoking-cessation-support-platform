@@ -71,6 +71,8 @@ export class AuthService {
       }),
     ])
 
+    await this.authRepository.setRefreshToken(refreshToken, user.id)
+
     return {
       accessToken,
       refreshToken,

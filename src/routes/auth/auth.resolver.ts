@@ -58,8 +58,8 @@ export class AuthResolver {
   @Query(() => RefreshTokenResDTO)
   async refreshToken(@Context() context) {
     const refreshToken = context.req.cookies?.refreshToken
-    const result = await this.authService.refreshToken(refreshToken)
+    const accessToken = await this.authService.refreshToken(refreshToken)
 
-    return result
+    return accessToken
   }
 }
