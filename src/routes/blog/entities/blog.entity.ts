@@ -18,6 +18,9 @@ export class Blog {
   @Field(() => String, { nullable: true })
   cover_image?: string
 
+  @Field(() => String, { nullable: true })
+  cover_image_path?: string
+
   @Field(() => Boolean)
   is_deleted: boolean
 

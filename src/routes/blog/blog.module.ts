@@ -3,10 +3,10 @@ import { BlogService } from './blog.service'
 import { BlogResolver } from './blog.resolver'
 import { BlogRepository } from './blog.repository'
 import { GuardModule } from '../../shared/guards/guard.module'
-import { CloudinaryModule } from '../../shared/modules/cloudinary.module'
+import { SupabaseModule } from '../../shared/modules/supabase.module'
 
 @Module({
-  imports: [GuardModule, CloudinaryModule],
+  imports: [GuardModule, SupabaseModule],
   providers: [BlogResolver, BlogService, BlogRepository],
   exports: [BlogService],
 })

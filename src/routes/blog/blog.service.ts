@@ -8,12 +8,11 @@ import {
 import { BlogRepository } from './blog.repository'
 import { BlogQueryParamsType, CreateBlogType, UpdateBlogType } from './model/blog.model'
 import { RoleName } from '../../shared/constants/role.constant'
-import { CloudinaryService } from '../../shared/services/cloudinary.service'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
-import { extractCloudinaryPublicId } from '../../shared/utils/exact-cloudinary-id.util'
 import { ALLOWED_IMAGE_FORMATS, FILE_FORMAT_EXTENSIONS } from '../../shared/constants/upload.constant'
 import { processUploadedFile } from '../../shared/utils/file-upload.util'
 import { validateAndNormalizeMimeType } from '../../shared/utils/mime-type-detection.util'
+import { SupabaseStorageService } from '../../shared/services/supabase-storage.service'
 
 @Injectable()
 export class BlogService {
@@ -21,7 +20,7 @@ export class BlogService {
 
   constructor(
     private readonly blogRepository: BlogRepository,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly supabaseStorage: SupabaseStorageService,
   ) {}
 
   async findAll(params: BlogQueryParamsType) {
@@ -59,6 +58,7 @@ export class BlogService {
     }
 
     let coverImageUrl = null
+    let coverImagePath = null
 
     if (fileUpload !== null && fileUpload !== undefined) {
       try {
@@ -77,7 +77,7 @@ export class BlogService {
         // Get the extension for the file
         const extension = FILE_FORMAT_EXTENSIONS[normalizedMimeType]
 
-        const uploadResult = await this.cloudinaryService.uploadImage(
+        const uploadResult = await this.supabaseStorage.uploadImage(
           {
             buffer,
             originalname: `${filename || 'upload'}${extension}`,
@@ -87,7 +87,8 @@ export class BlogService {
           userId,
         )
 
-        coverImageUrl = uploadResult.secure_url
+        coverImageUrl = uploadResult.url
+        coverImagePath = uploadResult.path
         this.logger.log(`Successfully uploaded image: ${coverImageUrl}`)
       } catch (error) {
         if (error instanceof UnsupportedMediaTypeException) {
@@ -100,6 +101,7 @@ export class BlogService {
     const blogData = {
       ...data,
       cover_image: coverImageUrl,
+      cover_image_path: coverImagePath,
     }
 
     return this.blogRepository.create(blogData, userId)
@@ -123,6 +125,7 @@ export class BlogService {
     }
 
     let coverImageUrl = data.cover_image
+    let coverImagePath = blog.cover_image_path
 
     if (fileUpload !== null && fileUpload !== undefined) {
       try {
@@ -141,7 +144,7 @@ export class BlogService {
         // Get the extension for the file
         const extension = FILE_FORMAT_EXTENSIONS[normalizedMimeType]
 
-        const uploadResult = await this.cloudinaryService.uploadImage(
+        const uploadResult = await this.supabaseStorage.uploadImage(
           {
             buffer,
             originalname: `${filename || 'upload'}${extension}`,
@@ -151,16 +154,14 @@ export class BlogService {
           userId,
         )
 
-        coverImageUrl = uploadResult.secure_url
+        coverImageUrl = uploadResult.url
+        coverImagePath = uploadResult.path
         this.logger.log(`Successfully uploaded new image: ${coverImageUrl}`)
 
         // Delete old image if exists
-        if (blog.cover_image) {
-          const publicId = extractCloudinaryPublicId(blog.cover_image)
-          if (publicId) {
-            await this.cloudinaryService.deleteImage(publicId)
-            this.logger.log(`Successfully deleted old image: ${publicId}`)
-          }
+        if (blog.cover_image_path) {
+          await this.supabaseStorage.deleteImage(blog.cover_image_path)
+          this.logger.log(`Successfully deleted old image: ${blog.cover_image_path}`)
         }
       } catch (error) {
         if (error instanceof UnsupportedMediaTypeException) {
@@ -173,6 +174,7 @@ export class BlogService {
     const blogData = {
       ...data,
       cover_image: coverImageUrl,
+      cover_image_path: coverImagePath,
     }
 
     return this.blogRepository.update(id, blogData)
@@ -185,19 +187,16 @@ export class BlogService {
       throw new NotFoundException(`Blog not found`)
     }
 
-    if (blog.author_id !== userId && userRole !== RoleName.Coach) {
+    if (blog.author_id !== userId && userRole !== RoleName.Coach && userRole !== RoleName.Admin) {
       throw new ForbiddenException('You do not have permission to delete this blog')
     }
 
-    if (blog.cover_image) {
-      const publicId = extractCloudinaryPublicId(blog.cover_image)
-      if (publicId) {
-        try {
-          await this.cloudinaryService.deleteImage(publicId)
-          this.logger.log(`Successfully deleted image for blog ${id}: ${publicId}`)
-        } catch (error) {
-          this.logger.warn(`Failed to delete image for blog ${id}: ${error.message}`)
-        }
+    if (blog.cover_image_path) {
+      try {
+        await this.supabaseStorage.deleteImage(blog.cover_image_path)
+        this.logger.log(`Successfully deleted image for blog ${id}: ${blog.cover_image_path}`)
+      } catch (error) {
+        this.logger.warn(`Failed to delete image for blog ${id}: ${error.message}`)
       }
     }
 

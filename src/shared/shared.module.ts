@@ -5,21 +5,21 @@ import { TokenService } from './services/token.service'
 import { JwtModule } from '@nestjs/jwt'
 import { RedisServices } from './services/redis.service'
 import { GuardModule } from './guards/guard.module'
-import { CloudinaryService } from './services/cloudinary.service'
-import { CloudinaryModule } from './modules/cloudinary.module'
+import { SupabaseModule } from './modules/supabase.module'
+import { SupabaseStorageService } from './services/supabase-storage.service'
 
 const sharedService = [
   PrismaService,
   HashingService,
   TokenService,
   RedisServices,
-  CloudinaryService
+  SupabaseStorageService
 ]
 
 @Global()
 @Module({
   providers: [...sharedService],
   exports: [...sharedService],
-  imports: [JwtModule, GuardModule, CloudinaryModule],
+  imports: [JwtModule, GuardModule, SupabaseModule],
 })
 export class SharedModule {}

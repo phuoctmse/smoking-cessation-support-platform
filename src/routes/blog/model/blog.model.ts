@@ -6,6 +6,7 @@ export const BlogSchema = z.object({
   slug: z.string().min(3).max(255),
   content: z.string().min(10),
   cover_image: z.string().nullable().optional(),
+  cover_image_path: z.string().nullable().optional(),
   is_deleted: z.boolean().default(false),
   created_at: z.date(),
   updated_at: z.date(),
@@ -16,6 +17,7 @@ export const CreateBlogSchema = BlogSchema.pick({
   title: true,
   content: true,
   cover_image: true,
+  cover_image_path: true,
 })
 
 export const UpdateBlogSchema = CreateBlogSchema.partial().extend({
