@@ -1,7 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
 import { GqlExecutionContext } from '@nestjs/graphql'
-import * as jwt from 'jsonwebtoken'
-import envConfig from '../config/config'
 import { BlacklistGuard } from './blacklist.guard'
 import { extractAccessToken } from '../helpers/function.helper'
 import { TokenService } from '../services/token.service'
@@ -33,6 +31,7 @@ export class JwtAuthGuard implements CanActivate {
     // Verify JWT token
     try {
       const payload = await this.tokenService.verifyAccessToken(accessToken)
+      request.user = payload
       request['user'] = payload
       return true
     } catch (err) {
