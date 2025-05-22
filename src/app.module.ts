@@ -14,7 +14,6 @@ import { RolesGuard } from './shared/guards/roles.guard'
 import { BlogModule } from './routes/blog/blog.module'
 import * as process from 'node:process'
 import { ConfigModule } from '@nestjs/config'
-import { PerformanceInterceptor } from './shared/interceptors/performance.interceptor'
 import CustomZodValidationPipe from './shared/pipes/custom-zod-validation.pipe'
 import { HttpExceptionFilter } from './shared/filters/http-exception.filter'
 import { UploadScalar } from './shared/scalars/upload.scalar'
@@ -55,10 +54,6 @@ import { UploadScalar } from './shared/scalars/upload.scalar'
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: PerformanceInterceptor,
     },
   ],
 })
