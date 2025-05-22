@@ -1,5 +1,6 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
+import envConfig from '../config/config';
 
 @Injectable()
 export class SupabaseStorageService {
@@ -7,7 +8,7 @@ export class SupabaseStorageService {
   private readonly bucketName: string;
 
   constructor(@Inject('SUPABASE') private supabase: SupabaseClient) {
-    this.bucketName = process.env.SUPABASE_BUCKET || 'images';
+    this.bucketName = envConfig.SUPABASE_BUCKET || 'images';
     this.initBucket();
   }
 

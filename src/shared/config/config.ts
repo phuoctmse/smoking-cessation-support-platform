@@ -22,6 +22,11 @@ const configSchema = z.object({
   REDIS_URL: z.string(),
   TOKEN_BLACKLIST_PREFIX: z.string(),
   REFRESH_TOKEN_PREFIX: z.string(),
+  SUPABASE_URL: z.string(),
+  SUPABASE_KEY: z.string(),
+  SUPABASE_BUCKET: z.string(),
+  SUPABASE_ACCESS_KEY_ID: z.string(),
+  SUPABASE_SECRET_ACCESS_KEY: z.string(),
 })
 
 const configServer = configSchema.safeParse(process.env)
