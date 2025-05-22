@@ -12,15 +12,20 @@ import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
 import { User } from '../../shared/decorators/current-user.decorator'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { UploadScalar } from '../../shared/scalars/upload.scalar'
-import { GetBlogArgs } from './dto/requests/get-blog.args'
+import { PaginationParamsInput } from '../../shared/models/dto/request/pagination-params.input'
 
 @Resolver(() => Blog)
 export class BlogResolver {
   constructor(private readonly blogService: BlogService) {}
 
   @Query(() => PaginatedBlogsResponse)
-  async blogs(@Args('params', { nullable: true }) params?: GetBlogArgs) {
-    return this.blogService.findAll(params || { page: 1, limit: 10, orderBy: 'created_at', sortOrder: 'desc' })
+  async blogs(@Args('params', { nullable: true }) params?: PaginationParamsInput) {
+    return this.blogService.findAll(params || {
+      page: 1,
+      limit: 10,
+      orderBy: 'created_at',
+      sortOrder: 'desc'
+    })
   }
 
   @Query(() => Blog)
