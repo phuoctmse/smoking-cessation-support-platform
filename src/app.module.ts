@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { SharedModule } from './shared/shared.module'
-import { GraphQLModule } from '@nestjs/graphql'
+import { GqlExecutionContext, GraphQLExecutionContext, GraphQLModule } from '@nestjs/graphql'
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo'
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default'
 import { join } from 'path'
@@ -17,6 +17,7 @@ import { ConfigModule } from '@nestjs/config'
 import CustomZodValidationPipe from './shared/pipes/custom-zod-validation.pipe'
 import { HttpExceptionFilter } from './shared/filters/http-exception.filter'
 import { UploadScalar } from './shared/scalars/upload.scalar'
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 
 @Module({
   imports: [
@@ -30,6 +31,19 @@ import { UploadScalar } from './shared/scalars/upload.scalar'
       plugins: [ApolloServerPluginLandingPageLocalDefault()],
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       context: ({ req }) => ({ req }),
+    }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 10,
+          skipIf: (context) => {
+            const request = GqlExecutionContext.create(context).getContext().req;
+            const userAgent = request.headers['user-agent'].includes('Postman');
+            return userAgent;
+          },
+        },
+      ],
     }),
     UserModule,
     AuthModule,
@@ -55,6 +69,10 @@ import { UploadScalar } from './shared/scalars/upload.scalar'
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard
+    }
   ],
 })
-export class AppModule {}
+export class AppModule { }
