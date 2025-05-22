@@ -21,6 +21,7 @@ const configSchema = z.object({
   COOKIES_MAX_AGE: z.string(),
   REDIS_URL: z.string(),
   TOKEN_BLACKLIST_PREFIX: z.string(),
+  REFRESH_TOKEN_PREFIX: z.string(),
 })
 
 const configServer = configSchema.safeParse(process.env)
