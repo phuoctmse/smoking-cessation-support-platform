@@ -1,21 +1,10 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common'
-import { Response } from 'express'
+import { ArgumentsHost, Catch, HttpException } from '@nestjs/common'
+import { GqlArgumentsHost, GqlExceptionFilter } from '@nestjs/graphql'
 
 @Catch(HttpException)
-export class HttpExceptionFilter implements ExceptionFilter {
+export class HttpExceptionFilter implements GqlExceptionFilter {
   catch(exception: HttpException, host: ArgumentsHost) {
-    const ctx = host.switchToHttp()
-    const response = ctx.getResponse<Response>()
-    const status = exception.getStatus ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR
-
-    const errorResponse = {
-      statusCode: status,
-      timestamp: new Date().toISOString(),
-      path: ctx.getRequest().url,
-      message: exception.message || 'Internal server error',
-    }
-
-    console.log(errorResponse)
-    response.status(status).json(errorResponse)
+    const gqlHost = GqlArgumentsHost.create(host)
+    return exception
   }
 }
