@@ -18,6 +18,7 @@ import CustomZodValidationPipe from './shared/pipes/custom-zod-validation.pipe'
 import { HttpExceptionFilter } from './shared/filters/http-exception.filter'
 import { UploadScalar } from './shared/scalars/upload.scalar'
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
+import envConfig from './shared/config/config'
 
 @Module({
   imports: [
@@ -28,23 +29,24 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       playground: false,
-      plugins: [ApolloServerPluginLandingPageLocalDefault()],
+      plugins: [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })],
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       context: ({ req }) => ({ req }),
+      cache: 'bounded'
     }),
-    ThrottlerModule.forRoot({
-      throttlers: [
-        {
-          ttl: 60000,
-          limit: 10,
-          skipIf: (context) => {
-            const request = GqlExecutionContext.create(context).getContext().req;
-            const userAgent = request.headers['user-agent'].includes('Postman');
-            return userAgent;
-          },
-        },
-      ],
-    }),
+    // ThrottlerModule.forRoot({
+    //   throttlers: [
+    //     {
+    //       ttl: 60000,
+    //       limit: 10,
+    //       skipIf: (context) => {
+    //         const request = GqlExecutionContext.create(context).getContext().req;
+    //         const apiKey = request.headers['x-api-key'];
+    //         return apiKey === envConfig.API_KEY;
+    //       },
+    //     },
+    //   ],
+    // }),
     UserModule,
     AuthModule,
     BlogModule,
@@ -69,10 +71,10 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard
-    }
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard
+    // }
   ],
 })
 export class AppModule { }
