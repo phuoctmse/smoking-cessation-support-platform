@@ -9,21 +9,22 @@ datasource db {
 }
 
 model User {
-  id                 String    @id @default(uuid())
-  email              String    @unique @db.VarChar(255)
-  username           String    @unique @db.VarChar(100)
+  id                 String         @id @default(uuid())
+  email              String         @unique @db.VarChar(255)
+  username           String         @unique @db.VarChar(100)
   name               String
   avatar_url         String?
   password           String
-  role               Role      @default(MEMBER)
-  status             Status    @default(ACTIVE)
+  role               Role           @default(MEMBER)
+  status             Status         @default(ACTIVE)
   cigarettes_per_day Int?
   sessions_per_day   Int?
   price_per_pack     Int?
   recorded_at        DateTime?
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
+  created_at         DateTime       @default(now())
+  updated_at         DateTime       @updatedAt
   blogs              Blog[]
+  Subscription       Subscription[]
 }
 
 model Blog {
@@ -40,6 +41,30 @@ model Blog {
   updated_at       DateTime @updatedAt
 }
 
+model Membership_Package {
+  id            String         @id @default(uuid())
+  name          String
+  description   String
+  price         Int
+  duration_days Int
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+  Subscription  Subscription[]
+}
+
+model Subscription {
+  id         String             @id @default(uuid())
+  user_id    String
+  user       User               @relation(fields: [user_id], references: [id])
+  package_id String
+  package    Membership_Package @relation(fields: [package_id], references: [id])
+  start_date DateTime
+  end_date   DateTime
+  status     SubscriptionStatus @default(ACTIVE)
+  created_at DateTime           @default(now())
+  updated_at DateTime           @updatedAt
+}
+
 enum Role {
   MEMBER
   COACH
@@ -50,4 +75,10 @@ enum Status {
   ACTIVE
   INACTIVE
   BLOCKED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
 }
