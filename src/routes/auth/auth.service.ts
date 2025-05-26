@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { AuthRepository } from './auth.repository'
 import { HashingService } from 'src/shared/services/hashing.service'
 import { LoginBodyType, LogoutResType, RefreshTokenResType, SignupBodyType } from './auth.model'
@@ -15,6 +15,7 @@ import { TokenService } from 'src/shared/services/token.service'
 import { PrismaService } from 'src/shared/services/prisma.service'
 import { USER_MESSAGES } from 'src/shared/constants/message.constant'
 import { BlacklistGuard } from 'src/shared/guards/blacklist.guard'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 @Injectable()
 export class AuthService {
@@ -27,85 +28,36 @@ export class AuthService {
 
   async signup(body: SignupBodyType) {
     try {
-      const hashedPassword = await this.hashingService.hash(body.password)
-      const user = await this.authRepository.createUser({
-        email: body.email,
-        password: hashedPassword,
-        username: body.username,
-        name: body.name,
-      })
-      return user
+      const { data, error } = await this.authRepository.signup(body)
+      return {
+        message: USER_MESSAGES.SIGNUP_SUCCESS,
+        data, error
+      }
     } catch (error) {
       if (isUniqueConstraintPrismaError(error) && Array.isArray(error.meta?.target)) {
         const target = error.meta.target[0]
         throw FieldAlreadyExistsException(target)
       }
-
       throw error
     }
   }
 
   async login(body: LoginBodyType) {
-    const user = await this.authRepository.findUserByEmail(body.email)
-    if (!user) {
-      throw EmailNotFoundException
-    }
-    const isPasswordValid = await this.hashingService.compare(body.password, user.password)
-    if (!isPasswordValid) {
-      throw InvalidPasswordException
-    }
-    // xử lí trường hợp status khác ACTIVE
-    // if(user.status) {}
+    try {
+      const { data, error } = await this.authRepository.logIn(body)
 
-    const [accessToken, refreshToken] = await Promise.all([
-      this.tokenService.signAccessToken({
-        user_id: user.id,
-        email: user.email,
-        role: user.role,
-        username: user.username,
-        status: user.status,
-      }),
-
-      this.tokenService.signRefreshToken({
-        user_id: user.id,
-      }),
-    ])
-
-    await this.authRepository.setRefreshToken(refreshToken, user.id)
-
-    return {
-      accessToken,
-      refreshToken,
+      return {
+        data, error
+      }
+    } catch (error) {
+      throw error
     }
   }
 
-  async logout(refreshToken: string, accessToken: string): Promise<LogoutResType> {
-    if (!refreshToken) {
-      return {
-        message: USER_MESSAGES.LOGOUT_SUCCESS,
-      }
-    }
-
+  async logout(): Promise<LogoutResType> {
     try {
-      const decodedRefreshToken = await this.tokenService.verifyRefreshToken(refreshToken)
-      const decodedAccessToken = await this.tokenService.verifyAccessToken(accessToken)
-
-      // Get token expiry time from the decoded token
-      const currentTimeInSeconds = Math.floor(Date.now() / 1000)
-      const refreshTokenExpiryTime = decodedRefreshToken.exp
-      const accessTokenExpiryTime = decodedAccessToken.exp
-      const timeLeftInSecondsRefreshToken = refreshTokenExpiryTime - currentTimeInSeconds
-      const timeLeftInSecondsAccessToken = accessTokenExpiryTime - currentTimeInSeconds
-      // If token still valid, add to blacklist
-      if (timeLeftInSecondsRefreshToken > 0) {
-        await this.blacklistGuard.setBlackList(refreshToken, timeLeftInSecondsRefreshToken)
-        console.log(`Token blacklisted for ${timeLeftInSecondsRefreshToken} seconds`)
-      }
-
-      if (timeLeftInSecondsAccessToken > 0) {
-        await this.blacklistGuard.setBlackList(accessToken, timeLeftInSecondsAccessToken)
-        console.log(`Token blacklisted for ${timeLeftInSecondsAccessToken} seconds`)
-      }
+      const { error } = await this.authRepository.logOut()
+      console.log(error)
 
       return {
         message: USER_MESSAGES.LOGOUT_SUCCESS,
@@ -118,25 +70,23 @@ export class AuthService {
     }
   }
 
-  async refreshToken(refreshToken: string): Promise<RefreshTokenResType> {
-    const isBlacklisted = await this.blacklistGuard.isBlackList(refreshToken);
-    if (isBlacklisted) {
-      throw RefreshTokenBlacklistedException
-    }
-    const decodedRefreshToken = await this.tokenService.verifyRefreshToken(refreshToken);
-    const user = await this.authRepository.findUserById(decodedRefreshToken.user_id);
-    if (!user) {
-      throw UserNotFoundException;
-    }
-    const accessToken = await this.tokenService.signAccessToken({
-      user_id: decodedRefreshToken.user_id,
-      email: user.email,
-      role: user.role,
-      username: user.username,
-      status: user.status,
-    })
+  async refreshToken(refreshToken: string) {
+    const { data, error } = await this.authRepository.refreshSession(refreshToken)
+
     return {
-      accessToken,
+      data, error
+    }
+  }
+
+  async verifyEmail(token: string) {
+    try {
+      const { data, error } = await this.authRepository.verifyEmail(token)
+      return {
+        message: USER_MESSAGES.VERIFY_EMAIL_SUCCESS,
+        data, error
+      }
+    } catch (error) {
+      throw error
     }
   }
 }

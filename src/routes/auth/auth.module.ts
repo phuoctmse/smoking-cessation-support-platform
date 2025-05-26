@@ -6,9 +6,10 @@ import { HashingService } from 'src/shared/services/hashing.service'
 import { AuthRepository } from './auth.repository'
 import { GuardModule } from 'src/shared/guards/guard.module'
 import { BlacklistGuard } from 'src/shared/guards/blacklist.guard'
+import { SupabaseModule } from 'src/shared/modules/supabase.module'
 
 @Module({
-  imports: [UserModule, GuardModule],
+  imports: [UserModule, GuardModule, SupabaseModule],
   providers: [AuthResolver, AuthService, AuthRepository],
 })
 export class AuthModule {}
