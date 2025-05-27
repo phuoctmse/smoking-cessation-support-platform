@@ -52,11 +52,7 @@ export type RefreshTokenResType = z.infer<typeof RefreshTokenResSchema>
 @ObjectType()
 export class User_Metadata {
   @Field(() => String, { nullable: true })
-  name?: string;
-
-  @Field(() => String, { nullable: true })
-  username?: string;
-
+  role?: string;
 }
 
 @ObjectType()
