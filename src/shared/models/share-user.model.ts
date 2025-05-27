@@ -3,11 +3,9 @@ import { RoleName, Status } from '../constants/role.constant'
 
 export const UserSchema = z.object({
   id: z.string().uuid(),
-  username: z.string().min(3).max(100),
   name: z.string().min(3).max(100),
-  email: z.string().email().max(100),
+  user_name: z.string().min(3).max(100),
   avatar_url: z.string().nullable(),
-  password: z.string().min(3).max(100),
   role: z.enum([RoleName.Member, RoleName.Coach, RoleName.Admin]).default(RoleName.Member),
   status: z.enum([Status.Active, Status.Inactive, Status.Blocked]).default(Status.Active),
   cigarettes_per_day: z.number().nullable(),

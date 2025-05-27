@@ -7,7 +7,6 @@ import {
   LogoutResSchema,
   RefreshTokenResSchema,
   SignupBodySchema,
-  SignupResSchema,
 } from './auth.model'
 
 @InputType()
@@ -19,7 +18,7 @@ export class SignupBodyDTO extends createZodDto(SignupBodySchema) {
   password: string
 
   @Field(() => String)
-  username: string
+  user_name: string
 
   @Field(() => String)
   name: string
@@ -37,7 +36,6 @@ export class LoginBodyDTO extends createZodDto(LoginBodySchema) {
   password: string
 }
 
-export class SignupResDTO extends createZodDto(SignupResSchema) {}
 @ObjectType()
 export class LoginResDTO extends createZodDto(LoginResSchema) {
   @Field(() => String)
