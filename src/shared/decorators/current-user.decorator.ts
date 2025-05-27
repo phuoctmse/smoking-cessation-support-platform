@@ -1,25 +1,20 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { GqlExecutionContext } from '@nestjs/graphql';
+import { createParamDecorator, ExecutionContext } from '@nestjs/common'
+import { GqlExecutionContext } from '@nestjs/graphql'
 
-export const User = createParamDecorator(
-  (data: unknown, ctx: ExecutionContext) => {
-    const gqlContext = GqlExecutionContext.create(ctx).getContext();
-    const jwtUser = gqlContext.req.user || gqlContext.req['user'];
+export const User = createParamDecorator((data: unknown, ctx: ExecutionContext) => {
+  const gqlContext = GqlExecutionContext.create(ctx).getContext()
+  const user = gqlContext.req.user
 
-    if (!jwtUser) {
-      console.error('User not found in request', {
-        headers: gqlContext.req.headers,
-        cookies: gqlContext.req.cookies
-      });
-      return null;
-    }
+  if (!user) {
+    return null
+  }
 
-    return {
-      id: jwtUser.user_id,
-      role: jwtUser.role,
-      email: jwtUser.email,
-      username: jwtUser.username,
-      status: jwtUser.status
-    };
-  },
-);
+  return {
+    id: user.user_id,
+    role: user.role,
+    email: user.email,
+    username: user.username,
+    name: user.name,
+    status: user.status,
+  }
+})
