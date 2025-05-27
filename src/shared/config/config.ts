@@ -24,6 +24,7 @@ const configSchema = z.object({
   REFRESH_TOKEN_PREFIX: z.string(),
   SUPABASE_URL: z.string(),
   SUPABASE_KEY: z.string(),
+  SUPABASE_ANON_KEY: z.string(),
   SUPABASE_BUCKET: z.string(),
   SUPABASE_ACCESS_KEY_ID: z.string(),
   SUPABASE_SECRET_ACCESS_KEY: z.string(),
