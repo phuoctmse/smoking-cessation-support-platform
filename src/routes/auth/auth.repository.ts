@@ -28,7 +28,7 @@ export class AuthRepository {
     await this.createUser({
       id: data.user.id,
       name: body.name,
-      userName: body.username,
+      user_name: body.username,
       status: 'INACTIVE',
     })
     return {
@@ -42,7 +42,7 @@ export class AuthRepository {
       data: {
         id: user.id,
         name: user.name,
-        userName: user.userName,
+        user_name: user.user_name,
       },
     })
   }
