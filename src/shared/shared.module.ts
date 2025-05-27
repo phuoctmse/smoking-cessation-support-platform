@@ -1,13 +1,25 @@
-import { Global, Module } from '@nestjs/common';
-import { PrismaService } from './services/prisma.service';
-import { HashingService } from './services/hashing.service';
+import { Global, Module } from '@nestjs/common'
+import { PrismaService } from './services/prisma.service'
+import { HashingService } from './services/hashing.service'
+import { TokenService } from './services/token.service'
+import { JwtModule } from '@nestjs/jwt'
+import { RedisServices } from './services/redis.service'
+import { GuardModule } from './guards/guard.module'
+import { SupabaseModule } from './modules/supabase.module'
+import { SupabaseStorageService } from './services/supabase-storage.service'
 
-const sharedService = [PrismaService, HashingService]
+const sharedService = [
+  PrismaService,
+  HashingService,
+  TokenService,
+  RedisServices,
+  SupabaseStorageService
+]
 
 @Global()
 @Module({
-    providers: [...sharedService],
-    exports: [...sharedService]
+  providers: [...sharedService],
+  exports: [...sharedService],
+  imports: [JwtModule, GuardModule, SupabaseModule],
 })
-export class SharedModule {
-}
+export class SharedModule {}

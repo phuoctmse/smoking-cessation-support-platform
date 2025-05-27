@@ -1,41 +1,92 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { LoginInput, SignupInput } from './auth.dto';
-import { AuthRepository } from './auth.repository';
-import { HashingService } from 'src/shared/services/hashing.service';
-import { LoginBodyType, SignupBodyType } from './auth.model';
+import { Inject, Injectable } from '@nestjs/common'
+import { AuthRepository } from './auth.repository'
+import { HashingService } from 'src/shared/services/hashing.service'
+import { LoginBodyType, LogoutResType, RefreshTokenResType, SignupBodyType } from './auth.model'
+import { isUniqueConstraintPrismaError } from 'src/shared/error-handlers/helpers'
+import {
+  EmailNotFoundException,
+  FieldAlreadyExistsException,
+  InvalidPasswordException,
+  RefreshTokenBlacklistedException,
+  UserNotFoundException,
+} from './auth.error'
+import { JwtService } from '@nestjs/jwt'
+import { TokenService } from 'src/shared/services/token.service'
+import { PrismaService } from 'src/shared/services/prisma.service'
+import { USER_MESSAGES } from 'src/shared/constants/message.constant'
+import { BlacklistGuard } from 'src/shared/guards/blacklist.guard'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly authRepository: AuthRepository,
-    private readonly hashingService: HashingService
+  constructor(
+    private readonly authRepository: AuthRepository,
+    private readonly hashingService: HashingService,
+    private readonly tokenService: TokenService,
+    private readonly blacklistGuard: BlacklistGuard,
   ) { }
 
   async signup(body: SignupBodyType) {
     try {
-      console.log(body)
-      const hashedPassword = await this.hashingService.hash(body.password)
-      const user = await this.authRepository.createUser({
-        email: body.email,
-        password: hashedPassword,
-        username: body.username,
-        name: body.name,
-      })
-      return user
+      const { data, error } = await this.authRepository.signup(body)
+      return {
+        message: USER_MESSAGES.SIGNUP_SUCCESS,
+        data, error
+      }
     } catch (error) {
-      throw new BadRequestException(error)
+      if (isUniqueConstraintPrismaError(error) && Array.isArray(error.meta?.target)) {
+        const target = error.meta.target[0]
+        throw FieldAlreadyExistsException(target)
+      }
+      throw error
     }
-
   }
 
   async login(body: LoginBodyType) {
-    const user = await this.authRepository.findUserByEmail(body.email)
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials')
+    try {
+      const { data, error } = await this.authRepository.logIn(body)
+
+      return {
+        data, error
+      }
+    } catch (error) {
+      throw error
     }
-    const isPasswordValid = await this.hashingService.compare(body.password, user.password)
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials')
+  }
+
+  async logout(): Promise<LogoutResType> {
+    try {
+      const { error } = await this.authRepository.logOut()
+      console.log(error)
+
+      return {
+        message: USER_MESSAGES.LOGOUT_SUCCESS,
+      }
+    } catch (error) {
+      console.log(error)
+      return {
+        message: USER_MESSAGES.LOGOUT_SUCCESS,
+      }
     }
-    return user
+  }
+
+  async refreshToken(refreshToken: string) {
+    const { data, error } = await this.authRepository.refreshSession(refreshToken)
+
+    return {
+      data, error
+    }
+  }
+
+  async verifyEmail(token: string) {
+    try {
+      const { data, error } = await this.authRepository.verifyEmail(token)
+      return {
+        message: USER_MESSAGES.VERIFY_EMAIL_SUCCESS,
+        data, error
+      }
+    } catch (error) {
+      throw error
+    }
   }
 }

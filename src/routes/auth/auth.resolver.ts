@@ -1,21 +1,80 @@
-import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
-import { AuthService } from './auth.service';
-import { User } from '../user/entities/user.entity';
-import { LoginInput, LoginResDTO, SignupInput, SignupResDTO } from './auth.dto';
-import { ZodSerializerDto } from 'nestjs-zod';
+import { Resolver, Query, Mutation, Args, Int, Context } from '@nestjs/graphql'
+import { AuthService } from './auth.service'
+import { User } from '../user/entities/user.entity'
+import { LoginBodyDTO, LoginResDTO, LogoutResDTO, RefreshTokenResDTO, SignupBodyDTO } from './auth.dto'
+import { ZodSerializerDto } from 'nestjs-zod'
+import { Response } from 'express'
+import { Res } from '@nestjs/common'
+import envConfig from 'src/shared/config/config'
+import { InvalidAuthorizationHeaderException } from './auth.error'
+import { AuthResponse } from './auth.model'
 
-@Resolver(() => User)
+@Resolver()
 export class AuthResolver {
   constructor(private readonly authService: AuthService) { }
 
-  @Mutation(() => User)
-  async signup(@Args('signupInput') signupInput: SignupInput) {
-    return this.authService.signup(signupInput);
+  @Mutation(() => AuthResponse)
+  async signup(@Args('signupInput') signupInput: SignupBodyDTO) {
+    return await this.authService.signup(signupInput)
   }
 
-  @Mutation(() => User)
-  @ZodSerializerDto(LoginResDTO)
-  async login(@Args('loginInput') loginInput: LoginInput) {
-    return this.authService.login(loginInput);
+  @Mutation(() => AuthResponse)
+  // @ZodSerializerDto(LoginResDTO)
+  async login(@Args('loginInput') loginInput: LoginBodyDTO, @Context() context) {
+    const data = await this.authService.login(loginInput)
+
+    if (context.req.res && typeof context.req.res.cookie === 'function') {
+      context.req.res.cookie('refreshToken', data.data.session.refresh_token, {
+        httpOnly: true,
+        sameSite: 'strict',
+      })
+    }
+
+    return {
+      data: data.data
+    }
+  }
+
+  @Query(() => LogoutResDTO)
+  async logout(@Context() context) {
+
+    const result = await this.authService.logout()
+
+    if (context.req.res && typeof context.req.res.clearCookie === 'function') {
+      context.req.res.clearCookie('refreshToken')
+    }
+
+    return result
+  }
+
+  @Query(() => AuthResponse)
+  async refreshToken(@Context() context) {
+    const refreshToken = context.req.cookies?.refreshToken
+    const { data, error } = await this.authService.refreshToken(refreshToken)
+    if (context.req.res && typeof context.req.res.cookie === 'function') {
+      context.req.res.cookie('refreshToken', data.session.refresh_token, {
+        httpOnly: true,
+        sameSite: 'strict',
+      })
+    }
+    return {
+      data, error
+    }
+  }
+
+  @Mutation(() => AuthResponse)
+  async verifyEmail(@Args('token') token: string, @Context() context): Promise<AuthResponse> {
+    const data = await this.authService.verifyEmail(token)
+    if (context.req.res && typeof context.req.res.cookie === 'function') {
+      context.req.res.cookie('refreshToken', data.data.session.refresh_token, {
+        httpOnly: true,
+        sameSite: 'strict',
+      })
+    }
+    return {
+      message: data.message,
+      data: data.data,
+      error: data.error
+    }
   }
 }

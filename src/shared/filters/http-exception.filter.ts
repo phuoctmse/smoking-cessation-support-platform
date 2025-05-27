@@ -1,17 +1,10 @@
-import { Logger, Catch, ArgumentsHost, HttpException } from '@nestjs/common';
-import { BaseExceptionFilter } from '@nestjs/core';
-import { ZodSerializationException } from 'nestjs-zod';
+import { ArgumentsHost, Catch, HttpException } from '@nestjs/common'
+import { GqlArgumentsHost, GqlExceptionFilter } from '@nestjs/graphql'
 
 @Catch(HttpException)
-export class HttpExceptionFilter extends BaseExceptionFilter {
-    private readonly logger = new Logger(HttpExceptionFilter.name);
-
-    catch(exception: HttpException, host: ArgumentsHost) {
-        if (exception instanceof ZodSerializationException) {
-            const zodError = exception.getZodError();
-            this.logger.error(`ZodSerializationException: ${zodError.message}`);
-        }
-
-        super.catch(exception, host);
-    }
+export class HttpExceptionFilter implements GqlExceptionFilter {
+  catch(exception: HttpException, host: ArgumentsHost) {
+    const gqlHost = GqlArgumentsHost.create(host)
+    return exception
+  }
 }
