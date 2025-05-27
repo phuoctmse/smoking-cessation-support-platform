@@ -18,7 +18,7 @@ export class SignupBodyDTO extends createZodDto(SignupBodySchema) {
   password: string
 
   @Field(() => String)
-  user_name: string
+  username: string
 
   @Field(() => String)
   name: string
