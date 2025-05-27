@@ -25,6 +25,6 @@ export class RolesGuard implements CanActivate {
     const request = ctx.getContext().req
     const accessToken = extractAccessToken(request)
     const decodedAccessToken = await this.tokenService.verifyAccessToken(accessToken)
-    return requiredRoles.some((role) => decodedAccessToken.role === role)
+    return requiredRoles.some((role) => decodedAccessToken.user_metadata.role === role)
   }
 }

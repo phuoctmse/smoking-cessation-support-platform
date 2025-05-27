@@ -1,50 +1,40 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
-import { GqlExecutionContext } from '@nestjs/graphql'
-import { BlacklistGuard } from './blacklist.guard'
-import { extractAccessToken } from '../helpers/function.helper'
-import { TokenService } from '../services/token.service'
+import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { BlacklistGuard } from "./blacklist.guard";
+import { GqlExecutionContext } from "@nestjs/graphql";
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
+    @Inject('SUPABASE') private supabase: SupabaseClient,
     private readonly blacklistGuard: BlacklistGuard,
-    private readonly tokenService: TokenService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Get request from GraphQL context
-    const ctx = GqlExecutionContext.create(context)
-    const request = ctx.getContext().req
+    const ctx = GqlExecutionContext.create(context);
+    const request = ctx.getContext().req;
 
-    // Extract tokens
-    const accessToken = extractAccessToken(request)
-    const refreshToken = request.cookies?.refreshToken
-
-    // Validate both tokens exist
-    if (!accessToken || !refreshToken) {
-      throw new UnauthorizedException('Missing access or refresh token')
+      // Get the session from Supabase
+    const { data: { session }, error } = await this.supabase.auth.getSession();
+    
+    if (error || !session) {
+      throw new UnauthorizedException('Invalid or expired session');
     }
 
-    // Check if tokens are blacklisted
-    await this.checkBlacklist(accessToken, refreshToken)
+    // Get user metadata which contains role
+    const user = session.user;
+    const userRole = user.user_metadata?.role;
 
-    // Verify JWT token
-    try {
-      const payload = await this.tokenService.verifyAccessToken(accessToken)
-      request.user = payload
-      request['user'] = payload
-      return true
-    } catch (err) {
-      throw new UnauthorizedException('Invalid or expired token')
+    if (!userRole) {
+      throw new UnauthorizedException('User role not found');
     }
-  }
+    // Add user info to request
+    request.user = {
+      user_id: user.id,
+      email: user.email,
+      role: userRole,
+    };
 
-  private async checkBlacklist(accessToken: string, refreshToken: string): Promise<void> {
-    const isBlacklistedAccess = await this.blacklistGuard.isBlackList(accessToken)
-    const isBlacklistedRefresh = await this.blacklistGuard.isBlackList(refreshToken)
-
-    if (isBlacklistedAccess || isBlacklistedRefresh) {
-      throw new UnauthorizedException('Invalid or expired token')
-    }
+    return true;
   }
 }
