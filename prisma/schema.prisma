@@ -9,14 +9,12 @@ datasource db {
 }
 
 model User {
-  id                 String         @id @default(uuid())
-  email              String         @unique @db.VarChar(255)
-  username           String         @unique @db.VarChar(100)
+  id                 String    @id @default(uuid())
   name               String
+  user_name          String    @unique
   avatar_url         String?
-  password           String
-  role               Role           @default(MEMBER)
-  status             Status         @default(ACTIVE)
+  role               Role      @default(MEMBER)
+  status             Status    @default(ACTIVE)
   cigarettes_per_day Int?
   sessions_per_day   Int?
   price_per_pack     Int?
@@ -30,15 +28,15 @@ model User {
 model Blog {
   id               String   @id @default(uuid())
   author_id        String
-  author           User     @relation(fields: [author_id], references: [id])
   title            String
   slug             String   @unique @db.VarChar(255)
-  content          String   @db.Text()
-  cover_image      String?
-  cover_image_path String?
+  content          String
   is_deleted       Boolean  @default(false)
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
+  cover_image      String?
+  cover_image_path String?
+  author           User     @relation(fields: [author_id], references: [id])
 }
 
 model Membership_Package {
