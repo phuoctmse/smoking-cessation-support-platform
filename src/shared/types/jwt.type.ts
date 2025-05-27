@@ -1,14 +1,18 @@
 export interface AccessTokenPayloadGenerate {
-  user_id: string
+  sub: string
   email: string
+  aud: string
   role: string
-  username: string
-  status: string
+  exp: number
+  iat: number
+  user_metadata: {
+    role: string
+  }
 }
 
 export interface AccessTokenPayload extends AccessTokenPayloadGenerate {
-  exp: number
-  iat: number
+  iss: string
+  jti: string
 }
 
 export interface RefreshTokenPayloadGenerate {

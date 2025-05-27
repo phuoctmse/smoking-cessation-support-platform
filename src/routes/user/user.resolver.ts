@@ -7,6 +7,7 @@ import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard'
 import { Roles } from 'src/shared/decorators/roles.decorator'
 import { RoleName } from 'src/shared/constants/role.constant'
+import { RolesGuard } from 'src/shared/guards/roles.guard'
 
 @Resolver(() => User)
 export class UserResolver {
@@ -17,7 +18,7 @@ export class UserResolver {
     return this.userService.create(createUserInput)
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Member)
   @Query(() => [User], { name: 'usergetall' })
   findAll() {
