@@ -7,13 +7,15 @@ import { RedisServices } from './services/redis.service'
 import { GuardModule } from './guards/guard.module'
 import { SupabaseModule } from './modules/supabase.module'
 import { SupabaseStorageService } from './services/supabase-storage.service'
+import { UploadService } from './services/upload-file.service'
 
 const sharedService = [
   PrismaService,
   HashingService,
   TokenService,
   RedisServices,
-  SupabaseStorageService
+  SupabaseStorageService,
+  UploadService
 ]
 
 @Global()

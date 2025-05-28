@@ -8,19 +8,13 @@ export class User implements UserType {
   id: string
 
   @Field(() => String)
-  email: string
-
-  @Field(() => String)
-  username: string
+  user_name: string
 
   @Field(() => String)
   name: string
 
   @Field(() => String, { nullable: true })
   avatar_url?: string
-
-  @Field(() => String)
-  password: string
 
   @Field(() => String)
   role: RoleNameType

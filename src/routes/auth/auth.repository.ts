@@ -5,6 +5,7 @@ import { RedisServices } from 'src/shared/services/redis.service'
 import envConfig from 'src/shared/config/config'
 import { AuthResponse, SupabaseClient } from '@supabase/supabase-js'
 import { LoginBodyType, SignupBodyType } from './auth.model'
+import { RoleName } from 'src/shared/constants/role.constant'
 
 @Injectable()
 export class AuthRepository {
@@ -21,6 +22,9 @@ export class AuthRepository {
       password: body.password,
       phone: body.phoneNumber,
       options: {
+        data: {
+          role: RoleName.Member
+        },
         emailRedirectTo: `${envConfig.FRONTEND_URL}/auth/callback`
       }
     })
@@ -48,15 +52,27 @@ export class AuthRepository {
   }
 
   async logIn(body: LoginBodyType) {
-    const { data, error } = await this.supabase.auth.signInWithPassword({
+    const authResponse = await this.supabase.auth.signInWithPassword({
       email: body.email,
       password: body.password,
     })
-    console.log(data, error)
+
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        id: authResponse.data.user.id
+      }
+    })
+
+    const { data: updatedUser } = await this.supabase.auth.updateUser({
+      data: { user_metadata: { role: user.role } }
+    })
 
     return {
-      data,
-      error
+      data: {
+        ...authResponse.data,
+        user: updatedUser.user
+      },
+      error: authResponse.error
     }
   }
 

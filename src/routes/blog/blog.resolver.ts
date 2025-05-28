@@ -13,6 +13,7 @@ import { User } from '../../shared/decorators/current-user.decorator'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { UploadScalar } from '../../shared/scalars/upload.scalar'
 import { PaginationParamsInput } from '../../shared/models/dto/request/pagination-params.input'
+import { RolesGuard } from '../../shared/guards/roles.guard'
 
 @Resolver(() => Blog)
 export class BlogResolver {
@@ -20,12 +21,14 @@ export class BlogResolver {
 
   @Query(() => PaginatedBlogsResponse)
   async blogs(@Args('params', { nullable: true }) params?: PaginationParamsInput) {
-    return this.blogService.findAll(params || {
-      page: 1,
-      limit: 10,
-      orderBy: 'created_at',
-      sortOrder: 'desc'
-    })
+    return this.blogService.findAll(
+      params || {
+        page: 1,
+        limit: 10,
+        orderBy: 'created_at',
+        sortOrder: 'desc',
+      },
+    )
   }
 
   @Query(() => Blog)
@@ -38,7 +41,7 @@ export class BlogResolver {
     return this.blogService.findBySlug(slug)
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Coach)
   @Mutation(() => Blog)
   async createBlog(
@@ -49,7 +52,7 @@ export class BlogResolver {
     return this.blogService.create(input, coverImage, user.id, user.role)
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Coach)
   @Mutation(() => Blog)
   async updateBlog(
@@ -57,10 +60,11 @@ export class BlogResolver {
     @Args({ name: 'coverImage', type: () => UploadScalar, nullable: true }) coverImage: Promise<FileUpload>,
     @User() user: UserType,
   ) {
-    return this.blogService.update(input.id, input, coverImage, user.id, user.role)
+    const { id, ...updateData } = input
+    return this.blogService.update(id, updateData, coverImage, user.id, user.role)
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Coach)
   @Mutation(() => Blog)
   async removeBlog(@Args('id') id: string, @User() user: UserType) {
