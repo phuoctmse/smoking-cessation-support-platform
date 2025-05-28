@@ -3,204 +3,135 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  UnsupportedMediaTypeException,
 } from '@nestjs/common'
 import { BlogRepository } from './blog.repository'
-import { CreateBlogType, UpdateBlogType } from './model/blog.model'
 import { RoleName } from '../../shared/constants/role.constant'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
-import { ALLOWED_IMAGE_FORMATS, FILE_FORMAT_EXTENSIONS } from '../../shared/constants/upload.constant'
-import { processUploadedFile } from '../../shared/utils/file-upload.util'
-import { validateAndNormalizeMimeType } from '../../shared/utils/mime-type-detection.util'
-import { SupabaseStorageService } from '../../shared/services/supabase-storage.service'
 import { PaginationParamsType } from '../../shared/models/pagination.model'
+import { CreateBlogType } from './schema/create-blog.schema'
+import { UpdateBlogType } from './schema/update-blog.schema'
+import {UploadService} from "../../shared/services/upload-file.service";
 
 @Injectable()
 export class BlogService {
-  private readonly logger = new Logger(BlogService.name)
+  private readonly logger = new Logger(BlogService.name);
 
   constructor(
-    private readonly blogRepository: BlogRepository,
-    private readonly supabaseStorage: SupabaseStorageService,
+      private readonly blogRepository: BlogRepository,
+      private readonly uploadService: UploadService,
   ) {}
 
   async findAll(params: PaginationParamsType) {
-    return await this.blogRepository.findAll(params)
+    return this.blogRepository.findAll(params);
   }
 
   async findOne(id: string) {
-    const blog = await this.blogRepository.findOne(id)
+    const blog = await this.blogRepository.findOne(id);
 
     if (!blog || blog.is_deleted) {
-      throw new NotFoundException(`Blog not found`)
+      throw new NotFoundException('Blog not found');
     }
 
-    return blog
+    return blog;
   }
 
   async findBySlug(slug: string) {
-    const blog = await this.blogRepository.findBySlug(slug)
+    const blog = await this.blogRepository.findBySlug(slug);
 
     if (!blog || blog.is_deleted) {
-      throw new NotFoundException(`Blog not found`)
+      throw new NotFoundException('Blog not found');
     }
 
-    return blog
+    return blog;
   }
 
   async create(
-    data: CreateBlogType,
-    fileUpload: Promise<FileUpload> | null | undefined,
-    userId: string,
-    userRole: string,
+      data: CreateBlogType,
+      fileUpload: Promise<FileUpload> | null | undefined,
+      userId: string,
+      userRole: string,
   ) {
-    if (userRole !== RoleName.Coach) {
-      throw new ForbiddenException('Only coaches can create blog posts')
-    }
+    this.validateCoachRole(userRole, 'create');
 
-    let coverImageUrl = null
-    let coverImagePath = null
-
-    if (fileUpload !== null && fileUpload !== undefined) {
-      try {
-        // Process the uploaded file
-        const { buffer, filename, mimetype } = await processUploadedFile(fileUpload)
-
-        // Validate and normalize the MIME type
-        const { valid, normalizedMimeType } = validateAndNormalizeMimeType(mimetype, buffer, ALLOWED_IMAGE_FORMATS)
-
-        if (!valid || !normalizedMimeType) {
-          throw new UnsupportedMediaTypeException(
-            `Invalid file format. Allowed formats: ${ALLOWED_IMAGE_FORMATS.join(', ')}`,
-          )
-        }
-
-        // Get the extension for the file
-        const extension = FILE_FORMAT_EXTENSIONS[normalizedMimeType]
-
-        const uploadResult = await this.supabaseStorage.uploadImage(
-          {
-            buffer,
-            originalname: `${filename || 'upload'}${extension}`,
-            mimetype: normalizedMimeType,
-            size: buffer.length,
-          } as Express.Multer.File,
-          userId,
-        )
-
-        coverImageUrl = uploadResult.url
-        coverImagePath = uploadResult.path
-        this.logger.log(`Successfully uploaded image: ${coverImageUrl}`)
-      } catch (error) {
-        if (error instanceof UnsupportedMediaTypeException) {
-          throw error
-        }
-        this.logger.error(`Failed to upload image: ${error.message}`, error.stack)
-      }
-    }
+    const { url: coverImageUrl, path: coverImagePath } = await this.uploadService.handleImageUpload(
+        fileUpload,
+        userId,
+        { folder: 'blog-covers' },
+    );
 
     const blogData = {
       ...data,
       cover_image: coverImageUrl,
       cover_image_path: coverImagePath,
-    }
+    };
 
-    return this.blogRepository.create(blogData, userId)
+    const blog = await this.blogRepository.create(blogData, userId);
+    this.logger.log(`Blog created: ${blog.id}`);
+    return blog;
   }
 
   async update(
-    id: string,
-    data: UpdateBlogType,
-    fileUpload: Promise<FileUpload> | null | undefined,
-    userId: string,
-    userRole: string,
+      id: string,
+      data: UpdateBlogType,
+      fileUpload: Promise<FileUpload> | null | undefined,
+      userId: string,
+      userRole: string,
   ) {
-    const blog = await this.blogRepository.findOne(id)
+    const blog = await this.findOne(id);
+    this.validateUpdatePermission(blog, userId, userRole);
 
-    if (!blog) {
-      throw new NotFoundException(`Blog not found`)
-    }
-
-    if (blog.author_id !== userId && userRole !== RoleName.Coach) {
-      throw new ForbiddenException('You do not have permission to update this blog')
-    }
-
-    let coverImageUrl = data.cover_image
-    let coverImagePath = blog.cover_image_path
-
-    if (fileUpload !== null && fileUpload !== undefined) {
-      try {
-        // Process the uploaded file
-        const { buffer, filename, mimetype } = await processUploadedFile(fileUpload)
-
-        // Validate and normalize the MIME type
-        const { valid, normalizedMimeType } = validateAndNormalizeMimeType(mimetype, buffer, ALLOWED_IMAGE_FORMATS)
-
-        if (!valid || !normalizedMimeType) {
-          throw new UnsupportedMediaTypeException(
-            `Invalid file format. Allowed formats: ${ALLOWED_IMAGE_FORMATS.join(', ')}`,
-          )
-        }
-
-        // Get the extension for the file
-        const extension = FILE_FORMAT_EXTENSIONS[normalizedMimeType]
-
-        const uploadResult = await this.supabaseStorage.uploadImage(
-          {
-            buffer,
-            originalname: `${filename || 'upload'}${extension}`,
-            mimetype: normalizedMimeType,
-            size: buffer.length,
-          } as Express.Multer.File,
-          userId,
-        )
-
-        coverImageUrl = uploadResult.url
-        coverImagePath = uploadResult.path
-        this.logger.log(`Successfully uploaded new image: ${coverImageUrl}`)
-
-        // Delete old image if exists
-        if (blog.cover_image_path) {
-          await this.supabaseStorage.deleteImage(blog.cover_image_path)
-          this.logger.log(`Successfully deleted old image: ${blog.cover_image_path}`)
-        }
-      } catch (error) {
-        if (error instanceof UnsupportedMediaTypeException) {
-          throw error
-        }
-        this.logger.error(`Failed to upload image: ${error.message}`, error.stack)
-      }
-    }
+    const { url: coverImageUrl, path: coverImagePath } = await this.uploadService.replaceImage(
+        fileUpload,
+        userId,
+        blog.cover_image_path,
+        { folder: 'blog-covers' },
+    );
 
     const blogData = {
       ...data,
-      cover_image: coverImageUrl,
+      cover_image: coverImageUrl || data.cover_image,
       cover_image_path: coverImagePath,
-    }
+    };
 
-    return this.blogRepository.update(id, blogData)
+    const updatedBlog = await this.blogRepository.update(id, blogData);
+    this.logger.log(`Blog updated: ${updatedBlog.id}`);
+    return updatedBlog;
   }
 
   async remove(id: string, userId: string, userRole: string) {
-    const blog = await this.blogRepository.findOne(id)
+    const blog = await this.findOne(id);
+    this.validateDeletePermission(blog, userId, userRole);
 
-    if (!blog) {
-      throw new NotFoundException(`Blog not found`)
-    }
-
-    if (blog.author_id !== userId && userRole !== RoleName.Coach && userRole !== RoleName.Admin) {
-      throw new ForbiddenException('You do not have permission to delete this blog')
-    }
-
+    // Delete image if exists
     if (blog.cover_image_path) {
-      try {
-        await this.supabaseStorage.deleteImage(blog.cover_image_path)
-        this.logger.log(`Successfully deleted image for blog ${id}: ${blog.cover_image_path}`)
-      } catch (error) {
-        this.logger.warn(`Failed to delete image for blog ${id}: ${error.message}`)
-      }
+      await this.uploadService.deleteImageSafely(blog.cover_image_path);
     }
 
-    return await this.blogRepository.delete(id)
+    const deletedBlog = await this.blogRepository.delete(id);
+    this.logger.log(`Blog deleted: ${deletedBlog.id}`);
+    return deletedBlog;
+  }
+
+  private validateCoachRole(userRole: string, action: string): void {
+    if (userRole !== RoleName.Coach) {
+      throw new ForbiddenException(`Only coaches can ${action} blog posts`);
+    }
+  }
+
+  private validateUpdatePermission(blog: any, userId: string, userRole: string): void {
+    if (blog.author_id !== userId && userRole !== RoleName.Coach) {
+      throw new ForbiddenException('You do not have permission to update this blog');
+    }
+  }
+
+  private validateDeletePermission(blog: any, userId: string, userRole: string): void {
+    const canDelete =
+        blog.author_id === userId ||
+        userRole === RoleName.Coach ||
+        userRole === RoleName.Admin;
+
+    if (!canDelete) {
+      throw new ForbiddenException('You do not have permission to delete this blog');
+    }
   }
 }
