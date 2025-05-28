@@ -60,7 +60,8 @@ export class BlogResolver {
     @Args({ name: 'coverImage', type: () => UploadScalar, nullable: true }) coverImage: Promise<FileUpload>,
     @User() user: UserType,
   ) {
-    return this.blogService.update(input.id, input, coverImage, user.id, user.role)
+    const { id, ...updateData } = input
+    return this.blogService.update(id, updateData, coverImage, user.id, user.role)
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

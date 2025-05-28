@@ -1,9 +1,10 @@
-import { CreateBlogType, UpdateBlogType } from './model/blog.model'
 import { PrismaService } from '../../shared/services/prisma.service'
 import { Injectable } from '@nestjs/common'
 import { generateSlug } from '../../shared/utils/string.util'
 import { Prisma } from '@prisma/client'
 import { PaginationParamsType } from '../../shared/models/pagination.model'
+import { CreateBlogType } from './schema/create-blog.schema'
+import { UpdateBlogType } from './schema/update-blog.schema'
 
 @Injectable()
 export class BlogRepository {
@@ -125,10 +126,20 @@ export class BlogRepository {
   }
 
   update(id: string, data: UpdateBlogType) {
-    const updateData: Prisma.BlogUpdateInput = { ...data }
+    const updateData: Prisma.BlogUpdateInput = {}
 
-    if (data.title) {
+    if (data.title !== undefined) {
+      updateData.title = data.title
       updateData.slug = generateSlug(data.title)
+    }
+    if (data.content !== undefined) {
+      updateData.content = data.content
+    }
+    if (data.cover_image !== undefined) {
+      updateData.cover_image = data.cover_image
+    }
+    if (data.cover_image_path !== undefined) {
+      updateData.cover_image_path = data.cover_image_path
     }
 
     return this.prisma.blog.update({
