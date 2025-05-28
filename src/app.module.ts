@@ -16,6 +16,7 @@ import { ConfigModule } from '@nestjs/config'
 import CustomZodValidationPipe from './shared/pipes/custom-zod-validation.pipe'
 import { HttpExceptionFilter } from './shared/filters/http-exception.filter'
 import { UploadScalar } from './shared/scalars/upload.scalar'
+import { CessationPlanTemplateModule } from './routes/cessation-plan-template/cessation-plan-template.module'
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { UploadScalar } from './shared/scalars/upload.scalar'
     UserModule,
     AuthModule,
     BlogModule,
+    CessationPlanTemplateModule,
   ],
   controllers: [AppController],
   providers: [
