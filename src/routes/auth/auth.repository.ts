@@ -28,7 +28,7 @@ export class AuthRepository {
           name: body.name,
           user_name: body.username,
         },
-        emailRedirectTo: `${envConfig.FRONTEND_URL}/auth/callback`
+        // emailRedirectTo: `${envConfig.FRONTEND_URL}/auth/callback`
       }
     })
 

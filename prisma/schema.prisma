@@ -24,6 +24,7 @@ model User {
   blogs              Blog[]
   cessation_plans    CessationPlan[]
   feedbacks          Feedback[]
+  Subscription       Subscription[]
 }
 
 model Blog {
@@ -173,6 +174,34 @@ enum DifficultyLevel {
   HARD
 }
 
+model MembershipPackage {
+  id            String         @id @default(uuid())
+  name          String
+  description   String
+  price         Int
+  duration_days Int
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+  Subscription  Subscription[]
+
+  @@map("membership_package")
+}
+
+model Subscription {
+  id         String             @id @default(uuid())
+  user_id    String
+  user       User               @relation(fields: [user_id], references: [id])
+  package_id String
+  package    MembershipPackage  @relation(fields: [package_id], references: [id])
+  start_date DateTime
+  end_date   DateTime
+  status     SubscriptionStatus @default(ACTIVE)
+  created_at DateTime           @default(now())
+  updated_at DateTime           @updatedAt
+
+  @@map("subscription")
+}
+
 enum Role {
   MEMBER
   COACH
@@ -183,4 +212,10 @@ enum Status {
   ACTIVE
   INACTIVE
   BLOCKED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
 }
