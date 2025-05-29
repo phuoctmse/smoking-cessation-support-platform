@@ -69,11 +69,9 @@ export class AuthRepository {
 
     const { data: updatedUser } = await this.supabase.auth.updateUser({
       data: {
-        user_metadata: {
-          role: user.role,
-          name: user.name,
-          user_name: user.user_name,
-        }
+        role: user.role,
+        name: user.name,
+        user_name: user.user_name,
       }
     })
 
