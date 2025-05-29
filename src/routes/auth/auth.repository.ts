@@ -25,7 +25,7 @@ export class AuthRepository {
         data: {
           role: RoleName.Member
         },
-        emailRedirectTo: `${envConfig.FRONTEND_URL}/auth/callback`
+        // emailRedirectTo: `${envConfig.FRONTEND_URL}/auth/callback`
       }
     })
 

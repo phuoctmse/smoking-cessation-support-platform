@@ -174,7 +174,7 @@ enum DifficultyLevel {
   HARD
 }
 
-model Membership_Package {
+model MembershipPackage {
   id            String         @id @default(uuid())
   name          String
   description   String
@@ -183,6 +183,8 @@ model Membership_Package {
   created_at    DateTime       @default(now())
   updated_at    DateTime       @updatedAt
   Subscription  Subscription[]
+
+  @@map("membership_package")
 }
 
 model Subscription {
@@ -190,12 +192,14 @@ model Subscription {
   user_id    String
   user       User               @relation(fields: [user_id], references: [id])
   package_id String
-  package    Membership_Package @relation(fields: [package_id], references: [id])
+  package    MembershipPackage  @relation(fields: [package_id], references: [id])
   start_date DateTime
   end_date   DateTime
   status     SubscriptionStatus @default(ACTIVE)
   created_at DateTime           @default(now())
   updated_at DateTime           @updatedAt
+
+  @@map("subscription")
 }
 
 enum Role {

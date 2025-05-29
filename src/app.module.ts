@@ -51,7 +51,7 @@ import { PlanStageTemplateModule } from './routes/plan-stage-template/plan-stage
     AuthModule,
     BlogModule,
     CessationPlanTemplateModule,
-    MembershipModule
+    MembershipModule,
     PlanStageTemplateModule,
   ],
   controllers: [AppController],
