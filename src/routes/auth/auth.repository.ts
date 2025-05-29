@@ -4,8 +4,9 @@ import { UserType } from 'src/shared/models/share-user.model'
 import { RedisServices } from 'src/shared/services/redis.service'
 import envConfig from 'src/shared/config/config'
 import { AuthResponse, SupabaseClient } from '@supabase/supabase-js'
-import { LoginBodyType, SignupBodyType } from './auth.model'
-import { RoleName } from 'src/shared/constants/role.constant'
+import { RoleName, Status } from 'src/shared/constants/role.constant'
+import { SignupBodyType } from './schema/signup.schema'
+import { LoginBodyType } from './schema/login.schema'
 
 @Injectable()
 export class AuthRepository {
@@ -23,7 +24,9 @@ export class AuthRepository {
       phone: body.phoneNumber,
       options: {
         data: {
-          role: RoleName.Member
+          role: RoleName.Member,
+          name: body.name,
+          user_name: body.username,
         },
         emailRedirectTo: `${envConfig.FRONTEND_URL}/auth/callback`
       }
@@ -33,7 +36,7 @@ export class AuthRepository {
       id: data.user.id,
       name: body.name,
       user_name: body.username,
-      status: 'INACTIVE',
+      status: Status.Inactive,
     })
     return {
       data,
@@ -63,9 +66,17 @@ export class AuthRepository {
       }
     })
 
+
     const { data: updatedUser } = await this.supabase.auth.updateUser({
-      data: { user_metadata: { role: user.role } }
+      data: {
+        user_metadata: {
+          role: user.role,
+          name: user.name,
+          user_name: user.user_name,
+        }
+      }
     })
+
 
     return {
       data: {
