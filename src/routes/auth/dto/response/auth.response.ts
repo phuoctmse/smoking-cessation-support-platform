@@ -1,58 +1,15 @@
-import { UserSchema } from 'src/shared/models/share-user.model'
-import { z } from 'zod'
-import { Field, ObjectType } from '@nestjs/graphql';
-import { User } from '@supabase/supabase-js';
-
-export const SignupBodySchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  confirmPassword: z.string().min(6),
-  username: z.string().min(3),
-  name: z.string().min(2),
-  phoneNumber: z.string().optional(),
-})
-  .strict()
-  .superRefine(({ confirmPassword, password }, ctx) => {
-    if (confirmPassword !== password) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Password and confirm password must match',
-        path: ['confirmPassword'],
-      })
-    }
-  })
-
-
-
-export const LoginBodySchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-})
-
-export const LoginResSchema = z.object({
-  accessToken: z.string(),
-  refreshToken: z.string(),
-})
-
-export const LogoutResSchema = z.object({
-  message: z.string(),
-})
-
-export const RefreshTokenResSchema = z.object({
-  accessToken: z.string(),
-})
-
-export type SignupBodyType = z.infer<typeof SignupBodySchema>
-
-export type LoginBodyType = z.infer<typeof LoginBodySchema>
-export type LoginResType = z.infer<typeof LoginResSchema>
-export type LogoutResType = z.infer<typeof LogoutResSchema>
-export type RefreshTokenResType = z.infer<typeof RefreshTokenResSchema>
+import { Field, ObjectType } from "@nestjs/graphql";
 
 @ObjectType()
 export class User_Metadata {
   @Field(() => String, { nullable: true })
   role?: string;
+
+  @Field(() => String, { nullable: true })
+  name?: string;
+
+  @Field(() => String, { nullable: true })
+  user_name?: string;
 }
 
 @ObjectType()

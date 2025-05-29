@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { AuthRepository } from './auth.repository'
 import { HashingService } from 'src/shared/services/hashing.service'
-import { LoginBodyType, LogoutResType, RefreshTokenResType, SignupBodyType } from './auth.model'
 import { isUniqueConstraintPrismaError } from 'src/shared/error-handlers/helpers'
 import {
   EmailNotFoundException,
@@ -16,6 +15,9 @@ import { PrismaService } from 'src/shared/services/prisma.service'
 import { USER_MESSAGES } from 'src/shared/constants/message.constant'
 import { BlacklistGuard } from 'src/shared/guards/blacklist.guard'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { SignupBodyType } from './schema/signup.schema'
+import { LoginBodyType } from './schema/login.schema'
+import { LogoutResponseType } from './schema/logout.schema'
 
 @Injectable()
 export class AuthService {
@@ -54,19 +56,18 @@ export class AuthService {
     }
   }
 
-  async logout(): Promise<LogoutResType> {
+  async logout(): Promise<LogoutResponseType> {
     try {
       const { error } = await this.authRepository.logOut()
-      console.log(error)
-
+      if (error) {
+        throw error
+      }
+      
       return {
-        message: USER_MESSAGES.LOGOUT_SUCCESS,
+        error: USER_MESSAGES.LOGOUT_SUCCESS
       }
     } catch (error) {
       console.log(error)
-      return {
-        message: USER_MESSAGES.LOGOUT_SUCCESS,
-      }
     }
   }
 
