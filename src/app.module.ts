@@ -17,6 +17,7 @@ import CustomZodValidationPipe from './shared/pipes/custom-zod-validation.pipe'
 import { HttpExceptionFilter } from './shared/filters/http-exception.filter'
 import { UploadScalar } from './shared/scalars/upload.scalar'
 import { CessationPlanTemplateModule } from './routes/cessation-plan-template/cessation-plan-template.module'
+import { MembershipModule } from './routes/membership-package/membership.module'
 import { PlanStageTemplateModule } from './routes/plan-stage-template/plan-stage-template.module'
 
 @Module({
@@ -50,6 +51,7 @@ import { PlanStageTemplateModule } from './routes/plan-stage-template/plan-stage
     AuthModule,
     BlogModule,
     CessationPlanTemplateModule,
+    MembershipModule,
     PlanStageTemplateModule,
   ],
   controllers: [AppController],
