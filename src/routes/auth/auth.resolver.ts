@@ -1,13 +1,15 @@
 import { Resolver, Query, Mutation, Args, Int, Context } from '@nestjs/graphql'
 import { AuthService } from './auth.service'
 import { User } from '../user/entities/user.entity'
-import { LoginBodyDTO, LoginResDTO, LogoutResDTO, RefreshTokenResDTO, SignupBodyDTO } from './auth.dto'
 import { ZodSerializerDto } from 'nestjs-zod'
 import { Response } from 'express'
 import { Res } from '@nestjs/common'
 import envConfig from 'src/shared/config/config'
 import { InvalidAuthorizationHeaderException } from './auth.error'
-import { AuthResponse } from './auth.model'
+import { AuthResponse } from './dto/response/auth.response'
+import { SignupBodyDTO } from './dto/request/signup.input'
+import { LoginBodyDTO } from './dto/request/login.input'
+import { LogoutResponseDTO } from './dto/response/logout.response'
 
 @Resolver()
 export class AuthResolver {
@@ -35,7 +37,7 @@ export class AuthResolver {
     }
   }
 
-  @Query(() => LogoutResDTO)
+  @Query(() => LogoutResponseDTO)
   async logout(@Context() context) {
 
     const result = await this.authService.logout()
