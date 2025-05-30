@@ -159,6 +159,7 @@ enum CessationPlanStatus {
   PAUSED
   COMPLETED
   ABANDONED
+  CANCELLED
 }
 
 enum PlanStageStatus {
