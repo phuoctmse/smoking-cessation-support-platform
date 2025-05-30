@@ -154,6 +154,28 @@ model Feedback {
   @@map("feedback")
 }
 
+enum CessationPlanStatus {
+  PLANNING
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ABANDONED
+  CANCELLED
+}
+
+enum PlanStageStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  SKIPPED
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
 model MembershipPackage {
   id            String         @id @default(uuid())
   name          String
@@ -235,23 +257,3 @@ enum SubscriptionStatus {
   EXPIRED
 }
 
-enum CessationPlanStatus {
-  PLANNING
-  ACTIVE
-  PAUSED
-  COMPLETED
-  ABANDONED
-}
-
-enum PlanStageStatus {
-  PENDING
-  ACTIVE
-  COMPLETED
-  SKIPPED
-}
-
-enum DifficultyLevel {
-  EASY
-  MEDIUM
-  HARD
-}
