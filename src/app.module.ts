@@ -19,6 +19,7 @@ import { UploadScalar } from './shared/scalars/upload.scalar'
 import { CessationPlanTemplateModule } from './routes/cessation-plan-template/cessation-plan-template.module'
 import { MembershipModule } from './routes/membership-package/membership.module'
 import { PlanStageTemplateModule } from './routes/plan-stage-template/plan-stage-template.module'
+import { PaymentModule } from './routes/payment/payment.module'
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { PlanStageTemplateModule } from './routes/plan-stage-template/plan-stage
     CessationPlanTemplateModule,
     MembershipModule,
     PlanStageTemplateModule,
+    PaymentModule
   ],
   controllers: [AppController],
   providers: [
