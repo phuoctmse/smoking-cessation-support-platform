@@ -8,7 +8,7 @@ import { UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/shared/guards/jwt-auth.guard";
 import { RolesGuard } from "src/shared/guards/roles.guard";
 import { Roles } from "src/shared/decorators/roles.decorator";
-import { Role } from "generated";
+import { RoleName } from '../../shared/constants/role.constant'
 
 @Resolver()
 export class MembershipResolver {
@@ -20,14 +20,14 @@ export class MembershipResolver {
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.ADMIN)
+    @Roles(RoleName.Admin)
     @Mutation(() => MembershipPackage)
     async createMembershipPackage(@Args('input') input: CreateMembershipPackageInput) {
         return this.membershipService.createMembershipPackage(input)
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.ADMIN)
+    @Roles(RoleName.Admin)
     @Mutation(() => MembershipPackage)
     async updateMembershipPackage(@Args('input') input: UpdateMembershipPackageInput) {
         return this.membershipService.updateMembershipPackage(input)
