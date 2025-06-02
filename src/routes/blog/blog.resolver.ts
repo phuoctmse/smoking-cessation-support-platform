@@ -49,7 +49,7 @@ export class BlogResolver {
     @Args({ name: 'coverImage', type: () => UploadScalar, nullable: true }) coverImage: Promise<FileUpload>,
     @User() user: UserType,
   ) {
-    return this.blogService.create(input, coverImage, user.id, user.role)
+    return this.blogService.create(input, coverImage, user.id)
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -65,7 +65,7 @@ export class BlogResolver {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.Coach)
+  @Roles(RoleName.Coach, RoleName.Admin)
   @Mutation(() => Blog)
   async removeBlog(@Args('id') id: string, @User() user: UserType) {
     return this.blogService.remove(id, user.id, user.role)
