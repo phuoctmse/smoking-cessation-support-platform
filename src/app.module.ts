@@ -1,3 +1,4 @@
+import './shared/enums/graphql-enums'
 import { Module } from '@nestjs/common'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
@@ -19,6 +20,8 @@ import { UploadScalar } from './shared/scalars/upload.scalar'
 import { CessationPlanTemplateModule } from './routes/cessation-plan-template/cessation-plan-template.module'
 import { MembershipModule } from './routes/membership-package/membership.module'
 import { PlanStageTemplateModule } from './routes/plan-stage-template/plan-stage-template.module'
+import { CessationPlanModule } from './routes/cessation-plan/cessation-plan.module'
+import { PlanStageModule } from './routes/plan-stage/plan-stage.module'
 
 @Module({
   imports: [
@@ -53,6 +56,8 @@ import { PlanStageTemplateModule } from './routes/plan-stage-template/plan-stage
     CessationPlanTemplateModule,
     MembershipModule,
     PlanStageTemplateModule,
+    CessationPlanModule,
+    PlanStageModule,
   ],
   controllers: [AppController],
   providers: [
