@@ -21,6 +21,7 @@ import { CessationPlanTemplateModule } from './routes/cessation-plan-template/ce
 import { MembershipModule } from './routes/membership-package/membership.module'
 import { PlanStageTemplateModule } from './routes/plan-stage-template/plan-stage-template.module'
 import { CessationPlanModule } from './routes/cessation-plan/cessation-plan.module'
+import { PlanStageModule } from './routes/plan-stage/plan-stage.module'
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { CessationPlanModule } from './routes/cessation-plan/cessation-plan.modu
     MembershipModule,
     PlanStageTemplateModule,
     CessationPlanModule,
+    PlanStageModule,
   ],
   controllers: [AppController],
   providers: [
