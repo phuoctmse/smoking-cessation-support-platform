@@ -1,7 +1,8 @@
 import { Injectable } from "@nestjs/common";
+import { PaymentRepo } from "./payment.repo";
 
 @Injectable()
 export class PaymentService {
-    constructor() {}
+    constructor(private readonly paymentRepo: PaymentRepo) { }
 }
 
