@@ -1,8 +1,9 @@
 import { Field, ID, ObjectType, Int, Float } from '@nestjs/graphql';
-import { CessationPlanStatus } from '@prisma/client';
+import { CessationPlanStatus } from '@prisma/client'
 import { User } from '../../user/entities/user.entity';
 import { CessationPlanTemplate } from '../../cessation-plan-template/entities/cessation-plan-template.entity';
 import { CessationPlanType } from '../schema/cessation-plan.schema'
+import { PlanStage } from '../../plan-stage/entities/plan-stage.entity'
 
 @ObjectType()
 export class CessationPlan implements CessationPlanType {
@@ -53,4 +54,7 @@ export class CessationPlan implements CessationPlanType {
 
   @Field(() => CessationPlanTemplate, { nullable: true })
   template?: CessationPlanTemplate;
+
+  @Field(() => [PlanStage])
+  stages?: PlanStage[];
 }

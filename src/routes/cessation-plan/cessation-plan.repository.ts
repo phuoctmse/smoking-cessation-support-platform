@@ -49,18 +49,6 @@ export class CessationPlanRepository {
       where: { id },
       include: {
         ...this.getDefaultIncludes(),
-        stages: {
-          orderBy: { stage_order: 'asc' },
-          include: {
-            template_stage: {
-              select: {
-                id: true,
-                title: true,
-                duration_days: true,
-              },
-            },
-          },
-        },
       },
     });
   }
@@ -203,6 +191,18 @@ export class CessationPlanRepository {
           name: true,
           difficulty_level: true,
           estimated_duration_days: true,
+        },
+      },
+      stages: {
+        orderBy: { stage_order: Prisma.SortOrder.asc },
+        include: {
+          template_stage: {
+            select: {
+              id: true,
+              title: true,
+              duration_days: true,
+            },
+          },
         },
       },
       _count: {

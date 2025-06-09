@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../shared/services/prisma.service';
-import { CreateCessationPlanTemplateType } from './schema/create-cessation-plan-template.schema';
-import { UpdateCessationPlanTemplateType } from './schema/update-cessation-plan-template.schema';
-import { PaginationParamsType } from '../../shared/models/pagination.model';
-import { Prisma } from '@prisma/client';
+import { Injectable } from '@nestjs/common'
+import { PrismaService } from '../../shared/services/prisma.service'
+import { CreateCessationPlanTemplateType } from './schema/create-cessation-plan-template.schema'
+import { UpdateCessationPlanTemplateType } from './schema/update-cessation-plan-template.schema'
+import { PaginationParamsType } from '../../shared/models/pagination.model'
+import { DifficultyLevel, Prisma } from '@prisma/client'
 
 @Injectable()
 export class CessationPlanTemplateRepository {
@@ -17,28 +17,18 @@ export class CessationPlanTemplateRepository {
     const skip = (page - 1) * limit;
 
     const where: Prisma.CessationPlanTemplateWhereInput = {
-      is_active: filters?.is_active ?? true,
-    };
+      is_active: filters?.is_active === undefined ? true : filters.is_active,
+    }
 
     if (filters?.difficulty_level) {
-      where.difficulty_level = filters.difficulty_level as any;
+      where.difficulty_level = filters.difficulty_level as DifficultyLevel
     }
 
     if (search) {
       where.OR = [
-        {
-          name: {
-            contains: search,
-            mode: Prisma.QueryMode.insensitive,
-          },
-        },
-        {
-          description: {
-            contains: search,
-            mode: Prisma.QueryMode.insensitive,
-          },
-        },
-      ];
+        { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
+        { description: { contains: search, mode: Prisma.QueryMode.insensitive } },
+      ]
     }
 
     const [data, total] = await Promise.all([
@@ -54,6 +44,8 @@ export class CessationPlanTemplateRepository {
               stage_order: true,
               title: true,
               duration_days: true,
+              description: true,
+              recommended_actions: true,
             },
             orderBy: { stage_order: 'asc' },
           },
@@ -63,10 +55,17 @@ export class CessationPlanTemplateRepository {
               feedbacks: true,
             },
           },
+          coach: {
+            select: {
+              id: true,
+              name: true,
+              avatar_url: true,
+            }
+          }
         },
       }),
       this.prisma.cessationPlanTemplate.count({ where }),
-    ]);
+    ])
 
     return {
       data,
@@ -98,6 +97,13 @@ export class CessationPlanTemplateRepository {
             feedbacks: true,
           },
         },
+        coach: {
+          select: {
+            id: true,
+            name: true,
+            avatar_url: true,
+          },
+        },
       },
     });
   }
@@ -114,20 +120,31 @@ export class CessationPlanTemplateRepository {
     });
   }
 
-  async create(data: CreateCessationPlanTemplateType) {
+  async create(data: CreateCessationPlanTemplateType & { coach_id: string }) {
     const createData: Prisma.CessationPlanTemplateCreateInput = {
       name: data.name,
       description: data.description,
-      difficulty_level: data.difficulty_level,
+      difficulty_level: data.difficulty_level as DifficultyLevel,
       estimated_duration_days: data.estimated_duration_days,
       is_active: true,
       average_rating: 0,
       total_reviews: 0,
       success_rate: 0,
+      coach: {
+        connect: { id: data.coach_id },
+      },
     };
 
     return this.prisma.cessationPlanTemplate.create({
       data: createData,
+      include: {
+        coach: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
   }
 
@@ -141,7 +158,7 @@ export class CessationPlanTemplateRepository {
       updateData.description = data.description;
     }
     if (data.difficulty_level !== undefined) {
-      updateData.difficulty_level = data.difficulty_level;
+      updateData.difficulty_level = data.difficulty_level as DifficultyLevel
     }
     if (data.estimated_duration_days !== undefined) {
       updateData.estimated_duration_days = data.estimated_duration_days;
@@ -153,7 +170,7 @@ export class CessationPlanTemplateRepository {
     });
   }
 
-  async softDelete(id: string) {
+  async delete(id: string) {
     return this.prisma.cessationPlanTemplate.update({
       where: { id },
       data: { is_active: false },
