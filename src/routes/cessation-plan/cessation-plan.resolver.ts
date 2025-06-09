@@ -19,6 +19,16 @@ import {UpdateCessationPlanInput} from "./dto/request/update-cessation-plan.inpu
 export class CessationPlanResolver {
   constructor(private readonly cessationPlanService: CessationPlanService) {}
 
+  @Mutation(() => CessationPlan)
+  @UseGuards(JwtAuthGuard)
+  @Roles(RoleName.Member)
+  async createCessationPlan(
+    @Args('input') input: CreateCessationPlanInput,
+    @User() user: UserType,
+  ): Promise<CessationPlan> {
+    return this.cessationPlanService.create(input, user.role, user.id);
+  }
+
   @Query(() => PaginatedCessationPlansResponse)
   @UseGuards(JwtAuthGuard)
   async cessationPlans(
@@ -72,15 +82,6 @@ export class CessationPlanResolver {
       @User() user?: UserType,
   ): Promise<CessationPlanStatisticsResponse> {
     return this.cessationPlanService.getStatistics(filters, user?.role, user?.id);
-  }
-
-  @Mutation(() => CessationPlan)
-  @UseGuards(JwtAuthGuard)
-  async createCessationPlan(
-      @Args('input') input: CreateCessationPlanInput,
-      @User() user: UserType,
-  ): Promise<CessationPlan> {
-    return this.cessationPlanService.create(input, user.role, user.id);
   }
 
   @Mutation(() => CessationPlan)

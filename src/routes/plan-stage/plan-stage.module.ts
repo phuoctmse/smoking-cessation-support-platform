@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { forwardRef, Module } from '@nestjs/common'
 import { PlanStageService } from './plan-stage.service'
 import { PlanStageResolver } from './plan-stage.resolver'
 import { PlanStageRepository } from './plan-stage.repository'
@@ -7,7 +7,7 @@ import { SupabaseModule } from '../../shared/modules/supabase.module'
 import { CessationPlanModule } from '../cessation-plan/cessation-plan.module'
 
 @Module({
-  imports: [GuardModule, SupabaseModule, CessationPlanModule],
+  imports: [GuardModule, SupabaseModule, forwardRef(() => CessationPlanModule)],
   providers: [PlanStageResolver, PlanStageService, PlanStageRepository],
   exports: [PlanStageService, PlanStageRepository],
 })

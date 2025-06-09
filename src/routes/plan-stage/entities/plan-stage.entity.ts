@@ -1,7 +1,6 @@
 import { Field, ID, ObjectType, Int } from '@nestjs/graphql';
 import { PlanStageStatus } from '@prisma/client';
 import { PlanStageType } from '../schema/plan-stage.schema';
-import { CessationPlan } from '../../cessation-plan/entities/cessation-plan.entity';
 import { PlanStageTemplate } from '../../plan-stage-template/entities/plan-stage-template.entity';
 
 @ObjectType()
@@ -56,9 +55,6 @@ export class PlanStage implements PlanStageType {
 
   @Field(() => Boolean, { defaultValue: false })
   can_complete?: boolean;
-
-  @Field(() => CessationPlan)
-  plan: CessationPlan;
 
   @Field(() => PlanStageTemplate, { nullable: true })
   template_stage?: PlanStageTemplate;
