@@ -9,22 +9,23 @@ datasource db {
 }
 
 model User {
-  id                 String          @id @default(uuid())
-  name               String
-  avatar_url         String?
-  role               Role            @default(MEMBER)
-  status             Status          @default(ACTIVE)
-  cigarettes_per_day Int?
-  sessions_per_day   Int?
-  price_per_pack     Int?
-  recorded_at        DateTime?
-  created_at         DateTime        @default(now())
-  updated_at         DateTime        @updatedAt
-  user_name          String          @unique
-  blogs              Blog[]
-  cessation_plans    CessationPlan[]
-  feedbacks          Feedback[]
-  Subscription       Subscription[]
+  id                     String                  @id @default(uuid())
+  name                   String
+  avatar_url             String?
+  role                   Role                    @default(MEMBER)
+  status                 Status                  @default(ACTIVE)
+  cigarettes_per_day     Int?
+  sessions_per_day       Int?
+  price_per_pack         Int?
+  recorded_at            DateTime?
+  created_at             DateTime                @default(now())
+  updated_at             DateTime                @updatedAt
+  user_name              String                  @unique
+  blogs                  Blog[]
+  created_plan_templates CessationPlanTemplate[]
+  cessation_plans        CessationPlan[]
+  feedbacks              Feedback[]
+  Subscription           Subscription[]
 }
 
 model Blog {
@@ -55,6 +56,8 @@ model CessationPlanTemplate {
   is_active               Boolean             @default(true)
   created_at              DateTime            @default(now())
   updated_at              DateTime            @updatedAt
+  coach_id                String?
+  coach                   User?               @relation(fields: [coach_id], references: [id])
   plans                   CessationPlan[]
   feedbacks               Feedback[]
   stages                  PlanStageTemplate[]
@@ -89,6 +92,7 @@ model CessationPlan {
   target_date      DateTime
   status           CessationPlanStatus    @default(PLANNING)
   is_custom        Boolean                @default(false)
+  is_deleted       Boolean?               @default(false)
   created_at       DateTime               @default(now())
   updated_at       DateTime               @updatedAt
   template         CessationPlanTemplate? @relation(fields: [template_id], references: [id])
