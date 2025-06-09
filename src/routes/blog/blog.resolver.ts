@@ -14,13 +14,27 @@ import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { UploadScalar } from '../../shared/scalars/upload.scalar'
 import { PaginationParamsInput } from '../../shared/models/dto/request/pagination-params.input'
 import { RolesGuard } from '../../shared/guards/roles.guard'
+import { BlogFilterInput } from './dto/requests/blog-filter.input'
 
 @Resolver(() => Blog)
 export class BlogResolver {
   constructor(private readonly blogService: BlogService) {}
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.Coach)
+  @Mutation(() => Blog)
+  async createBlog(
+    @Args('input') input: CreateBlogInput,
+    @Args({ name: 'coverImage', type: () => UploadScalar, nullable: true }) coverImage: Promise<FileUpload>,
+    @User() user: UserType,
+  ) {
+    return this.blogService.create(input, coverImage, user.id)
+  }
+
   @Query(() => PaginatedBlogsResponse)
-  async blogs(@Args('params', { nullable: true }) params?: PaginationParamsInput) {
+  async blogs(@Args('params', { nullable: true }) params?: PaginationParamsInput,
+              @Args('filters', { nullable: true, type: () => BlogFilterInput }) filters?: BlogFilterInput,
+              ) {
     return this.blogService.findAll(
       params || {
         page: 1,
@@ -28,6 +42,7 @@ export class BlogResolver {
         orderBy: 'created_at',
         sortOrder: 'desc',
       },
+      filters,
     )
   }
 
@@ -39,17 +54,6 @@ export class BlogResolver {
   @Query(() => Blog)
   async blogBySlug(@Args('slug') slug: string) {
     return this.blogService.findBySlug(slug)
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.Coach)
-  @Mutation(() => Blog)
-  async createBlog(
-    @Args('input') input: CreateBlogInput,
-    @Args({ name: 'coverImage', type: () => UploadScalar, nullable: true }) coverImage: Promise<FileUpload>,
-    @User() user: UserType,
-  ) {
-    return this.blogService.create(input, coverImage, user.id)
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
