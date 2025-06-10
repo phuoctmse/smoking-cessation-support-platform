@@ -55,23 +55,8 @@ export class CessationPlanResolver {
 
   @Query(() => [CessationPlan])
   @UseGuards(JwtAuthGuard)
-  async userCessationPlans(
-      @Args('userId', { nullable: true }) userId?: string,
-      @User() user?: UserType,
-  ): Promise<CessationPlan[]> {
-    const targetUserId = userId || user?.id || '';
-    return this.cessationPlanService.findByUserId(targetUserId, user?.id || '', user?.role || '');
-  }
-
-  @Query(() => [CessationPlan])
-  @UseGuards(JwtAuthGuard)
-  @Roles(RoleName.Coach, RoleName.Admin)
-  async activeCessationPlans(
-      @Args('userId', { nullable: true }) userId?: string,
-      @User() user?: UserType,
-  ): Promise<CessationPlan[]> {
-    const targetUserId = userId || user?.id || '';
-    return this.cessationPlanService.findActiveByUserId(targetUserId, user?.id || '', user?.role || '');
+  async userCessationPlans(@User() user?: UserType): Promise<CessationPlan[]> {
+    return this.cessationPlanService.findByUserId(user);
   }
 
   @Query(() => CessationPlanStatisticsResponse)

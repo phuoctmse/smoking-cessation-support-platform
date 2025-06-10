@@ -70,7 +70,7 @@ export class CessationPlanRepository {
 
   async findByUserId(userId: string) {
     return this.prisma.cessationPlan.findMany({
-      where: { user_id: userId },
+      where: { user_id: userId, is_deleted: false },
       include: this.getDefaultIncludes(),
       orderBy: { created_at: 'desc' },
     });
@@ -80,18 +80,11 @@ export class CessationPlanRepository {
     return this.prisma.cessationPlan.findMany({
       where: {
         user_id: userId,
+        is_deleted: false,
         status: { in: ['PLANNING', 'ACTIVE', 'PAUSED'] },
       },
       include: this.getDefaultIncludes(),
       orderBy: { created_at: 'desc' },
-    });
-  }
-
-  async update(id: string, data: Omit<UpdateCessationPlanType, 'id'>) {
-    return this.prisma.cessationPlan.update({
-      where: { id },
-      data,
-      include: this.getDefaultIncludes(),
     });
   }
 
@@ -108,7 +101,7 @@ export class CessationPlanRepository {
     ]);
 
     const statusMap = Object.fromEntries(
-        statusCounts.map(item => [item.status, item._count._all])
+      statusCounts.map(item => [item.status, item._count._all])
     );
 
     const completed = statusMap.COMPLETED || 0;
@@ -124,6 +117,14 @@ export class CessationPlanRepository {
       cancelled_plans: cancelled,
       success_rate: parseFloat(successRate.toFixed(2)),
     };
+  }
+
+  async update(id: string, data: Omit<UpdateCessationPlanType, 'id'>) {
+    return this.prisma.cessationPlan.update({
+      where: { id },
+      data,
+      include: this.getDefaultIncludes(),
+    });
   }
 
   private buildWhereClause(filters?: CessationPlanFilters, search?: string): Prisma.CessationPlanWhereInput {

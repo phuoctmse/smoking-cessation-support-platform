@@ -15,6 +15,7 @@ import { RoleName } from '../../shared/constants/role.constant'
 import { CreateCessationPlanType } from './schema/create-cessation-plan.schema'
 import { UpdateCessationPlanType } from './schema/update-cessation-plan.schema'
 import { PlanStageRepository } from '../plan-stage/plan-stage.repository'
+import { UserType } from '../../shared/models/share-user.model'
 
 @Injectable()
 export class CessationPlanService {
@@ -82,17 +83,8 @@ export class CessationPlanService {
     return this.enrichWithComputedFields(plan)
   }
 
-  async findByUserId(targetUserId: string, requestUserId: string, userRole: string) {
-    this.validateUserAccessPermission(targetUserId, requestUserId, userRole)
-
-    const plans = await this.cessationPlanRepository.findByUserId(targetUserId)
-    return plans.map((plan) => this.enrichWithComputedFields(plan))
-  }
-
-  async findActiveByUserId(targetUserId: string, requestUserId: string, userRole: string) {
-    this.validateUserAccessPermission(targetUserId, requestUserId, userRole)
-
-    const plans = await this.cessationPlanRepository.findActiveByUserId(targetUserId)
+  async findByUserId(user: UserType) {
+    const plans = await this.cessationPlanRepository.findByUserId(user.id)
     return plans.map((plan) => this.enrichWithComputedFields(plan))
   }
 
@@ -166,12 +158,6 @@ export class CessationPlanService {
 
   private validateAccessPermission(plan: any, userId: string, userRole: string): void {
     if (userRole === RoleName.Member && plan.user_id !== userId) {
-      throw new ForbiddenException('You can only access your own cessation plans')
-    }
-  }
-
-  private validateUserAccessPermission(targetUserId: string, requestUserId: string, userRole: string): void {
-    if (userRole === RoleName.Member && targetUserId !== requestUserId) {
       throw new ForbiddenException('You can only access your own cessation plans')
     }
   }
