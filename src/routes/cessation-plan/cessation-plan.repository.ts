@@ -194,6 +194,7 @@ export class CessationPlanRepository {
         },
       },
       stages: {
+        where: {is_deleted: false},
         orderBy: { stage_order: Prisma.SortOrder.asc },
         include: {
           template_stage: {
