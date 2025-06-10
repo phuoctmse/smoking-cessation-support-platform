@@ -115,6 +115,7 @@ model PlanStage {
   description       String?
   actions           String?
   status            PlanStageStatus    @default(PENDING)
+  is_deleted        Boolean            @default(false)
   created_at        DateTime           @default(now())
   updated_at        DateTime           @updatedAt
   plan              CessationPlan      @relation(fields: [plan_id], references: [id], onDelete: Cascade)

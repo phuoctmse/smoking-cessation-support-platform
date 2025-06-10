@@ -1,4 +1,4 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common';
 import { PlanStageService } from './plan-stage.service';
 import { PlanStage } from './entities/plan-stage.entity';
@@ -96,5 +96,14 @@ export class PlanStageResolver {
       user.role,
       user.id,
     );
+  }
+
+  @Mutation(() => PlanStage)
+  @UseGuards(JwtAuthGuard)
+  async removePlanStage(
+    @Args('id', { type: () => ID }) id: string,
+    @User() user: UserType,
+  ): Promise<PlanStage> {
+    return this.planStageService.remove(id, user.role, user.id);
   }
 }
