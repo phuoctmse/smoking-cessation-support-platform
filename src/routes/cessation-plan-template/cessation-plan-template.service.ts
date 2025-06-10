@@ -5,6 +5,7 @@ import { UpdateCessationPlanTemplateType } from './schema/update-cessation-plan-
 import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { RoleName } from '../../shared/constants/role.constant'
 import { UserType } from 'src/shared/models/share-user.model'
+import { CessationPlanTemplateFiltersInput } from './dto/request/cessation-plan-template-filters.input'
 
 @Injectable()
 export class CessationPlanTemplateService {
@@ -33,10 +34,7 @@ export class CessationPlanTemplateService {
 
   async findAll(
     params: PaginationParamsType,
-    filters?: {
-      difficulty_level?: string
-      is_active?: boolean
-    },
+    filters?: CessationPlanTemplateFiltersInput,
   ) {
     return this.cessationPlanTemplateRepository.findAll(params, filters)
   }

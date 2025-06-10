@@ -4,24 +4,57 @@ import { CreateCessationPlanTemplateType } from './schema/create-cessation-plan-
 import { UpdateCessationPlanTemplateType } from './schema/update-cessation-plan-template.schema'
 import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { DifficultyLevel, Prisma } from '@prisma/client'
+import { CessationPlanTemplateFiltersInput } from './dto/request/cessation-plan-template-filters.input'
 
 @Injectable()
 export class CessationPlanTemplateRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(params: PaginationParamsType, filters?: {
-    difficulty_level?: string;
-    is_active?: boolean;
-  }) {
+  async create(data: CreateCessationPlanTemplateType & { coach_id: string }) {
+    const createData: Prisma.CessationPlanTemplateCreateInput = {
+      name: data.name,
+      description: data.description,
+      difficulty_level: data.difficulty_level as DifficultyLevel,
+      estimated_duration_days: data.estimated_duration_days,
+      is_active: true,
+      average_rating: 0,
+      total_reviews: 0,
+      success_rate: 0,
+      coach: {
+        connect: { id: data.coach_id },
+      },
+    };
+
+    return this.prisma.cessationPlanTemplate.create({
+      data: createData,
+      include: {
+        coach: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async findAll(
+    params: PaginationParamsType,
+    filters?: CessationPlanTemplateFiltersInput,
+  ) {
     const { page, limit, search, orderBy, sortOrder } = params;
     const skip = (page - 1) * limit;
 
     const where: Prisma.CessationPlanTemplateWhereInput = {
-      is_active: filters?.is_active === undefined ? true : filters.is_active,
+      is_active: true,
     }
 
-    if (filters?.difficulty_level) {
-      where.difficulty_level = filters.difficulty_level as DifficultyLevel
+    if (filters?.difficultyLevel) {
+      where.difficulty_level = filters.difficultyLevel
+    }
+
+    if (filters?.coachId) {
+      where.coach_id = filters.coachId;
     }
 
     if (search) {
@@ -39,6 +72,7 @@ export class CessationPlanTemplateRepository {
         orderBy: { [orderBy]: sortOrder },
         include: {
           stages: {
+            where: {is_active: true},
             select: {
               id: true,
               stage_order: true,
@@ -120,34 +154,6 @@ export class CessationPlanTemplateRepository {
     });
   }
 
-  async create(data: CreateCessationPlanTemplateType & { coach_id: string }) {
-    const createData: Prisma.CessationPlanTemplateCreateInput = {
-      name: data.name,
-      description: data.description,
-      difficulty_level: data.difficulty_level as DifficultyLevel,
-      estimated_duration_days: data.estimated_duration_days,
-      is_active: true,
-      average_rating: 0,
-      total_reviews: 0,
-      success_rate: 0,
-      coach: {
-        connect: { id: data.coach_id },
-      },
-    };
-
-    return this.prisma.cessationPlanTemplate.create({
-      data: createData,
-      include: {
-        coach: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
-  }
-
   async update(id: string, data: Omit<UpdateCessationPlanTemplateType, 'id'>) {
     const updateData: Prisma.CessationPlanTemplateUpdateInput = {};
 
@@ -170,13 +176,6 @@ export class CessationPlanTemplateRepository {
     });
   }
 
-  async delete(id: string) {
-    return this.prisma.cessationPlanTemplate.update({
-      where: { id },
-      data: { is_active: false },
-    });
-  }
-
   async updateRating(id: string, newRating: number) {
     const currentTemplate = await this.prisma.cessationPlanTemplate.findUnique({
       where: { id },
@@ -196,6 +195,13 @@ export class CessationPlanTemplateRepository {
         average_rating: newAverage,
         total_reviews: newTotal,
       },
+    });
+  }
+
+  async delete(id: string) {
+    return this.prisma.cessationPlanTemplate.update({
+      where: { id },
+      data: { is_active: false },
     });
   }
 }
