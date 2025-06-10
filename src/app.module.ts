@@ -22,6 +22,7 @@ import { MembershipModule } from './routes/membership-package/membership.module'
 import { PlanStageTemplateModule } from './routes/plan-stage-template/plan-stage-template.module'
 import { CessationPlanModule } from './routes/cessation-plan/cessation-plan.module'
 import { PlanStageModule } from './routes/plan-stage/plan-stage.module'
+import { ProgressRecordModule } from './routes/progress-record/progress-record.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { PlanStageModule } from './routes/plan-stage/plan-stage.module'
     PlanStageTemplateModule,
     CessationPlanModule,
     PlanStageModule,
+    ProgressRecordModule,
   ],
   controllers: [AppController],
   providers: [
