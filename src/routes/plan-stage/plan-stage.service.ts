@@ -6,7 +6,7 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { PlanStageStatus } from '@prisma/client';
+import { PlanStageStatus, Prisma } from '@prisma/client'
 import { PlanStageRepository, PlanStageFilters } from './plan-stage.repository';
 import { CessationPlanRepository } from '../cessation-plan/cessation-plan.repository';
 import { PaginationParamsType } from '../../shared/models/pagination.model';
@@ -14,6 +14,7 @@ import { RoleName } from '../../shared/constants/role.constant';
 import { CreatePlanStageType } from './schema/create-plan-stage.schema';
 import { UpdatePlanStageType } from './schema/update-plan-stage.schema';
 import { PlanStage } from './entities/plan-stage.entity'
+import { CessationPlan } from '../cessation-plan/entities/cessation-plan.entity'
 
 @Injectable()
 export class PlanStageService {
@@ -23,6 +24,37 @@ export class PlanStageService {
     private readonly planStageRepository: PlanStageRepository,
     private readonly cessationPlanRepository: CessationPlanRepository,
   ) {}
+
+  async create(data: CreatePlanStageType, userRole: string, userId: string) {
+    const plan = await this.validateAccessAndGetPlan(data.plan_id, userId, userRole);
+    this.validatePlanIsCustomizable(plan);
+    await this.validateCreateRules(data);
+
+    try {
+      const stage = await this.planStageRepository.create(data);
+      this.logger.log(`Plan stage created: ${stage.id} for plan: ${stage.plan_id}`);
+      return this.enrichWithComputedFields(stage);
+    } catch (error) {
+      this.handleDatabaseError(error);
+    }
+  }
+
+  async createStagesFromTemplate(planId: string, userRole: string, userId: string) {
+    const plan = await this.validateAccessAndGetPlan(planId, userId, userRole);
+    if (!plan.template_id) {
+      throw new BadRequestException('Plan must have a template to generate stages');
+    }
+    const existingStages = await this.planStageRepository.findByPlanId(planId);
+    if (existingStages.length > 0) {
+      throw new ConflictException('Plan already has stages. If you want to customize, please do so manually or ensure the plan is empty before generating from template.');
+    }
+
+    const result = await this.planStageRepository.createStagesFromTemplate(planId, plan.template_id);
+    this.logger.log(`Created ${result.count} stages for plan: ${planId}`);
+
+    const createdStages = await this.planStageRepository.findByPlanId(planId);
+    return createdStages.map(stage => this.enrichWithComputedFields(stage));
+  }
 
   async findAll(
     params: PaginationParamsType,
@@ -46,36 +78,32 @@ export class PlanStageService {
       throw new NotFoundException('Plan stage not found');
     }
 
-    await this.validateAccessPermission(stage.plan_id, userId, userRole);
+    await this.validateAccessAndGetPlan(stage.plan_id, userId, userRole);
 
     return this.enrichWithComputedFields(stage);
   }
 
   async findByPlanId(planId: string, userRole: string, userId: string) {
-    await this.validateAccessPermission(planId, userId, userRole);
+    await this.validateAccessAndGetPlan(planId, userId, userRole);
 
     const stages = await this.planStageRepository.findByPlanId(planId);
     return stages.map(stage => this.enrichWithComputedFields(stage));
   }
 
   async findActiveByPlanId(planId: string, userRole: string, userId: string) {
-    await this.validateAccessPermission(planId, userId, userRole);
+    await this.validateAccessAndGetPlan(planId, userId, userRole);
 
     const stages = await this.planStageRepository.findActiveByPlanId(planId);
     return stages.map(stage => this.enrichWithComputedFields(stage));
   }
 
-  async create(data: CreatePlanStageType, userRole: string, userId: string) {
-    await this.validateAccessPermission(data.plan_id, userId, userRole);
-    await this.validateCreateRules(data);
-
-    try {
-      const stage = await this.planStageRepository.create(data);
-      this.logger.log(`Plan stage created: ${stage.id} for plan: ${stage.plan_id}`);
-      return this.enrichWithComputedFields(stage);
-    } catch (error) {
-      this.handleDatabaseError(error);
+  async getStageStatistics(filters?: PlanStageFilters, userRole?: string, userId?: string) {
+    if (userRole === RoleName.Member) {
+      throw new ForbiddenException('Only coaches and admins can access stage statistics');
     }
+
+    const effectiveFilters = this.applyRoleBasedFilters(filters, userRole, userId);
+    return this.planStageRepository.getStageStatistics(effectiveFilters);
   }
 
   async update(
@@ -90,7 +118,8 @@ export class PlanStageService {
       throw new NotFoundException('Plan stage not found');
     }
 
-    await this.validateAccessPermission(existingStage.plan_id, userId, userRole);
+    const plan = await this.validateAccessAndGetPlan(existingStage.plan_id, userId, userRole);
+    this.validatePlanIsCustomizable(plan);
 
     if (data.status && data.status !== existingStage.status) {
       this.validateStatusTransition(existingStage.status, data.status);
@@ -107,37 +136,14 @@ export class PlanStageService {
     }
   }
 
-  async createStagesFromTemplate(planId: string, userRole: string, userId: string) {
-    await this.validateAccessPermission(planId, userId, userRole);
-
-    const plan = await this.cessationPlanRepository.findOne(planId);
-    if (!plan) {
-      throw new NotFoundException('Cessation plan not found');
-    }
-
-    if (!plan.template_id) {
-      throw new BadRequestException('Plan must have a template to generate stages');
-    }
-
-    const existingStages = await this.planStageRepository.findByPlanId(planId);
-    if (existingStages.length > 0) {
-      throw new ConflictException('Plan already has stages');
-    }
-
-    const result = await this.planStageRepository.createStagesFromTemplate(planId, plan.template_id);
-    this.logger.log(`Created ${result.count} stages for plan: ${planId}`);
-
-    const createdStages = await this.planStageRepository.findByPlanId(planId);
-    return createdStages.map(stage => this.enrichWithComputedFields(stage));
-  }
-
   async reorderStages(
     planId: string,
     stageOrders: { id: string; order: number }[],
     userRole: string,
     userId: string,
   ) {
-    await this.validateAccessPermission(planId, userId, userRole);
+    const plan = await this.validateAccessAndGetPlan(planId, userId, userRole);
+    this.validatePlanIsCustomizable(plan);
     await this.validateStagesBelongToPlan(planId, stageOrders.map(s => s.id));
     this.validateOrderSequence(stageOrders);
 
@@ -151,13 +157,22 @@ export class PlanStageService {
     }
   }
 
-  async getStageStatistics(filters?: PlanStageFilters, userRole?: string, userId?: string) {
-    if (userRole === RoleName.Member) {
-      throw new ForbiddenException('Only coaches and admins can access stage statistics');
+  async remove(id: string, userRole: string, userId: string): Promise<PlanStage> {
+    const existingStage = await this.planStageRepository.findOne(id);
+    if (!existingStage) {
+      throw new NotFoundException('Plan stage not found');
     }
 
-    const effectiveFilters = this.applyRoleBasedFilters(filters, userRole, userId);
-    return this.planStageRepository.getStageStatistics(effectiveFilters);
+    const plan = await this.validateAccessAndGetPlan(existingStage.plan_id, userId, userRole);
+    this.validatePlanIsCustomizable(plan);
+
+    try {
+      const removedStage = await this.planStageRepository.remove(id);
+      this.logger.log(`Plan stage removed (soft delete): ${removedStage.id}`);
+      return this.enrichWithComputedFields(removedStage);
+    } catch (error) {
+      this.handleDatabaseError(error);
+    }
   }
 
   private applyRoleBasedFilters(
@@ -176,25 +191,27 @@ export class PlanStageService {
 
   private enrichWithComputedFields(stage: any): PlanStage {
     const now = new Date();
+    const startDate = stage.start_date ? new Date(stage.start_date) : null;
+    const endDate = stage.end_date ? new Date(stage.end_date) : null;
+
     let daysSinceStart = 0;
     let daysToEnd = 0;
     let isOverdue = false;
 
-    if (stage.start_date) {
-      const startDate = new Date(stage.start_date);
+    if (startDate) {
       daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     }
-
-    if (stage.end_date) {
-      const endDate = new Date(stage.end_date);
-      daysToEnd = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      isOverdue = now > endDate && !['COMPLETED', 'SKIPPED'].includes(stage.status);
+    if (endDate) {
+      daysToEnd = Math.floor((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      if (now > endDate && stage.status !== PlanStageStatus.COMPLETED) {
+        isOverdue = true;
+      }
     }
 
     return {
       ...stage,
-      days_since_start: Math.max(0, daysSinceStart),
-      days_to_end: Math.max(0, daysToEnd),
+      days_since_start: daysSinceStart,
+      days_to_end: daysToEnd,
       is_overdue: isOverdue,
       can_start: this.canStartStage(stage),
       can_complete: this.canCompleteStage(stage),
@@ -202,22 +219,23 @@ export class PlanStageService {
   }
 
   private canStartStage(stage: any): boolean {
-    return stage.status === 'PENDING';
+    return stage.status === PlanStageStatus.PENDING;
   }
 
   private canCompleteStage(stage: any): boolean {
-    return stage.status === 'ACTIVE';
+    return stage.status === PlanStageStatus.ACTIVE;
   }
 
-  private async validateAccessPermission(planId: string, userId: string, userRole: string): Promise<void> {
+  private async validateAccessAndGetPlan(planId: string, userId: string, userRole: string): Promise<CessationPlan> {
     const plan = await this.cessationPlanRepository.findOne(planId);
     if (!plan) {
-      throw new NotFoundException('Cessation plan not found');
+      throw new NotFoundException('Cessation plan not found')
     }
 
     if (userRole === RoleName.Member && plan.user_id !== userId) {
       throw new ForbiddenException('You can only access stages of your own plans');
     }
+    return plan as unknown as CessationPlan;
   }
 
   private validateStatusTransition(currentStatus: PlanStageStatus, newStatus: PlanStageStatus): void {
@@ -249,10 +267,18 @@ export class PlanStageService {
       if (data.end_date <= data.start_date) {
         throw new BadRequestException('End date must be after start date');
       }
-    } else if (data.start_date && data.start_date >= existingStage.end_date) {
-      throw new BadRequestException('Start date must be before end date');
-    } else if (data.end_date && data.end_date <= existingStage.start_date) {
-      throw new BadRequestException('End date must be after start date');
+    } else if (data.start_date && existingStage.end_date && data.start_date >= existingStage.end_date) {
+      throw new BadRequestException('Start date must be before existing end date');
+    } else if (data.end_date && existingStage.start_date && data.end_date <= existingStage.start_date) {
+      throw new BadRequestException('End date must be after existing start date');
+    }
+  }
+
+  private validatePlanIsCustomizable(plan: CessationPlan): void {
+    if (plan.is_custom === false) {
+      throw new ForbiddenException(
+        'This plan is not customizable. Stages cannot be manually created, updated, or reordered.',
+      );
     }
   }
 
@@ -283,12 +309,15 @@ export class PlanStageService {
   }
 
   private handleDatabaseError(error: any): never {
-    if (error.code === 'P2002') {
-      throw new ConflictException('A stage with similar data already exists');
+    this.logger.error(`Database Error: ${error.message}`, error.stack);
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        throw new ConflictException('A stage with similar unique data (e.g., plan_id and stage_order) already exists.');
+      }
+      if (error.code === 'P2025') {
+        throw new NotFoundException('The resource to update or delete was not found. It might have been already removed.');
+      }
     }
-    if (error.code === 'P2025') {
-      throw new NotFoundException('Referenced resource not found');
-    }
-    throw new BadRequestException('Failed to process plan stage operation');
+    throw new BadRequestException('Failed to process plan stage operation due to a database issue.');
   }
 }

@@ -35,6 +35,9 @@ export class PlanStage implements PlanStageType {
   @Field(() => PlanStageStatus)
   status: PlanStageStatus;
 
+  @Field(() => Boolean)
+  is_deleted: boolean;
+
   @Field(() => Date)
   created_at: Date;
 

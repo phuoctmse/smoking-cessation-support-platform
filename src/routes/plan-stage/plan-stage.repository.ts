@@ -4,6 +4,7 @@ import { PrismaService } from '../../shared/services/prisma.service';
 import { PaginationParamsType } from '../../shared/models/pagination.model';
 import { CreatePlanStageType } from './schema/create-plan-stage.schema';
 import { UpdatePlanStageType } from './schema/update-plan-stage.schema';
+import { PlanStage } from './entities/plan-stage.entity'
 
 export interface PlanStageFilters {
   plan_id?: string;
@@ -30,8 +31,33 @@ export class PlanStageRepository {
         description: data.description,
         actions: data.actions,
         status: 'PENDING',
+        is_deleted: false,
       },
       include: this.getDefaultIncludes(),
+    });
+  }
+
+  async createStagesFromTemplate(planId: string, templateId: string) {
+    const templateStages = await this.prisma.planStageTemplate.findMany({
+      where: {
+        template_id: templateId,
+        is_active: true,
+      },
+      orderBy: { stage_order: 'asc' },
+    });
+
+    const createStagesData = templateStages.map(templateStage => ({
+      plan_id: planId,
+      template_stage_id: templateStage.id,
+      stage_order: templateStage.stage_order,
+      title: templateStage.title,
+      description: templateStage.description,
+      actions: templateStage.recommended_actions,
+      status: 'PENDING' as const,
+    }));
+
+    return this.prisma.planStage.createMany({
+      data: createStagesData,
     });
   }
 
@@ -40,6 +66,7 @@ export class PlanStageRepository {
     const skip = (page - 1) * limit;
 
     const where = this.buildWhereClause(filters, search);
+    where.is_deleted = false;
 
     const [data, total] = await Promise.all([
       this.prisma.planStage.findMany({
@@ -63,14 +90,14 @@ export class PlanStageRepository {
 
   async findOne(id: string) {
     return this.prisma.planStage.findUnique({
-      where: { id },
+      where: { id, is_deleted: false },
       include: this.getDefaultIncludes(),
     });
   }
 
   async findByPlanId(planId: string) {
     return this.prisma.planStage.findMany({
-      where: { plan_id: planId },
+      where: { plan_id: planId, is_deleted: false },
       include: this.getDefaultIncludes(),
       orderBy: { stage_order: 'asc' },
     });
@@ -81,6 +108,7 @@ export class PlanStageRepository {
       where: {
         plan_id: planId,
         status: { in: ['PENDING', 'ACTIVE'] },
+        is_deleted: false,
       },
       include: this.getDefaultIncludes(),
       orderBy: { stage_order: 'asc' },
@@ -92,15 +120,8 @@ export class PlanStageRepository {
       where: {
         plan_id: planId,
         stage_order: stageOrder,
+        is_deleted: false,
       },
-      include: this.getDefaultIncludes(),
-    });
-  }
-
-  async update(id: string, data: Omit<UpdatePlanStageType, 'id'>) {
-    return this.prisma.planStage.update({
-      where: { id },
-      data,
       include: this.getDefaultIncludes(),
     });
   }
@@ -135,27 +156,11 @@ export class PlanStageRepository {
     };
   }
 
-  async createStagesFromTemplate(planId: string, templateId: string) {
-    const templateStages = await this.prisma.planStageTemplate.findMany({
-      where: {
-        template_id: templateId,
-        is_active: true,
-      },
-      orderBy: { stage_order: 'asc' },
-    });
-
-    const createStagesData = templateStages.map(templateStage => ({
-      plan_id: planId,
-      template_stage_id: templateStage.id,
-      stage_order: templateStage.stage_order,
-      title: templateStage.title,
-      description: templateStage.description,
-      actions: templateStage.recommended_actions,
-      status: 'PENDING' as const,
-    }));
-
-    return this.prisma.planStage.createMany({
-      data: createStagesData,
+  async update(id: string, data: Omit<UpdatePlanStageType, 'id'>) {
+    return this.prisma.planStage.update({
+      where: { id, is_deleted: false },
+      data,
+      include: this.getDefaultIncludes(),
     });
   }
 
@@ -207,8 +212,16 @@ export class PlanStageRepository {
     });
   }
 
+  async remove(id: string): Promise<PlanStage> {
+    return this.prisma.planStage.update({
+      where: { id },
+      data: { is_deleted: true },
+      include: this.getDefaultIncludes(),
+    });
+  }
+
   private buildWhereClause(filters?: PlanStageFilters, search?: string): Prisma.PlanStageWhereInput {
-    const where: Prisma.PlanStageWhereInput = {};
+    const where: Prisma.PlanStageWhereInput = {is_deleted: false};
 
     if (filters?.plan_id) {
       where.plan_id = filters.plan_id;
@@ -262,6 +275,7 @@ export class PlanStageRepository {
           status: true,
           start_date: true,
           target_date: true,
+          is_custom: true,
           user: {
             select: {
               id: true,
@@ -278,6 +292,11 @@ export class PlanStageRepository {
           duration_days: true,
           description: true,
           recommended_actions: true,
+          template_id: true,
+          stage_order: true,
+          is_active: true,
+          created_at: true,
+          updated_at: true,
         },
       },
     };
