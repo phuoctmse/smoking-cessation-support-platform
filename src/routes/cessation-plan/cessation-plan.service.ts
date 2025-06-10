@@ -26,7 +26,7 @@ export class CessationPlanService {
     private readonly planStageRepository: PlanStageRepository,
   ) {}
 
-  async create(data: CreateCessationPlanType, userRole: string, requestUserId: string) {
+  async create(data: CreateCessationPlanType, requestUserId: string) {
     await this.validateCreateRules(data, requestUserId)
 
     try {
@@ -38,7 +38,7 @@ export class CessationPlanService {
       const plan = await this.cessationPlanRepository.create(planData)
       this.logger.log(`Cessation plan created: ${plan.id} for user: ${plan.user_id}`)
 
-      if (plan.template_id && (data.is_custom === undefined || data.is_custom === false)) {
+      if (plan.template_id) {
         try {
           await this.planStageRepository.createStagesFromTemplate(plan.id, plan.template_id)
           this.logger.log(`Stages created from template ${plan.template_id} for plan ${plan.id}`)

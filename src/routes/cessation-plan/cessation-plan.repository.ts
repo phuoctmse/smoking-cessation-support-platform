@@ -18,6 +18,21 @@ export interface CessationPlanFilters {
 export class CessationPlanRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async create(data: CreateCessationPlanType & { user_id: string }) {
+    return this.prisma.cessationPlan.create({
+      data: {
+        user_id: data.user_id,
+        template_id: data.template_id,
+        reason: data.reason,
+        start_date: data.start_date,
+        target_date: data.target_date,
+        is_custom: data.is_custom,
+        status: 'PLANNING',
+      },
+      include: this.getDefaultIncludes(),
+    });
+  }
+
   async findAll(params: PaginationParamsType, filters?: CessationPlanFilters) {
     const { page, limit, search, orderBy, sortOrder } = params;
     const skip = (page - 1) * limit;
@@ -69,21 +84,6 @@ export class CessationPlanRepository {
       },
       include: this.getDefaultIncludes(),
       orderBy: { created_at: 'desc' },
-    });
-  }
-
-  async create(data: CreateCessationPlanType & { user_id: string }) {
-    return this.prisma.cessationPlan.create({
-      data: {
-        user_id: data.user_id,
-        template_id: data.template_id,
-        reason: data.reason,
-        start_date: data.start_date,
-        target_date: data.target_date,
-        is_custom: data.is_custom,
-        status: 'PLANNING',
-      },
-      include: this.getDefaultIncludes(),
     });
   }
 

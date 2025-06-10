@@ -26,7 +26,7 @@ export class CessationPlanResolver {
     @Args('input') input: CreateCessationPlanInput,
     @User() user: UserType,
   ): Promise<CessationPlan> {
-    return this.cessationPlanService.create(input, user.role, user.id);
+    return this.cessationPlanService.create(input, user.id);
   }
 
   @Query(() => PaginatedCessationPlansResponse)
