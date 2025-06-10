@@ -18,6 +18,23 @@ export interface PlanStageFilters {
 export class PlanStageRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async create(data: CreatePlanStageType) {
+    return this.prisma.planStage.create({
+      data: {
+        plan_id: data.plan_id,
+        template_stage_id: data.template_stage_id,
+        stage_order: data.stage_order,
+        title: data.title,
+        start_date: data.start_date,
+        end_date: data.end_date,
+        description: data.description,
+        actions: data.actions,
+        status: 'PENDING',
+      },
+      include: this.getDefaultIncludes(),
+    });
+  }
+
   async findAll(params: PaginationParamsType, filters?: PlanStageFilters) {
     const { page, limit, search, orderBy, sortOrder } = params;
     const skip = (page - 1) * limit;
@@ -75,23 +92,6 @@ export class PlanStageRepository {
       where: {
         plan_id: planId,
         stage_order: stageOrder,
-      },
-      include: this.getDefaultIncludes(),
-    });
-  }
-
-  async create(data: CreatePlanStageType) {
-    return this.prisma.planStage.create({
-      data: {
-        plan_id: data.plan_id,
-        template_stage_id: data.template_stage_id,
-        stage_order: data.stage_order,
-        title: data.title,
-        start_date: data.start_date,
-        end_date: data.end_date,
-        description: data.description,
-        actions: data.actions,
-        status: 'PENDING',
       },
       include: this.getDefaultIncludes(),
     });
