@@ -6,6 +6,7 @@ import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { CreateBlogType } from './schema/create-blog.schema'
 import { UpdateBlogType } from './schema/update-blog.schema'
 import { UploadService } from '../../shared/services/upload-file.service'
+import { BlogFilterInput } from './dto/requests/blog-filter.input'
 
 @Injectable()
 export class BlogService {
@@ -16,8 +17,26 @@ export class BlogService {
     private readonly uploadService: UploadService,
   ) {}
 
-  async findAll(params: PaginationParamsType) {
-    return this.blogRepository.findAll(params)
+  async create(data: CreateBlogType, fileUpload: Promise<FileUpload> | null | undefined, userId: string) {
+    const { url: coverImageUrl, path: coverImagePath } = await this.uploadService.handleImageUpload(
+      fileUpload,
+      userId,
+      { folder: 'blog-covers' },
+    )
+
+    const blogData = {
+      ...data,
+      cover_image: coverImageUrl,
+      cover_image_path: coverImagePath,
+    }
+
+    const blog = await this.blogRepository.create(blogData, userId)
+    this.logger.log(`Blog created: ${blog.id}`)
+    return blog
+  }
+
+  async findAll(params: PaginationParamsType, filters?: BlogFilterInput) {
+    return this.blogRepository.findAll(params, filters);
   }
 
   async findOne(id: string) {
@@ -37,24 +56,6 @@ export class BlogService {
       throw new NotFoundException('Blog not found')
     }
 
-    return blog
-  }
-
-  async create(data: CreateBlogType, fileUpload: Promise<FileUpload> | null | undefined, userId: string) {
-    const { url: coverImageUrl, path: coverImagePath } = await this.uploadService.handleImageUpload(
-      fileUpload,
-      userId,
-      { folder: 'blog-covers' },
-    )
-
-    const blogData = {
-      ...data,
-      cover_image: coverImageUrl,
-      cover_image_path: coverImagePath,
-    }
-
-    const blog = await this.blogRepository.create(blogData, userId)
-    this.logger.log(`Blog created: ${blog.id}`)
     return blog
   }
 
