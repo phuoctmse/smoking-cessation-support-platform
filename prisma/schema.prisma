@@ -132,6 +132,7 @@ model ProgressRecord {
   health_score      Int?
   notes             String?
   record_date       DateTime
+  is_deleted        Boolean       @default(false)
   created_at        DateTime      @default(now())
   updated_at        DateTime      @updatedAt
   plan              CessationPlan @relation(fields: [plan_id], references: [id], onDelete: Cascade)
