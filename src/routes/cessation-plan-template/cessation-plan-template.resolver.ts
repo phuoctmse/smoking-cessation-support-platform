@@ -12,6 +12,7 @@ import { PaginationParamsInput } from '../../shared/models/dto/request/paginatio
 import { PaginatedCessationPlanTemplatesResponse } from './dto/response/paginated-cessation-plan-templates.response'
 import { CreateCessationPlanTemplateInput } from './dto/request/create-cessation-plan-template.input'
 import { UpdateCessationPlanTemplateInput } from './dto/request/update-cessation-plan-template.input'
+import { CessationPlanTemplateFiltersInput } from './dto/request/cessation-plan-template-filters.input'
 
 @Resolver(() => CessationPlanTemplate)
 export class CessationPlanTemplateResolver {
@@ -25,9 +26,12 @@ export class CessationPlanTemplateResolver {
     return this.cessationPlanTemplateService.create(input, user)
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard)
   @Query(() => PaginatedCessationPlanTemplatesResponse)
-  async cessationPlanTemplates(@Args('params', { nullable: true }) params?: PaginationParamsInput) {
+  async cessationPlanTemplates(
+    @Args('params', { nullable: true }) params?: PaginationParamsInput,
+    @Args('filters', { nullable: true, type: () => CessationPlanTemplateFiltersInput }) filters?: CessationPlanTemplateFiltersInput,
+  ) {
     return this.cessationPlanTemplateService.findAll(
       params || {
         page: 1,
@@ -35,10 +39,11 @@ export class CessationPlanTemplateResolver {
         orderBy: 'created_at',
         sortOrder: 'desc',
       },
+      filters,
     )
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard)
   @Query(() => CessationPlanTemplate)
   async cessationPlanTemplate(@Args('id') id: string) {
     return this.cessationPlanTemplateService.findOne(id)
@@ -47,7 +52,7 @@ export class CessationPlanTemplateResolver {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Coach)
   @Mutation(() => CessationPlanTemplate)
-  async updateCessationPlanTemplate(@Args('input') input: UpdateCessationPlanTemplateInput, @User() user: UserType) {
+  async updateCessationPlanTemplate(@Args('input') input: UpdateCessationPlanTemplateInput) {
     const { id, ...updateData } = input
     return this.cessationPlanTemplateService.update(id, updateData)
   }
