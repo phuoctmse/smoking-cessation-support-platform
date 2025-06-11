@@ -14,8 +14,8 @@ export class PlanStage implements PlanStageType {
   @Field(() => String, { nullable: true })
   template_stage_id?: string;
 
-  @Field(() => Int)
-  stage_order: number;
+  @Field(() => Int, { nullable: true })
+  stage_order?: number | null;
 
   @Field(() => String)
   title: string;
