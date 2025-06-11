@@ -108,7 +108,7 @@ model PlanStage {
   id                String             @id @default(uuid())
   plan_id           String
   template_stage_id String?
-  stage_order       Int
+  stage_order       Int?
   title             String             @db.VarChar(100)
   start_date        DateTime?
   end_date          DateTime?

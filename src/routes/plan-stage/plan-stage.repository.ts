@@ -34,7 +34,7 @@ export class PlanStageRepository {
         is_deleted: false,
       },
       include: this.getDefaultIncludes(),
-    });
+    })
   }
 
   async createStagesFromTemplate(planId: string, templateId: string) {
@@ -44,9 +44,9 @@ export class PlanStageRepository {
         is_active: true,
       },
       orderBy: { stage_order: 'asc' },
-    });
+    })
 
-    const createStagesData = templateStages.map(templateStage => ({
+    const createStagesData = templateStages.map((templateStage) => ({
       plan_id: planId,
       template_stage_id: templateStage.id,
       stage_order: templateStage.stage_order,
@@ -54,19 +54,19 @@ export class PlanStageRepository {
       description: templateStage.description,
       actions: templateStage.recommended_actions,
       status: 'PENDING' as const,
-    }));
+    }))
 
     return this.prisma.planStage.createMany({
       data: createStagesData,
-    });
+    })
   }
 
   async findAll(params: PaginationParamsType, filters?: PlanStageFilters) {
-    const { page, limit, search, orderBy, sortOrder } = params;
-    const skip = (page - 1) * limit;
+    const { page, limit, search, orderBy, sortOrder } = params
+    const skip = (page - 1) * limit
 
-    const where = this.buildWhereClause(filters, search);
-    where.is_deleted = false;
+    const where = this.buildWhereClause(filters, search)
+    where.is_deleted = false
 
     const [data, total] = await Promise.all([
       this.prisma.planStage.findMany({
@@ -77,7 +77,7 @@ export class PlanStageRepository {
         include: this.getDefaultIncludes(),
       }),
       this.prisma.planStage.count({ where }),
-    ]);
+    ])
 
     return {
       data,
@@ -85,14 +85,14 @@ export class PlanStageRepository {
       page,
       limit,
       hasNext: total > page * limit,
-    };
+    }
   }
 
   async findOne(id: string) {
     return this.prisma.planStage.findUnique({
       where: { id, is_deleted: false },
       include: this.getDefaultIncludes(),
-    });
+    })
   }
 
   async findByPlanId(planId: string) {
@@ -100,7 +100,7 @@ export class PlanStageRepository {
       where: { plan_id: planId, is_deleted: false },
       include: this.getDefaultIncludes(),
       orderBy: { stage_order: 'asc' },
-    });
+    })
   }
 
   async findActiveByPlanId(planId: string) {
@@ -112,7 +112,7 @@ export class PlanStageRepository {
       },
       include: this.getDefaultIncludes(),
       orderBy: { stage_order: 'asc' },
-    });
+    })
   }
 
   async findByStageOrder(planId: string, stageOrder: number) {
@@ -123,11 +123,11 @@ export class PlanStageRepository {
         is_deleted: false,
       },
       include: this.getDefaultIncludes(),
-    });
+    })
   }
 
   async getStageStatistics(filters?: PlanStageFilters) {
-    const where = this.buildWhereClause(filters);
+    const where = this.buildWhereClause(filters)
 
     const [total, statusCounts] = await Promise.all([
       this.prisma.planStage.count({ where }),
@@ -136,15 +136,13 @@ export class PlanStageRepository {
         where,
         _count: { _all: true },
       }),
-    ]);
+    ])
 
-    const statusMap = Object.fromEntries(
-      statusCounts.map(item => [item.status, item._count._all])
-    );
+    const statusMap = Object.fromEntries(statusCounts.map((item) => [item.status, item._count._all]))
 
-    const completed = statusMap.COMPLETED || 0;
-    const skipped = statusMap.SKIPPED || 0;
-    const completionRate = total > 0 ? (completed / total) * 100 : 0;
+    const completed = statusMap.COMPLETED || 0
+    const skipped = statusMap.SKIPPED || 0
+    const completionRate = total > 0 ? (completed / total) * 100 : 0
 
     return {
       total_stages: total,
@@ -153,7 +151,7 @@ export class PlanStageRepository {
       completed_stages: completed,
       skipped_stages: skipped,
       completion_rate: parseFloat(completionRate.toFixed(2)),
-    };
+    }
   }
 
   async update(id: string, data: Omit<UpdatePlanStageType, 'id'>) {
@@ -161,7 +159,7 @@ export class PlanStageRepository {
       where: { id, is_deleted: false },
       data,
       include: this.getDefaultIncludes(),
-    });
+    })
   }
 
   async reorderStages(planId: string, stageOrders: { id: string; order: number }[]) {
@@ -171,20 +169,20 @@ export class PlanStageRepository {
         tx.planStage.update({
           where: { id },
           data: { stage_order: -(index + 1) },
-        })
-      );
+        }),
+      )
 
-      await Promise.all(tempUpdatePromises);
+      await Promise.all(tempUpdatePromises)
 
       // Step 2: Update to final stage_order values
       const finalUpdatePromises = stageOrders.map(({ id, order }) =>
         tx.planStage.update({
           where: { id },
           data: { stage_order: order },
-        })
-      );
+        }),
+      )
 
-      await Promise.all(finalUpdatePromises);
+      await Promise.all(finalUpdatePromises)
 
       // Step 3: Return the reordered stages
       return tx.planStage.findMany({
@@ -208,45 +206,48 @@ export class PlanStageRepository {
             },
           },
         },
-      });
-    });
+      })
+    })
   }
 
   async remove(id: string): Promise<PlanStage> {
     return this.prisma.planStage.update({
       where: { id },
-      data: { is_deleted: true },
+      data: {
+        stage_order: null,
+        is_deleted: true,
+      },
       include: this.getDefaultIncludes(),
-    });
+    }) as unknown as PlanStage;
   }
 
   private buildWhereClause(filters?: PlanStageFilters, search?: string): Prisma.PlanStageWhereInput {
-    const where: Prisma.PlanStageWhereInput = {is_deleted: false};
+    const where: Prisma.PlanStageWhereInput = { is_deleted: false }
 
     if (filters?.plan_id) {
-      where.plan_id = filters.plan_id;
+      where.plan_id = filters.plan_id
     }
 
     if (filters?.status) {
-      where.status = filters.status as any;
+      where.status = filters.status as any
     }
 
     if (filters?.template_stage_id) {
-      where.template_stage_id = filters.template_stage_id;
+      where.template_stage_id = filters.template_stage_id
     }
 
     if (filters?.user_id) {
       where.plan = {
         user_id: filters.user_id,
-      };
+      }
     }
 
     if (filters?.start_date) {
-      where.start_date = { gte: filters.start_date };
+      where.start_date = { gte: filters.start_date }
     }
 
     if (filters?.end_date) {
-      where.end_date = { lte: filters.end_date };
+      where.end_date = { lte: filters.end_date }
     }
 
     if (search) {
@@ -259,10 +260,10 @@ export class PlanStageRepository {
             reason: { contains: search, mode: 'insensitive' },
           },
         },
-      ];
+      ]
     }
 
-    return where;
+    return where
   }
 
   private getDefaultIncludes() {
@@ -299,6 +300,6 @@ export class PlanStageRepository {
           updated_at: true,
         },
       },
-    };
+    }
   }
 }
