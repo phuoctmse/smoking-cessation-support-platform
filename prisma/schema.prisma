@@ -26,6 +26,9 @@ model User {
   cessation_plans        CessationPlan[]
   feedbacks              Feedback[]
   Subscription           Subscription[]
+  user_badges            UserBadge[]
+  post_likes             PostLike[]
+  post_comments          PostComment[]
 }
 
 model Blog {
@@ -155,6 +158,92 @@ model Feedback {
 
   @@unique([user_id, template_id])
   @@map("feedback")
+}
+
+model Badge {
+  id           String      @id @default(uuid())
+  name         String      @db.VarChar(100)
+  description  String?
+  icon_url     String?
+  badge_type   BadgeType
+  requirements Json?
+  is_active    Boolean     @default(true)
+  sort_order   Int         @default(0)
+  created_at   DateTime    @default(now())
+  updated_at   DateTime    @updatedAt
+  user_badges  UserBadge[]
+
+  @@map("badge")
+}
+
+model UserBadge {
+  id          String      @id @default(uuid())
+  user_id     String
+  badge_id    String
+  awarded_at  DateTime    @default(now())
+  is_active   Boolean     @default(true)
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  badge       Badge       @relation(fields: [badge_id], references: [id], onDelete: Cascade)
+  shared_post SharedPost?
+
+  @@unique([user_id, badge_id])
+  @@map("user_badge")
+}
+
+model SharedPost {
+  id             String        @id @default(uuid())
+  user_badge_id  String        @unique
+  caption        String?
+  likes_count    Int           @default(0)
+  comments_count Int           @default(0)
+  is_deleted     Boolean       @default(false)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+  user_badge     UserBadge     @relation(fields: [user_badge_id], references: [id], onDelete: Cascade)
+  likes          PostLike[]
+  comments       PostComment[]
+
+  @@map("shared_post")
+}
+
+model PostLike {
+  id             String     @id @default(uuid())
+  shared_post_id String
+  user_id        String
+  is_deleted     Boolean    @default(false)
+  created_at     DateTime   @default(now())
+  shared_post    SharedPost @relation(fields: [shared_post_id], references: [id], onDelete: Cascade)
+  user           User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([shared_post_id, user_id])
+  @@map("post_like")
+}
+
+model PostComment {
+  id                String        @id @default(uuid())
+  shared_post_id    String
+  user_id           String
+  parent_comment_id String?
+  content           String
+  is_deleted        Boolean       @default(false)
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+  shared_post       SharedPost    @relation(fields: [shared_post_id], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  parent_comment    PostComment?  @relation("CommentReplies", fields: [parent_comment_id], references: [id])
+  replies           PostComment[] @relation("CommentReplies")
+
+  @@map("post_comment")
+}
+
+enum BadgeType {
+  MILESTONE
+  ACHIEVEMENT
+  STREAK
+  COMMUNITY
+  SPECIAL
 }
 
 enum CessationPlanStatus {
