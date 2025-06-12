@@ -47,7 +47,6 @@ export class CessationPlanService {
           this.logger.error(
             `Failed to create stages from template for plan ${plan.id}: ${stageError.message}. Plan created without stages.`,
           )
-          // Consider if you need to rollback plan creation or notify user
         }
       }
       const fullPlan = await this.cessationPlanRepository.findOne(plan.id)
@@ -88,6 +87,15 @@ export class CessationPlanService {
     return plans.map((plan) => this.enrichWithComputedFields(plan))
   }
 
+  async getStatistics(filters?: CessationPlanFilters, userRole?: string, userId?: string) {
+    if (userRole === RoleName.Member) {
+      throw new ForbiddenException('Only coaches and admins can access statistics')
+    }
+
+    const effectiveFilters = this.applyRoleBasedFilters(filters, userRole, userId)
+    return this.cessationPlanRepository.getStatistics(effectiveFilters)
+  }
+
   async update(id: string, data: Omit<UpdateCessationPlanType, 'id'>, userRole: string, userId: string) {
     const existingPlan = await this.cessationPlanRepository.findOne(id)
 
@@ -110,15 +118,6 @@ export class CessationPlanService {
     } catch (error) {
       this.handleDatabaseError(error)
     }
-  }
-
-  async getStatistics(filters?: CessationPlanFilters, userRole?: string, userId?: string) {
-    if (userRole === RoleName.Member) {
-      throw new ForbiddenException('Only coaches and admins can access statistics')
-    }
-
-    const effectiveFilters = this.applyRoleBasedFilters(filters, userRole, userId)
-    return this.cessationPlanRepository.getStatistics(effectiveFilters)
   }
 
   private applyRoleBasedFilters(

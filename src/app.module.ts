@@ -23,6 +23,7 @@ import { PlanStageTemplateModule } from './routes/plan-stage-template/plan-stage
 import { CessationPlanModule } from './routes/cessation-plan/cessation-plan.module'
 import { PlanStageModule } from './routes/plan-stage/plan-stage.module'
 import { ProgressRecordModule } from './routes/progress-record/progress-record.module';
+import { FeedbackModule } from './routes/feedback/feedback.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { ProgressRecordModule } from './routes/progress-record/progress-record.m
     CessationPlanModule,
     PlanStageModule,
     ProgressRecordModule,
+    FeedbackModule,
   ],
   controllers: [AppController],
   providers: [
