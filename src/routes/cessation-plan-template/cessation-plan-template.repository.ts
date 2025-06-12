@@ -176,24 +176,12 @@ export class CessationPlanTemplateRepository {
     });
   }
 
-  async updateRating(id: string, newRating: number) {
-    const currentTemplate = await this.prisma.cessationPlanTemplate.findUnique({
-      where: { id },
-      select: { average_rating: true, total_reviews: true },
-    });
-
-    if (!currentTemplate) return null;
-
-    const currentAverage = currentTemplate.average_rating || 0;
-    const currentTotal = currentTemplate.total_reviews;
-    const newTotal = currentTotal + 1;
-    const newAverage = ((currentAverage * currentTotal) + newRating) / newTotal;
-
+  async setAverageRating(templateId: string, averageRating: number, totalReviews: number) {
     return this.prisma.cessationPlanTemplate.update({
-      where: { id },
+      where: { id: templateId },
       data: {
-        average_rating: newAverage,
-        total_reviews: newTotal,
+        average_rating: parseFloat(averageRating.toFixed(2)),
+        total_reviews: totalReviews,
       },
     });
   }

@@ -88,6 +88,23 @@ export class CessationPlanRepository {
     });
   }
 
+  async findByUserAndTemplate(userId: string, templateId: string) {
+    return this.prisma.cessationPlan.findMany({
+      where: {
+        user_id: userId,
+        template_id: templateId,
+        is_deleted: false,
+      },
+      select: {
+        id: true,
+        status: true,
+        start_date: true,
+        target_date: true,
+        created_at: true,
+      },
+    });
+  }
+
   async getStatistics(filters?: CessationPlanFilters) {
     const where = this.buildWhereClause(filters);
 
@@ -187,6 +204,7 @@ export class CessationPlanRepository {
         },
       },
       template: {
+        where: {is_active: true},
         select: {
           id: true,
           name: true,
@@ -211,7 +229,6 @@ export class CessationPlanRepository {
         select: {
           stages: true,
           progress_records: true,
-          feedbacks: true,
         },
       },
     };
