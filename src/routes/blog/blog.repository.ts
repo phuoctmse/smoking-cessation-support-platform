@@ -5,18 +5,48 @@ import { Prisma } from '@prisma/client'
 import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { CreateBlogType } from './schema/create-blog.schema'
 import { UpdateBlogType } from './schema/update-blog.schema'
+import { BlogFilterInput } from './dto/requests/blog-filter.input'
 
 @Injectable()
 export class BlogRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(params: PaginationParamsType) {
-    const { page, limit, search, orderBy, sortOrder } = params
-    const skip = (page - 1) * limit
+  create(data: CreateBlogType, authorId: string) {
+    const slug = generateSlug(data.title)
+
+    return this.prisma.blog.create({
+      data: {
+        title: data.title,
+        content: data.content,
+        cover_image: data.cover_image,
+        cover_image_path: data.cover_image_path,
+        slug,
+        author: {
+          connect: {
+            id: authorId,
+          },
+        },
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            avatar_url: true,
+            role: true,
+          },
+        },
+      },
+    })
+  }
+
+  async findAll(params: PaginationParamsType, filters?: BlogFilterInput) {
+    const { page, limit, search, orderBy, sortOrder } = params;
+    const skip = (page - 1) * limit;
 
     const where: Prisma.BlogWhereInput = {
       is_deleted: false,
-    }
+    };
 
     if (search) {
       where.OR = [
@@ -32,7 +62,11 @@ export class BlogRepository {
             mode: Prisma.QueryMode.insensitive,
           },
         },
-      ]
+      ];
+    }
+
+    if (filters?.authorId) {
+      where.author_id = filters.authorId;
     }
 
     const [data, total] = await Promise.all([
@@ -53,7 +87,7 @@ export class BlogRepository {
         },
       }),
       this.prisma.blog.count({ where }),
-    ])
+    ]);
 
     return {
       data,
@@ -61,7 +95,7 @@ export class BlogRepository {
       page,
       limit,
       hasNext: total > page * limit,
-    }
+    };
   }
 
   findOne(id: string) {
@@ -83,35 +117,6 @@ export class BlogRepository {
   findBySlug(slug: string) {
     return this.prisma.blog.findUnique({
       where: { slug, is_deleted: false },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            avatar_url: true,
-            role: true,
-          },
-        },
-      },
-    })
-  }
-
-  create(data: CreateBlogType, authorId: string) {
-    const slug = generateSlug(data.title)
-
-    return this.prisma.blog.create({
-      data: {
-        title: data.title,
-        content: data.content,
-        cover_image: data.cover_image,
-        cover_image_path: data.cover_image_path,
-        slug,
-        author: {
-          connect: {
-            id: authorId,
-          },
-        },
-      },
       include: {
         author: {
           select: {
