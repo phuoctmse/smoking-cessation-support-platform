@@ -97,7 +97,6 @@ model CessationPlan {
   updated_at       DateTime               @updatedAt
   template         CessationPlanTemplate? @relation(fields: [template_id], references: [id])
   user             User                   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  feedbacks        Feedback[]
   stages           PlanStage[]
   progress_records ProgressRecord[]
 
@@ -142,18 +141,17 @@ model ProgressRecord {
 }
 
 model Feedback {
-  id          String                @id @default(uuid())
-  user_id     String
-  plan_id     String?
-  template_id String
-  rating      Int
-  content     String
-  is_deleted  Boolean               @default(false)
-  created_at  DateTime              @default(now())
-  updated_at  DateTime              @updatedAt
-  plan        CessationPlan?        @relation(fields: [plan_id], references: [id])
-  template    CessationPlanTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
-  user        User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id           String                @id @default(uuid())
+  user_id      String
+  template_id  String
+  rating       Int
+  content      String
+  is_anonymous Boolean               @default(false)
+  is_deleted   Boolean               @default(false)
+  created_at   DateTime              @default(now())
+  updated_at   DateTime              @updatedAt
+  template     CessationPlanTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  user         User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, template_id])
   @@map("feedback")
