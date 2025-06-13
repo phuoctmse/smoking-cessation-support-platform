@@ -5,6 +5,6 @@ export enum PaymentStatus {
 }
 
 export enum TransferType {
-    IN = 'IN',
-    OUT = 'OUT',
+    IN = 'in',
+    OUT = 'out',
 }
