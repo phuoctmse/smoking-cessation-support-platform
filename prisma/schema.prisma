@@ -29,6 +29,7 @@ model User {
   user_badges            UserBadge[]
   post_likes             PostLike[]
   post_comments          PostComment[]
+  Payment                Payment[]
 }
 
 model Blog {
@@ -292,8 +293,46 @@ model Subscription {
   status     SubscriptionStatus @default(ACTIVE)
   created_at DateTime           @default(now())
   updated_at DateTime           @updatedAt
+  Payment    Payment[]
 
   @@map("subscription")
+}
+
+model PaymentTransaction {
+  id                 String   @id @default(uuid())
+  payment_id         String
+  payment            Payment  @relation(fields: [payment_id], references: [id])
+  gateway            String   @db.VarChar(100)
+  transactionDate    DateTime @default(now())
+  accountNumber      String?  @db.VarChar(100)
+  subAccount         String?  @db.VarChar(250)
+  amountIn           Int      @default(0)
+  amountOut          Int      @default(0)
+  accumulated        Int      @default(0)
+  code               String?  @db.VarChar(250)
+  transactionContent String?  @db.Text
+  referenceNumber    String?  @db.VarChar(255)
+  body               String?  @db.Text
+
+  @@map("payment_transaction")
+}
+
+model Payment {
+  id                 String               @id @default(uuid())
+  user_id            String
+  user               User                 @relation(fields: [user_id], references: [id])
+  subscription_id    String
+  subscription       Subscription         @relation(fields: [subscription_id], references: [id])
+  status             PaymentStatus        @default(PENDING)
+  PaymentTransaction PaymentTransaction[]
+
+  @@map("payment")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }
 
 enum Role {
