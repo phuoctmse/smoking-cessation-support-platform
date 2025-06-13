@@ -24,6 +24,8 @@ import { CessationPlanModule } from './routes/cessation-plan/cessation-plan.modu
 import { PlanStageModule } from './routes/plan-stage/plan-stage.module'
 import { ProgressRecordModule } from './routes/progress-record/progress-record.module';
 import { FeedbackModule } from './routes/feedback/feedback.module';
+import { BadgeModule } from './routes/badge/badge.module';
+import { BadgeTypeModule } from './routes/badge-type/badge-type.module';
 
 @Module({
   imports: [
@@ -62,6 +64,8 @@ import { FeedbackModule } from './routes/feedback/feedback.module';
     PlanStageModule,
     ProgressRecordModule,
     FeedbackModule,
+    BadgeModule,
+    BadgeTypeModule,
   ],
   controllers: [AppController],
   providers: [
