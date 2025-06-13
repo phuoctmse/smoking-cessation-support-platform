@@ -161,18 +161,30 @@ model Feedback {
   @@map("feedback")
 }
 
+model BadgeType {
+  id         String   @id @default(uuid())
+  name       String   @unique @db.VarChar(50)
+  is_active  Boolean  @default(true)
+  badges     Badge[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("badge_type")
+}
+
 model Badge {
-  id           String      @id @default(uuid())
-  name         String      @db.VarChar(100)
-  description  String?
-  icon_url     String?
-  badge_type   BadgeType
-  requirements Json?
-  is_active    Boolean     @default(true)
-  sort_order   Int         @default(0)
-  created_at   DateTime    @default(now())
-  updated_at   DateTime    @updatedAt
-  user_badges  UserBadge[]
+  id            String      @id @default(uuid())
+  name          String      @db.VarChar(100)
+  description   String?
+  icon_url      String?
+  requirements  Json?
+  is_active     Boolean     @default(true)
+  sort_order    Int         @default(0)
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+  badge_type    BadgeType   @relation(fields: [badge_type_id], references: [id])
+  user_badges   UserBadge[]
+  badge_type_id String
 
   @@map("badge")
 }
@@ -237,14 +249,6 @@ model PostComment {
   replies           PostComment[] @relation("CommentReplies")
 
   @@map("post_comment")
-}
-
-enum BadgeType {
-  MILESTONE
-  ACHIEVEMENT
-  STREAK
-  COMMUNITY
-  SPECIAL
 }
 
 enum CessationPlanStatus {
