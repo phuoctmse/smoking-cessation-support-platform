@@ -1,19 +1,11 @@
+import { PaymentStatus } from "@prisma/client";
 import { z } from "zod";
 
-export const paymentTransactionSchema = z.object({
+export const paymentSchema = z.object({
     id: z.string().uuid(),
-    gateway: z.string(),
-    transactionDate: z.date(),
-    accountNumber: z.string().nullable(),
-    subAccount: z.string().nullable(),
-    amountIn: z.number(),
-    amountOut: z.number(),
-    accumulated: z.number(),
-    code: z.string().nullable(),
-    transactionContent: z.string().nullable(),
-    referenceNumber: z.string().nullable(),
-    body: z.string().nullable(),
-    createdAt: z.date(),
+    user_id: z.string().uuid(),
+    subscription_id: z.string().uuid(),
+    status: z.nativeEnum(PaymentStatus),
 });
 
-export type PaymentTransactionType = z.infer<typeof paymentTransactionSchema>;
+export type PaymentType = z.infer<typeof paymentSchema>;

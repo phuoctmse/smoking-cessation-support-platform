@@ -29,6 +29,7 @@ model User {
   user_badges            UserBadge[]
   post_likes             PostLike[]
   post_comments          PostComment[]
+  Payment                Payment[]
 }
 
 model Blog {
@@ -299,6 +300,8 @@ model Subscription {
 
 model PaymentTransaction {
   id                 String   @id @default(uuid())
+  payment_id         String
+  payment            Payment  @relation(fields: [payment_id], references: [id])
   gateway            String   @db.VarChar(100)
   transactionDate    DateTime @default(now())
   accountNumber      String?  @db.VarChar(100)
@@ -315,12 +318,13 @@ model PaymentTransaction {
 }
 
 model Payment {
-  id              String        @id @default(uuid())
-  user_id         String
-  user            User          @relation(fields: [user_id], references: [id])
-  subscription_id String
-  subscription    Subscription  @relation(fields: [subscription_id], references: [id])
-  status          PaymentStatus @default(PENDING)
+  id                 String               @id @default(uuid())
+  user_id            String
+  user               User                 @relation(fields: [user_id], references: [id])
+  subscription_id    String
+  subscription       Subscription         @relation(fields: [subscription_id], references: [id])
+  status             PaymentStatus        @default(PENDING)
+  PaymentTransaction PaymentTransaction[]
 
   @@map("payment")
 }
@@ -348,4 +352,3 @@ enum SubscriptionStatus {
   INACTIVE
   EXPIRED
 }
-
