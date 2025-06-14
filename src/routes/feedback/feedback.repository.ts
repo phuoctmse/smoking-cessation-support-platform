@@ -44,6 +44,18 @@ export class FeedbackRepository {
     });
   }
 
+  async findAnyByUserAndTemplate(userId: string, templateId: string): Promise<Feedback | null> {
+    return this.prisma.feedback.findUnique({
+      where: {
+        user_id_template_id: {
+          user_id: userId,
+          template_id: templateId,
+        },
+      },
+      include: this.getDefaultIncludes(),
+    });
+  }
+
   async findAll(params: PaginationParamsType, filters?: FeedbackFiltersInput) {
     const { page, limit, orderBy, sortOrder } = params;
     const skip = (page - 1) * limit;
@@ -115,10 +127,18 @@ export class FeedbackRepository {
     });
   }
 
+  async updateById(id: string, data: Partial<Prisma.FeedbackUpdateInput>): Promise<Feedback | null> {
+    return this.prisma.feedback.update({
+      where: { id },
+      data,
+      include: this.getDefaultIncludes(),
+    });
+  }
+
   async remove(id: string): Promise<Feedback | null> {
     return this.prisma.feedback.update({
       where: { id, is_deleted: false },
-      data: { is_deleted: true },
+      data: { is_deleted: true, updated_at: new Date() },
       include: this.getDefaultIncludes(),
     });
   }

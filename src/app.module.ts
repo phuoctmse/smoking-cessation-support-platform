@@ -29,6 +29,9 @@ import { BadgeTypeModule } from './routes/badge-type/badge-type.module';
 import { TransactionModule } from './routes/transaction/transaction.module';
 import { PaymentModule } from './routes/payment/payment.module'
 import { SubscriptionModule } from './routes/subscription/subscription.module'
+import { UserBadgeModule } from './routes/user-badge/user-badge.module';
+import { BadgeAwardModule } from './routes/badge-award/badge-award.module';
+import { SharedPostModule } from './routes/shared-post/shared-post.module';
 
 @Module({
   imports: [
@@ -71,7 +74,10 @@ import { SubscriptionModule } from './routes/subscription/subscription.module'
     BadgeTypeModule,
     TransactionModule,
     PaymentModule,
-    SubscriptionModule
+    SubscriptionModule,
+    UserBadgeModule,
+    BadgeAwardModule,
+    SharedPostModule,
   ],
   controllers: [AppController],
   providers: [

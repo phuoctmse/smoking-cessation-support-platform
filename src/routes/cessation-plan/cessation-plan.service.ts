@@ -16,6 +16,7 @@ import { CreateCessationPlanType } from './schema/create-cessation-plan.schema'
 import { UpdateCessationPlanType } from './schema/update-cessation-plan.schema'
 import { PlanStageRepository } from '../plan-stage/plan-stage.repository'
 import { UserType } from '../../shared/models/share-user.model'
+import { BadgeAwardService } from '../badge-award/badge-award.service'
 
 @Injectable()
 export class CessationPlanService {
@@ -25,6 +26,7 @@ export class CessationPlanService {
     private readonly cessationPlanRepository: CessationPlanRepository,
     @Inject(forwardRef(() => PlanStageRepository))
     private readonly planStageRepository: PlanStageRepository,
+    private readonly badgeAwardService: BadgeAwardService,
   ) {}
 
   async create(data: CreateCessationPlanType, requestUserId: string) {
@@ -38,7 +40,7 @@ export class CessationPlanService {
       }
       const plan = await this.cessationPlanRepository.create(planData)
       this.logger.log(`Cessation plan created: ${plan.id} for user: ${plan.user_id}`)
-
+      await this.badgeAwardService.processPlanCreation(plan.user_id, plan.id);
       if (plan.template_id) {
         try {
           await this.planStageRepository.createStagesFromTemplate(plan.id, plan.template_id)
