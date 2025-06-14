@@ -26,6 +26,8 @@ import { ProgressRecordModule } from './routes/progress-record/progress-record.m
 import { FeedbackModule } from './routes/feedback/feedback.module';
 import { BadgeModule } from './routes/badge/badge.module';
 import { BadgeTypeModule } from './routes/badge-type/badge-type.module';
+import { UserBadgeModule } from './routes/user-badge/user-badge.module';
+import { BadgeAwardModule } from './routes/badge-award/badge-award.module';
 
 @Module({
   imports: [
@@ -66,6 +68,8 @@ import { BadgeTypeModule } from './routes/badge-type/badge-type.module';
     FeedbackModule,
     BadgeModule,
     BadgeTypeModule,
+    UserBadgeModule,
+    BadgeAwardModule,
   ],
   controllers: [AppController],
   providers: [

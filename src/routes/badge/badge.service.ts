@@ -146,10 +146,31 @@ export class BadgeService {
   private validateRequirements(requirements?: string): void {
     if (!requirements) return;
 
+    let parsedRequirements: any;
     try {
-      JSON.parse(requirements);
+      parsedRequirements = JSON.parse(requirements);
     } catch (error) {
       throw new BadRequestException('Requirements must be a valid JSON string.');
+    }
+
+    if (typeof parsedRequirements !== 'object' || parsedRequirements === null) {
+      throw new BadRequestException('Requirements JSON must be an object.');
+    }
+
+    if (
+      !parsedRequirements.criteria_type ||
+      typeof parsedRequirements.criteria_type !== 'string' ||
+      parsedRequirements.criteria_type.trim() === ''
+    ) {
+      throw new BadRequestException(
+        "Requirements JSON must include a non-empty 'criteria_type' string field.",
+      );
+    }
+
+    if (parsedRequirements.criteria_type === 'streak_achieved') {
+      if (typeof parsedRequirements.days !== 'number' || parsedRequirements.days <= 0) {
+        throw new BadRequestException("For 'streak_achieved' criteria, 'days' must be a positive number.");
+      }
     }
   }
 
