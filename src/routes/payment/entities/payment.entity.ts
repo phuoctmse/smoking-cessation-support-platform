@@ -1,8 +1,10 @@
 import { Field, ID, ObjectType } from "@nestjs/graphql";
-import { PaymentStatus } from "src/shared/constants/payment.constant";
+import { PaymentStatus, PaymentStatusType } from "src/shared/constants/payment.constant";
+import { PaymentTransactionEntity } from "./transaction.entity";
+import { PaymentType } from "../schema/payment.schema";
 
 @ObjectType()
-export class PaymentEntity {
+export class PaymentEntity implements PaymentType {
     @Field(() => ID)
     id: string;
 
@@ -13,6 +15,8 @@ export class PaymentEntity {
     subscription_id: string;
 
     @Field(() => PaymentStatus)
-    status: PaymentStatus;
+    status: PaymentStatusType;
 
+    @Field(() => PaymentTransactionEntity, { nullable: true })
+    payment_transaction: PaymentTransactionEntity;
 }

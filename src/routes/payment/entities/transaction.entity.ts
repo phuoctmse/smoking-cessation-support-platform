@@ -9,8 +9,8 @@ export class PaymentTransactionEntity {
     @Field(() => ID)
     payment_id: string;
 
-    @Field(() => PaymentEntity)
-    payment: PaymentEntity;
+    @Field(() => String)
+    payment: string;
 
     @Field(() => String)
     gateway: string;

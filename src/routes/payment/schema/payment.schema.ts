@@ -6,6 +6,7 @@ export const paymentSchema = z.object({
     user_id: z.string().uuid(),
     subscription_id: z.string().uuid(),
     status: z.nativeEnum(PaymentStatus),
+    payment_transaction_id: z.string().uuid().optional(),
 });
 
 export type PaymentType = z.infer<typeof paymentSchema>;

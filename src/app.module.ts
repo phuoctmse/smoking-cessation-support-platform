@@ -26,6 +26,9 @@ import { ProgressRecordModule } from './routes/progress-record/progress-record.m
 import { FeedbackModule } from './routes/feedback/feedback.module';
 import { BadgeModule } from './routes/badge/badge.module';
 import { BadgeTypeModule } from './routes/badge-type/badge-type.module';
+import { TransactionModule } from './routes/transaction/transaction.module';
+import { PaymentModule } from './routes/payment/payment.module'
+import { SubscriptionModule } from './routes/subscription/subscription.module'
 import { UserBadgeModule } from './routes/user-badge/user-badge.module';
 import { BadgeAwardModule } from './routes/badge-award/badge-award.module';
 import { SharedPostModule } from './routes/shared-post/shared-post.module';
@@ -69,6 +72,9 @@ import { SharedPostModule } from './routes/shared-post/shared-post.module';
     FeedbackModule,
     BadgeModule,
     BadgeTypeModule,
+    TransactionModule,
+    PaymentModule,
+    SubscriptionModule,
     UserBadgeModule,
     BadgeAwardModule,
     SharedPostModule,

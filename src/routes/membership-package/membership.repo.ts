@@ -6,13 +6,21 @@ import { UpdateMembershipPackageType } from "./schema/update-membership.schema";
 
 @Injectable()
 export class MembershipRepo {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     async findMany(): Promise<MembershipPackageType[]> {
         return this.prisma.membershipPackage.findMany()
     }
 
-    async create(input: CreateMembershipPackageType){
+    async findById(id: string): Promise<MembershipPackageType> {
+        return this.prisma.membershipPackage.findUnique({
+            where: {
+                id
+            }
+        })
+    }
+
+    async create(input: CreateMembershipPackageType) {
         return this.prisma.membershipPackage.create({
             data: {
                 name: input.name,
@@ -23,7 +31,7 @@ export class MembershipRepo {
         })
     }
 
-    async update(input: UpdateMembershipPackageType){
+    async update(input: UpdateMembershipPackageType) {
         return this.prisma.membershipPackage.update({
             where: {
                 id: input.id

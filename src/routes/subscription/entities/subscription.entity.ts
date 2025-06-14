@@ -1,5 +1,5 @@
 import { Field, ID, ObjectType } from "@nestjs/graphql";
-import { SubscriptionStatusType } from "src/shared/constants/subscription.constant";
+import { SubscriptionStatus, SubscriptionStatusType } from "src/shared/constants/subscription.constant";
 import { SubscriptionSchema } from "../schema/subscription.schema";
 import { createZodDto } from "nestjs-zod";
 
@@ -14,7 +14,7 @@ export class Subscription extends createZodDto(SubscriptionSchema) {
     @Field(() => String)
     package_id: string
 
-    @Field(() => String)
+    @Field(() => SubscriptionStatus)
     status: SubscriptionStatusType
 
     @Field(() => Date)
