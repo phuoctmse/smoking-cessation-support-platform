@@ -292,9 +292,9 @@ model Subscription {
   user       User               @relation(fields: [user_id], references: [id])
   package_id String
   package    MembershipPackage  @relation(fields: [package_id], references: [id])
-  start_date DateTime
-  end_date   DateTime
-  status     SubscriptionStatus @default(ACTIVE)
+  start_date DateTime?
+  end_date   DateTime?
+  status     SubscriptionStatus @default(INACTIVE)
   created_at DateTime           @default(now())
   updated_at DateTime           @updatedAt
   Payment    Payment[]
@@ -322,14 +322,14 @@ model PaymentTransaction {
 }
 
 model Payment {
-  id                   String             @id @default(uuid())
-  user_id              String
-  user                 User               @relation(fields: [user_id], references: [id])
-  subscription_id      String
-  subscription         Subscription       @relation(fields: [subscription_id], references: [id])
-  status               PaymentStatus      @default(PENDING)
-  payment_transaction  PaymentTransaction @relation(fields: [payment_transaction_id], references: [id])
-  payment_transaction_id String
+  id                     String              @id @default(uuid())
+  user_id                String
+  user                   User                @relation(fields: [user_id], references: [id])
+  subscription_id        String
+  subscription           Subscription        @relation(fields: [subscription_id], references: [id])
+  status                 PaymentStatus       @default(PENDING)
+  payment_transaction    PaymentTransaction? @relation(fields: [payment_transaction_id], references: [id])
+  payment_transaction_id String?
 
   @@map("payment")
 }

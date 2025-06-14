@@ -13,6 +13,10 @@ export class MembershipService {
         return this.membershipRepo.findMany()
     }
 
+    async getMembershipPackageById(id: string): Promise<MembershipPackageType> {
+        return this.membershipRepo.findById(id)
+    }
+
     async createMembershipPackage(input: CreateMembershipPackageType){
         return this.membershipRepo.create(input)
     }

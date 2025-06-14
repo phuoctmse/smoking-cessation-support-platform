@@ -1,9 +1,9 @@
 import { Field, InputType } from "@nestjs/graphql";
 import { createZodDto } from "nestjs-zod";
-import { paymentSchema } from "../../schema/payment.schema";
+import { paymentSchema, PaymentType } from "../../schema/payment.schema";
 
 @InputType()
-export class CreatePaymentInput extends createZodDto(paymentSchema) {
+export class CreatePaymentInput implements PaymentType {
     @Field(() => String)
     user_id: string;
 

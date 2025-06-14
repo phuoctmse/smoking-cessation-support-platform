@@ -26,7 +26,9 @@ import { ProgressRecordModule } from './routes/progress-record/progress-record.m
 import { FeedbackModule } from './routes/feedback/feedback.module';
 import { BadgeModule } from './routes/badge/badge.module';
 import { BadgeTypeModule } from './routes/badge-type/badge-type.module';
-import { WebhookModule } from './routes/webhook/webhook.module';
+import { TransactionModule } from './routes/transaction/transaction.module';
+import { PaymentModule } from './routes/payment/payment.module'
+import { SubscriptionModule } from './routes/subscription/subscription.module'
 
 @Module({
   imports: [
@@ -67,7 +69,9 @@ import { WebhookModule } from './routes/webhook/webhook.module';
     FeedbackModule,
     BadgeModule,
     BadgeTypeModule,
-    WebhookModule,
+    TransactionModule,
+    PaymentModule,
+    SubscriptionModule
   ],
   controllers: [AppController],
   providers: [

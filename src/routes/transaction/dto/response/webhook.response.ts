@@ -1,4 +1,4 @@
-import { WebhookPaymentBodyType } from "../../webhook.model";
+import { WebhookPaymentBodyType } from "../../transaction.model";
 
 export class WebhookResponseDto {
     success: boolean;
