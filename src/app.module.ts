@@ -28,6 +28,7 @@ import { BadgeModule } from './routes/badge/badge.module';
 import { BadgeTypeModule } from './routes/badge-type/badge-type.module';
 import { UserBadgeModule } from './routes/user-badge/user-badge.module';
 import { BadgeAwardModule } from './routes/badge-award/badge-award.module';
+import { SharedPostModule } from './routes/shared-post/shared-post.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { BadgeAwardModule } from './routes/badge-award/badge-award.module';
     BadgeTypeModule,
     UserBadgeModule,
     BadgeAwardModule,
+    SharedPostModule,
   ],
   controllers: [AppController],
   providers: [
