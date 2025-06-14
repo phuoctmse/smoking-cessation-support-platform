@@ -20,7 +20,7 @@ export class CessationPlanResolver {
   constructor(private readonly cessationPlanService: CessationPlanService) {}
 
   @Mutation(() => CessationPlan)
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Member)
   async createCessationPlan(
     @Args('input') input: CreateCessationPlanInput,
@@ -54,7 +54,8 @@ export class CessationPlanResolver {
   }
 
   @Query(() => [CessationPlan])
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.Member)
   async userCessationPlans(@User() user?: UserType): Promise<CessationPlan[]> {
     return this.cessationPlanService.findByUserId(user);
   }
@@ -70,7 +71,8 @@ export class CessationPlanResolver {
   }
 
   @Mutation(() => CessationPlan)
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.Member)
   async updateCessationPlan(
       @Args('input') input: UpdateCessationPlanInput,
       @User() user: UserType,
