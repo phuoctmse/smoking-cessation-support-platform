@@ -15,6 +15,7 @@ import { CreatePlanStageType } from './schema/create-plan-stage.schema';
 import { UpdatePlanStageType } from './schema/update-plan-stage.schema';
 import { PlanStage } from './entities/plan-stage.entity'
 import { CessationPlan } from '../cessation-plan/entities/cessation-plan.entity'
+import { BadgeAwardService } from '../badge-award/badge-award.service';
 
 @Injectable()
 export class PlanStageService {
@@ -23,6 +24,7 @@ export class PlanStageService {
   constructor(
     private readonly planStageRepository: PlanStageRepository,
     private readonly cessationPlanRepository: CessationPlanRepository,
+    private readonly badgeAwardService: BadgeAwardService,
   ) {}
 
   async create(data: CreatePlanStageType, userRole: string, userId: string) {
@@ -130,6 +132,13 @@ export class PlanStageService {
     try {
       const updatedStage = await this.planStageRepository.update(id, data);
       this.logger.log(`Plan stage updated: ${updatedStage.id}`);
+
+      if (updatedStage.status === PlanStageStatus.COMPLETED) {
+        const planStages = await this.planStageRepository.findByPlanId(updatedStage.plan_id);
+        const completedStagesInPlan = planStages.filter(s => s.status === PlanStageStatus.COMPLETED).length;
+        await this.badgeAwardService.processStageCompletion(userId, updatedStage.plan_id, completedStagesInPlan);
+      }
+
       return this.enrichWithComputedFields(updatedStage);
     } catch (error) {
       this.handleDatabaseError(error);
