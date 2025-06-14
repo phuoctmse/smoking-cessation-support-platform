@@ -32,25 +32,61 @@ export class FeedbackService {
 
   async create(data: CreateFeedbackType, user: UserType): Promise<Feedback> {
     await this.validateTemplate(data.template_id);
-    await this.checkExistingFeedback(user.id, data.template_id);
 
-    if (user.role === RoleName.Member) {
-      await this.validateMemberHasUsedTemplate(user.id, data.template_id);
-    }
+    const existingFeedbackRecord = await this.feedbackRepository.findAnyByUserAndTemplate(user.id, data.template_id);
 
-    try {
-      const feedbackData = { ...data, user_id: user.id };
-      const feedback = await this.feedbackRepository.create(feedbackData);
-      await this.recalculateTemplateRating(data.template_id);
-
-      this.logger.log(`Feedback created: ${feedback.id}`);
-      return this.transformToEntity(feedback);
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('You have already submitted feedback for this template. Please update your existing feedback.');
+    if (existingFeedbackRecord) {
+      if (!existingFeedbackRecord.is_deleted) {
+        throw new ConflictException('You have already submitted active feedback for this template. Please update your existing feedback.');
+      } else {
+        if (user.role === RoleName.Member) {
+          await this.validateMemberHasUsedTemplate(user.id, data.template_id);
+        }
+        try {
+          const updatePayload: Prisma.FeedbackUpdateInput = {
+            rating: data.rating,
+            content: data.content,
+            is_anonymous: data.is_anonymous ?? false,
+            is_deleted: false,
+            created_at: new Date(),
+            updated_at: new Date(),
+          };
+          const reactivatedFeedback = await this.feedbackRepository.updateById(existingFeedbackRecord.id, updatePayload);
+          if (!reactivatedFeedback) {
+            throw new NotFoundException('Failed to find the feedback record for reactivation.');
+          }
+          await this.recalculateTemplateRating(data.template_id);
+          this.logger.log(`Feedback reactivated and updated: ${reactivatedFeedback.id}`);
+          return this.transformToEntity(reactivatedFeedback);
+        } catch (error) {
+          this.logger.error(`Failed to reactivate feedback for ID ${existingFeedbackRecord.id}: ${error.message}`, error.stack);
+          throw new BadRequestException('Failed to reactivate feedback.');
+        }
       }
-      this.logger.error(`Failed to create feedback: ${error.message}`, error.stack);
-      throw new BadRequestException('Failed to create feedback.');
+    } else {
+      if (user.role === RoleName.Member) {
+        await this.validateMemberHasUsedTemplate(user.id, data.template_id);
+      }
+      try {
+        const feedbackDataForRepoCreate: CreateFeedbackType & { user_id: string } = {
+          template_id: data.template_id,
+          rating: data.rating,
+          content: data.content,
+          is_anonymous: data.is_anonymous ?? false,
+          user_id: user.id,
+        };
+        const newFeedback = await this.feedbackRepository.create(feedbackDataForRepoCreate);
+        await this.recalculateTemplateRating(data.template_id);
+        this.logger.log(`Feedback created: ${newFeedback.id}`);
+        return this.transformToEntity(newFeedback);
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+          this.logger.error(`P2002 conflict during new feedback creation despite checks: user ${user.id}, template ${data.template_id}`, error.stack);
+          throw new ConflictException('You might have already submitted feedback for this template. Please try updating.');
+        }
+        this.logger.error(`Failed to create new feedback: ${error.message}`, error.stack);
+        throw new BadRequestException('Failed to create new feedback.');
+      }
     }
   }
 
@@ -128,13 +164,6 @@ export class FeedbackService {
     const template = await this.cessationPlanTemplateRepository.findOne(templateId);
     if (!template) {
       throw new NotFoundException('Cessation plan template not found.');
-    }
-  }
-
-  private async checkExistingFeedback(userId: string, templateId: string): Promise<void> {
-    const existingFeedback = await this.feedbackRepository.findByUserAndTemplate(userId, templateId);
-    if (existingFeedback) {
-      throw new ConflictException('You have already submitted feedback for this template. Please update your existing feedback.');
     }
   }
 
