@@ -82,7 +82,6 @@ export class FeedbackService {
     }
 
     this.validateOwnership(feedback, user.id);
-    this.validateAnonymousUpdate(feedback);
 
     try {
       const updatedFeedback = await this.feedbackRepository.update(id, data);
@@ -189,12 +188,6 @@ export class FeedbackService {
   private validateOwnership(feedback: any, userId: string): void {
     if (feedback.user_id !== userId) {
       throw new ForbiddenException('You can only update your own feedback.');
-    }
-  }
-
-  private validateAnonymousUpdate(feedback: any): void {
-    if (feedback.is_anonymous) {
-      throw new ForbiddenException('Anonymous feedback cannot be updated.');
     }
   }
 
