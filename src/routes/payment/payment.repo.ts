@@ -24,7 +24,6 @@ export class PaymentRepo {
             }),
         ]);
 
-        console.log(user, subscription)
 
         if (!user) {
             throw new NotFoundException('User not found');

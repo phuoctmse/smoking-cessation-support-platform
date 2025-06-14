@@ -14,7 +14,6 @@ export class SubscriptionService {
         //call cache on Redis to get duration days
         // const end_date = new Date(start_date.getTime() + input.package_id.duration_days * 24 * 60 * 60 * 1000)
         const end_date = new Date(start_date.getTime() + 30 * 24 * 60 * 60 * 1000) //test end date
-        console.log(start_date, end_date)
         input.start_date = start_date
         input.end_date = end_date
         const subscription = await this.subscriptionRepo.create(input)
