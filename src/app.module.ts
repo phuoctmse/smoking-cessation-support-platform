@@ -32,6 +32,7 @@ import { SubscriptionModule } from './routes/subscription/subscription.module'
 import { UserBadgeModule } from './routes/user-badge/user-badge.module';
 import { BadgeAwardModule } from './routes/badge-award/badge-award.module';
 import { SharedPostModule } from './routes/shared-post/shared-post.module';
+import { PostLikeModule } from './routes/post-like/post-like.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { SharedPostModule } from './routes/shared-post/shared-post.module';
     UserBadgeModule,
     BadgeAwardModule,
     SharedPostModule,
+    PostLikeModule,
   ],
   controllers: [AppController],
   providers: [
