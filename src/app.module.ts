@@ -105,4 +105,4 @@ import { PostCommentModule } from './routes/post-comment/post-comment.module';
     // }
   ],
 })
-export class AppModule {}
+export class AppModule { }

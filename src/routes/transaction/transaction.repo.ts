@@ -80,10 +80,11 @@ export class TransactionRepo {
             //Update payment status to success
             await tx.payment.update({
                 where: {
-                    id: payment.id
+                    id: payment_id
                 },
                 data: {
-                    status: PaymentStatus.SUCCESS
+                    status: PaymentStatus.SUCCESS,
+                    payment_transaction_id: paymentTransaction.id
                 }
             })
 

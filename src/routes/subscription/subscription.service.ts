@@ -10,12 +10,6 @@ export class SubscriptionService {
     constructor(private readonly subscriptionRepo: SubscriptionRepo) { }
 
     async createSubscription(input: CreateSubscriptionSchemaType) {
-        const start_date = new Date()
-        //call cache on Redis to get duration days
-        // const end_date = new Date(start_date.getTime() + input.package_id.duration_days * 24 * 60 * 60 * 1000)
-        const end_date = new Date(start_date.getTime() + 30 * 24 * 60 * 60 * 1000) //test end date
-        input.start_date = start_date
-        input.end_date = end_date
         const subscription = await this.subscriptionRepo.create(input)
         return subscription
     }
