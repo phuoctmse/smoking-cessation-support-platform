@@ -10,19 +10,7 @@ import { PaymentStatus } from "src/shared/constants/payment.constant";
 export class PaymentService {
     constructor(
         private readonly paymentRepo: PaymentRepo,
-        private readonly eventService: EventService
     ) {
-        // Listen for payment processed events
-        this.eventService.onPaymentProcessed(this.handlePaymentProcessed.bind(this));
-    }
-
-    private async handlePaymentProcessed(payment: PaymentType) {
-        // Update payment status in database
-        await this.paymentRepo.updatePayment({
-            id: payment.id,
-            status: PaymentStatus.SUCCESS
-        });
-        return payment;
     }
 
     async createPayment(input: CreatePaymentInput): Promise<PaymentType> {
@@ -30,9 +18,6 @@ export class PaymentService {
         const payment = await this.paymentRepo.createPayment({
             ...input,
         });
-
-        // Emit payment event
-        await this.eventService.emitPaymentEvent(payment);
 
         return payment;
     }

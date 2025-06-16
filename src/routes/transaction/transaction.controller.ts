@@ -8,6 +8,19 @@ export class TransactionController {
 
     @Post('payment')
     async handlePaymentWebhook(@Body() body: WebhookPaymentBodyDTO) {
-        return this.transactionService.handlePaymentWebhook(body);
+        try {
+            const result = await this.transactionService.handlePaymentWebhook(body);
+            return {
+                success: true,
+                message: 'Webhook processed successfully',
+                data: result
+            };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message || 'Failed to process webhook',
+                error: error.stack
+            };
+        }
     }
 }

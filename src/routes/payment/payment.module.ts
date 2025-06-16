@@ -6,11 +6,13 @@ import { PaymentResolver } from "./payment.resolver";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { EventService } from "src/shared/services/event.service";
 import { SubscriptionModule } from "../subscription/subscription.module";
+import { MembershipModule } from "../membership-package/membership.module";
 
 @Module({
     imports: [
         EventEmitterModule.forRoot(),
-        SubscriptionModule
+        SubscriptionModule,
+        MembershipModule
     ],
     providers: [PaymentService, PaymentRepo, PrismaService, PaymentResolver, EventService],
     exports: [PaymentService],
