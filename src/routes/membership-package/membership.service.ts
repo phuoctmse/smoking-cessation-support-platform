@@ -1,27 +1,68 @@
-import { Injectable } from "@nestjs/common";
-import { MembershipRepo } from "./membership.repo";
-import { MembershipPackageType } from "./schema/membership.schema";
-import { CreateMembershipPackageInput } from "./dto/request/create-membership.input";
-import { CreateMembershipPackageType } from "./schema/create-membership.schema";
-import { UpdateMembershipPackageType } from "./schema/update-membership.schema";
+import { Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+import { MembershipRepo } from './membership.repo';
+import { MembershipPackageType } from './schema/membership.schema';
 
 @Injectable()
 export class MembershipService {
-    constructor(private readonly membershipRepo: MembershipRepo) {}
+    constructor(
+        private readonly membershipRepo: MembershipRepo,
+        @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    ) { }
 
-    async getMembershipPackages(): Promise<MembershipPackageType[]> {
-        return this.membershipRepo.findMany()
+    async findAll() {
+        const memberships = await this.membershipRepo.findMany();
+
+        // Store each membership in cache with its own key
+        await Promise.all(
+            memberships.map(async (membership) => {
+                const cacheKey = `membership_${membership.id}`;
+                await this.cacheManager.set(cacheKey, membership);
+            })
+        );
+
+        return memberships;
     }
 
-    async getMembershipPackageById(id: string): Promise<MembershipPackageType> {
-        return this.membershipRepo.findById(id)
+    async findById(id: string): Promise<MembershipPackageType> {
+        const cacheKey = `membership_${id}`;
+
+        // Try to get from cache
+        const cachedData = await this.cacheManager.get(cacheKey);
+        if (cachedData) {
+            return cachedData;
+        }
+
+        // If not in cache, get from database
+        const membership = await this.membershipRepo.findById(id);
+
+        if (membership) {
+            // Store in cache
+            await this.cacheManager.set(cacheKey, membership);
+        }
+
+        return membership;
     }
 
-    async createMembershipPackage(input: CreateMembershipPackageType){
-        return this.membershipRepo.create(input)
+    async create(data: any) {
+        const membership = await this.membershipRepo.create(data);
+
+        const cacheKey = `membership_${membership.id}`;
+        await this.cacheManager.set(cacheKey, membership);
+
+        return membership;
     }
 
-    async updateMembershipPackage(input: UpdateMembershipPackageType){
-        return this.membershipRepo.update(input)
+    async update(id: string, data: any) {
+        const membership = await this.membershipRepo.update(data);
+
+        if (membership) {
+            // Invalidate specific and list cache
+            const cacheKey = `membership_${id}`;
+            await this.cacheManager.del(cacheKey)
+        }
+
+        return membership;
     }
 }

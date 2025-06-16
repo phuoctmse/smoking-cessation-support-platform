@@ -8,5 +8,5 @@ export class CreatePaymentInput implements PaymentType {
     user_id: string;
 
     @Field(() => String)
-    subscription_id: string;
+    membership_package_id: string;
 }

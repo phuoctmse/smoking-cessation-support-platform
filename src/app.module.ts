@@ -32,6 +32,11 @@ import { SubscriptionModule } from './routes/subscription/subscription.module'
 import { UserBadgeModule } from './routes/user-badge/user-badge.module';
 import { BadgeAwardModule } from './routes/badge-award/badge-award.module';
 import { SharedPostModule } from './routes/shared-post/shared-post.module';
+import { BullModule } from '@nestjs/bullmq'
+import envConfig from './shared/config/config'
+import { CacheModule } from '@nestjs/cache-manager'
+import { createKeyv } from '@keyv/redis'
+
 
 @Module({
   imports: [
@@ -46,6 +51,14 @@ import { SharedPostModule } from './routes/shared-post/shared-post.module';
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       context: ({ req }) => ({ req }),
       cache: 'bounded',
+    }),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      useFactory: () => {
+        return {
+          stores: [createKeyv(envConfig.REDIS_URL)],
+        }
+      },
     }),
     // ThrottlerModule.forRoot({
     //   throttlers: [
@@ -101,4 +114,4 @@ import { SharedPostModule } from './routes/shared-post/shared-post.module';
     // }
   ],
 })
-export class AppModule {}
+export class AppModule { }

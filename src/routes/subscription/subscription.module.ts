@@ -6,9 +6,10 @@ import { GuardModule } from "src/shared/guards/guard.module";
 import { SubscriptionResolver } from "./subscription.resolver";
 import { JwtAuthGuard } from "src/shared/guards/jwt-auth.guard";
 import { SupabaseModule } from "src/shared/modules/supabase.module";
+import { MembershipModule } from "../membership-package/membership.module";
 
 @Module({
-    imports: [GuardModule, SupabaseModule],
+    imports: [GuardModule, SupabaseModule, MembershipModule],
     providers: [SubscriptionService, SubscriptionRepo, PrismaService, SubscriptionResolver],
     exports: [SubscriptionService],
 })
