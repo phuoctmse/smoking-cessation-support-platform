@@ -7,17 +7,20 @@ import { PaymentType } from "./schema/payment.schema";
 import { SubscriptionService } from "../subscription/subscription.service";
 import { CreatePaymentInput } from "./dto/request/create-payment";
 import { v4 as uuidv4 } from 'uuid';
+import { MembershipService } from "../membership-package/membership.service";
 
 @Injectable()
 export class PaymentRepo {
-    constructor(private readonly prisma: PrismaService, private readonly subscriptionService: SubscriptionService) { }
+    constructor(private readonly prisma: PrismaService, private readonly subscriptionService: SubscriptionService, private readonly membershipService: MembershipService) { }
 
     async createPayment(input: CreatePaymentInput) {
         const { user_id, membership_package_id } = input;
 
+        const membershipPackage = await this.membershipService.findById(membership_package_id);
+
         const subscription = await this.subscriptionService.createSubscription({
             user_id,
-            package_id: membership_package_id,
+            package_id: membershipPackage.id,
         });
 
         const user = await this.prisma.user.findUnique({
@@ -54,7 +57,8 @@ export class PaymentRepo {
                 user_id,
                 subscription_id: subscription.id,
                 status: PaymentStatus.PENDING,
-                content: envConfig.PREFIX_PAYMENT_CODE + paymentId
+                content: envConfig.PREFIX_PAYMENT_CODE + paymentId,
+                price: membershipPackage.price
             },
         });
 

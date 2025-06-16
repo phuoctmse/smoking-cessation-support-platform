@@ -5,6 +5,7 @@ import { PaymentStatus, TransferType } from "src/shared/constants/payment.consta
 import { parse } from 'date-fns'
 import envConfig from "src/shared/config/config";
 import { isUUID } from "class-validator";
+import { SubscriptionStatus } from "src/shared/constants/subscription.constant";
 
 @Injectable()
 export class TransactionRepo {
@@ -77,7 +78,7 @@ export class TransactionRepo {
                 throw new BadRequestException('Amount is not match with package price')
             }
 
-            //Update payment status to success
+           
             await tx.payment.update({
                 where: {
                     id: payment_id
@@ -85,6 +86,15 @@ export class TransactionRepo {
                 data: {
                     status: PaymentStatus.SUCCESS,
                     payment_transaction_id: paymentTransaction.id
+                }
+            })
+
+            await tx.subscription.update({
+                where: {
+                    id: payment.subscription_id
+                },
+                data: {
+                    status: SubscriptionStatus.Active
                 }
             })
 

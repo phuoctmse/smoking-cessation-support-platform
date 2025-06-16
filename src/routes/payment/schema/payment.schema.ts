@@ -8,6 +8,7 @@ export const paymentSchema = z.object({
     subscription_id: z.string().uuid(),
     status: z.nativeEnum(PaymentStatus).default(PaymentStatus.PENDING),
     payment_transaction_id: z.string().uuid().optional(),
+    price: z.number().optional(),
 });
 
 export type PaymentType = z.infer<typeof paymentSchema>;
