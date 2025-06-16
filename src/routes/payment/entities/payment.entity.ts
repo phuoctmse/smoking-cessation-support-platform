@@ -14,6 +14,9 @@ export class PaymentEntity implements PaymentType {
     @Field(() => ID)
     subscription_id: string;
 
+    @Field(() => String, { nullable: true })
+    content: string;
+
     @Field(() => PaymentStatus)
     status: PaymentStatusType;
 

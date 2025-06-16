@@ -6,6 +6,7 @@ import envConfig from "src/shared/config/config";
 import { PaymentType } from "./schema/payment.schema";
 import { SubscriptionService } from "../subscription/subscription.service";
 import { CreatePaymentInput } from "./dto/request/create-payment";
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class PaymentRepo {
@@ -45,12 +46,15 @@ export class PaymentRepo {
             throw new BadRequestException('Payment already exists for this subscription');
         }
 
+        const paymentId = uuidv4();
+
         const payment = await this.prisma.payment.create({
             data: {
-                id: envConfig.PREFIX_PAYMENT_CODE + Date.now().toString(),
+                id: paymentId,
                 user_id,
                 subscription_id: subscription.id,
                 status: PaymentStatus.PENDING,
+                content: envConfig.PREFIX_PAYMENT_CODE + paymentId
             },
         });
 

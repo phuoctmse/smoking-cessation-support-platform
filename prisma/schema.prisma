@@ -326,6 +326,7 @@ model Payment {
   user_id                String
   user                   User                @relation(fields: [user_id], references: [id])
   subscription_id        String
+  content                String?
   subscription           Subscription        @relation(fields: [subscription_id], references: [id])
   status                 PaymentStatus       @default(PENDING)
   payment_transaction    PaymentTransaction? @relation(fields: [payment_transaction_id], references: [id])

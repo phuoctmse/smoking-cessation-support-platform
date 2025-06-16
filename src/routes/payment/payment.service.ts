@@ -29,7 +29,6 @@ export class PaymentService {
         // Create initial payment record
         const payment = await this.paymentRepo.createPayment({
             ...input,
-            status: PaymentStatus.PENDING
         });
 
         // Emit payment event
