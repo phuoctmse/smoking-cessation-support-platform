@@ -29,6 +29,7 @@ const configSchema = z.object({
   SUPABASE_ACCESS_KEY_ID: z.string(),
   SUPABASE_SECRET_ACCESS_KEY: z.string(),
   FRONTEND_URL: z.string(),
+  PREFIX_PAYMENT_CODE: z.string(),
 })
 
 const configServer = configSchema.safeParse(process.env)

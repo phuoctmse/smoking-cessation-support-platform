@@ -1,0 +1,1 @@
+ALTER TABLE "public"."cessation_plan" ADD COLUMN "is_deleted" BOOLEAN DEFAULT false;

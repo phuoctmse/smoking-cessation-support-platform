@@ -1,3 +1,4 @@
+import './shared/enums/graphql-enums'
 import { Module } from '@nestjs/common'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
@@ -17,6 +18,22 @@ import CustomZodValidationPipe from './shared/pipes/custom-zod-validation.pipe'
 import { HttpExceptionFilter } from './shared/filters/http-exception.filter'
 import { UploadScalar } from './shared/scalars/upload.scalar'
 import { CessationPlanTemplateModule } from './routes/cessation-plan-template/cessation-plan-template.module'
+import { MembershipModule } from './routes/membership-package/membership.module'
+import { PlanStageTemplateModule } from './routes/plan-stage-template/plan-stage-template.module'
+import { CessationPlanModule } from './routes/cessation-plan/cessation-plan.module'
+import { PlanStageModule } from './routes/plan-stage/plan-stage.module'
+import { ProgressRecordModule } from './routes/progress-record/progress-record.module';
+import { FeedbackModule } from './routes/feedback/feedback.module';
+import { BadgeModule } from './routes/badge/badge.module';
+import { BadgeTypeModule } from './routes/badge-type/badge-type.module';
+import { TransactionModule } from './routes/transaction/transaction.module';
+import { PaymentModule } from './routes/payment/payment.module'
+import { SubscriptionModule } from './routes/subscription/subscription.module'
+import { UserBadgeModule } from './routes/user-badge/user-badge.module';
+import { BadgeAwardModule } from './routes/badge-award/badge-award.module';
+import { SharedPostModule } from './routes/shared-post/shared-post.module';
+import { PostLikeModule } from './routes/post-like/post-like.module';
+import { PostCommentModule } from './routes/post-comment/post-comment.module';
 
 @Module({
   imports: [
@@ -49,6 +66,22 @@ import { CessationPlanTemplateModule } from './routes/cessation-plan-template/ce
     AuthModule,
     BlogModule,
     CessationPlanTemplateModule,
+    MembershipModule,
+    PlanStageTemplateModule,
+    CessationPlanModule,
+    PlanStageModule,
+    ProgressRecordModule,
+    FeedbackModule,
+    BadgeModule,
+    BadgeTypeModule,
+    TransactionModule,
+    PaymentModule,
+    SubscriptionModule,
+    UserBadgeModule,
+    BadgeAwardModule,
+    SharedPostModule,
+    PostLikeModule,
+    PostCommentModule,
   ],
   controllers: [AppController],
   providers: [
@@ -72,4 +105,4 @@ import { CessationPlanTemplateModule } from './routes/cessation-plan-template/ce
     // }
   ],
 })
-export class AppModule {}
+export class AppModule { }

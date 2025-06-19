@@ -9,21 +9,27 @@ datasource db {
 }
 
 model User {
-  id                 String          @id @default(uuid())
-  name               String
-  user_name          String          @unique
-  avatar_url         String?
-  role               Role            @default(MEMBER)
-  status             Status          @default(ACTIVE)
-  cigarettes_per_day Int?
-  sessions_per_day   Int?
-  price_per_pack     Int?
-  recorded_at        DateTime?
-  created_at         DateTime        @default(now())
-  updated_at         DateTime        @updatedAt
-  blogs              Blog[]
-  cessation_plans    CessationPlan[]
-  feedbacks          Feedback[]
+  id                     String                  @id @default(uuid())
+  name                   String
+  avatar_url             String?
+  role                   Role                    @default(MEMBER)
+  status                 Status                  @default(ACTIVE)
+  cigarettes_per_day     Int?
+  sessions_per_day       Int?
+  price_per_pack         Int?
+  recorded_at            DateTime?
+  created_at             DateTime                @default(now())
+  updated_at             DateTime                @updatedAt
+  user_name              String                  @unique
+  blogs                  Blog[]
+  created_plan_templates CessationPlanTemplate[]
+  cessation_plans        CessationPlan[]
+  feedbacks              Feedback[]
+  Subscription           Subscription[]
+  user_badges            UserBadge[]
+  post_likes             PostLike[]
+  post_comments          PostComment[]
+  Payment                Payment[]
 }
 
 model Blog {
@@ -45,7 +51,7 @@ model Blog {
 model CessationPlanTemplate {
   id                      String              @id @default(uuid())
   name                    String              @unique @db.VarChar(100)
-  description             String?             @db.Text
+  description             String?
   difficulty_level        DifficultyLevel     @default(MEDIUM)
   estimated_duration_days Int
   average_rating          Float?              @default(0)
@@ -54,9 +60,11 @@ model CessationPlanTemplate {
   is_active               Boolean             @default(true)
   created_at              DateTime            @default(now())
   updated_at              DateTime            @updatedAt
-  stages                  PlanStageTemplate[]
+  coach_id                String?
+  coach                   User?               @relation(fields: [coach_id], references: [id])
   plans                   CessationPlan[]
   feedbacks               Feedback[]
+  stages                  PlanStageTemplate[]
 
   @@map("cessation_plan_template")
 }
@@ -67,12 +75,13 @@ model PlanStageTemplate {
   stage_order         Int
   title               String                @db.VarChar(100)
   duration_days       Int
-  description         String?               @db.Text
-  recommended_actions String?               @db.Text
+  description         String?
+  recommended_actions String?
   created_at          DateTime              @default(now())
   updated_at          DateTime              @updatedAt
-  template            CessationPlanTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  is_active           Boolean               @default(true)
   plan_stages         PlanStage[]
+  template            CessationPlanTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
 
   @@unique([template_id, stage_order])
   @@map("plan_stage_template")
@@ -82,18 +91,18 @@ model CessationPlan {
   id               String                 @id @default(uuid())
   user_id          String
   template_id      String?
-  reason           String?                @db.Text
+  reason           String?
   start_date       DateTime
   target_date      DateTime
   status           CessationPlanStatus    @default(PLANNING)
   is_custom        Boolean                @default(false)
+  is_deleted       Boolean?               @default(false)
   created_at       DateTime               @default(now())
   updated_at       DateTime               @updatedAt
+  template         CessationPlanTemplate? @relation(fields: [template_id], references: [id])
   user             User                   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  template         CessationPlanTemplate? @relation(fields: [template_id], references: [id], onDelete: SetNull)
   stages           PlanStage[]
   progress_records ProgressRecord[]
-  feedbacks        Feedback[]
 
   @@map("cessation_plan")
 }
@@ -102,17 +111,18 @@ model PlanStage {
   id                String             @id @default(uuid())
   plan_id           String
   template_stage_id String?
-  stage_order       Int
+  stage_order       Int?
   title             String             @db.VarChar(100)
   start_date        DateTime?
   end_date          DateTime?
-  description       String?            @db.Text
-  actions           String?            @db.Text
+  description       String?
+  actions           String?
   status            PlanStageStatus    @default(PENDING)
+  is_deleted        Boolean            @default(false)
   created_at        DateTime           @default(now())
   updated_at        DateTime           @updatedAt
   plan              CessationPlan      @relation(fields: [plan_id], references: [id], onDelete: Cascade)
-  template_stage    PlanStageTemplate? @relation(fields: [template_stage_id], references: [id], onDelete: SetNull)
+  template_stage    PlanStageTemplate? @relation(fields: [template_stage_id], references: [id])
 
   @@unique([plan_id, stage_order])
   @@map("plan_stage")
@@ -123,8 +133,9 @@ model ProgressRecord {
   plan_id           String
   cigarettes_smoked Int           @default(0)
   health_score      Int?
-  notes             String?       @db.Text
+  notes             String?
   record_date       DateTime
+  is_deleted        Boolean       @default(false)
   created_at        DateTime      @default(now())
   updated_at        DateTime      @updatedAt
   plan              CessationPlan @relation(fields: [plan_id], references: [id], onDelete: Cascade)
@@ -134,21 +145,110 @@ model ProgressRecord {
 }
 
 model Feedback {
-  id          String                @id @default(uuid())
-  user_id     String
-  plan_id     String?
-  template_id String
-  rating      Int
-  content     String                @db.Text
-  is_deleted  Boolean               @default(false)
-  created_at  DateTime              @default(now())
-  updated_at  DateTime              @updatedAt
-  user        User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  plan        CessationPlan?        @relation(fields: [plan_id], references: [id], onDelete: SetNull)
-  template    CessationPlanTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  id           String                @id @default(uuid())
+  user_id      String
+  template_id  String
+  rating       Int
+  content      String
+  is_anonymous Boolean               @default(false)
+  is_deleted   Boolean               @default(false)
+  created_at   DateTime              @default(now())
+  updated_at   DateTime              @updatedAt
+  template     CessationPlanTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  user         User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, template_id])
   @@map("feedback")
+}
+
+model BadgeType {
+  id         String   @id @default(uuid())
+  name       String   @unique @db.VarChar(50)
+  is_active  Boolean  @default(true)
+  badges     Badge[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("badge_type")
+}
+
+model Badge {
+  id            String      @id @default(uuid())
+  name          String      @db.VarChar(100)
+  description   String?
+  icon_url      String?
+  requirements  Json?
+  is_active     Boolean     @default(true)
+  sort_order    Int         @default(0)
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+  badge_type    BadgeType   @relation(fields: [badge_type_id], references: [id])
+  user_badges   UserBadge[]
+  badge_type_id String
+
+  @@map("badge")
+}
+
+model UserBadge {
+  id          String      @id @default(uuid())
+  user_id     String
+  badge_id    String
+  awarded_at  DateTime    @default(now())
+  is_active   Boolean     @default(true)
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  badge       Badge       @relation(fields: [badge_id], references: [id], onDelete: Cascade)
+  shared_post SharedPost?
+
+  @@unique([user_id, badge_id])
+  @@map("user_badge")
+}
+
+model SharedPost {
+  id             String        @id @default(uuid())
+  user_badge_id  String        @unique
+  caption        String?
+  likes_count    Int           @default(0)
+  comments_count Int           @default(0)
+  is_deleted     Boolean       @default(false)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+  user_badge     UserBadge     @relation(fields: [user_badge_id], references: [id], onDelete: Cascade)
+  likes          PostLike[]
+  comments       PostComment[]
+
+  @@map("shared_post")
+}
+
+model PostLike {
+  id             String     @id @default(uuid())
+  shared_post_id String
+  user_id        String
+  is_deleted     Boolean    @default(false)
+  created_at     DateTime   @default(now())
+  shared_post    SharedPost @relation(fields: [shared_post_id], references: [id], onDelete: Cascade)
+  user           User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([shared_post_id, user_id])
+  @@map("post_like")
+}
+
+model PostComment {
+  id                String        @id @default(uuid())
+  shared_post_id    String
+  user_id           String
+  parent_comment_id String?
+  content           String
+  is_deleted        Boolean       @default(false)
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+  shared_post       SharedPost    @relation(fields: [shared_post_id], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  parent_comment    PostComment?  @relation("CommentReplies", fields: [parent_comment_id], references: [id])
+  replies           PostComment[] @relation("CommentReplies")
+
+  @@map("post_comment")
 }
 
 enum CessationPlanStatus {
@@ -157,6 +257,7 @@ enum CessationPlanStatus {
   PAUSED
   COMPLETED
   ABANDONED
+  CANCELLED
 }
 
 enum PlanStageStatus {
@@ -172,6 +273,75 @@ enum DifficultyLevel {
   HARD
 }
 
+model MembershipPackage {
+  id            String         @id @default(uuid())
+  name          String
+  description   String
+  price         Int
+  duration_days Int
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+  Subscription  Subscription[]
+
+  @@map("membership_package")
+}
+
+model Subscription {
+  id         String             @id @default(uuid())
+  user_id    String
+  user       User               @relation(fields: [user_id], references: [id])
+  package_id String
+  package    MembershipPackage  @relation(fields: [package_id], references: [id])
+  start_date DateTime?
+  end_date   DateTime?
+  status     SubscriptionStatus @default(INACTIVE)
+  created_at DateTime           @default(now())
+  updated_at DateTime           @updatedAt
+  Payment    Payment[]
+
+  @@map("subscription")
+}
+
+model PaymentTransaction {
+  id                 String    @id @default(uuid())
+  sepay_id           String    @unique
+  gateway            String    @db.VarChar(100)
+  transactionDate    DateTime  @default(now())
+  accountNumber      String?   @db.VarChar(100)
+  subAccount         String?   @db.VarChar(250)
+  amountIn           Int?      @default(0)
+  amountOut          Int?      @default(0)
+  accumulated        Int?      @default(0)
+  code               String?   @db.VarChar(250)
+  transactionContent String?   @db.Text
+  referenceNumber    String?   @db.VarChar(255)
+  body               String?   @db.Text
+  Payment            Payment[]
+
+  @@map("payment_transaction")
+}
+
+model Payment {
+  id                     String              @id @default(uuid())
+  user_id                String
+  user                   User                @relation(fields: [user_id], references: [id])
+  subscription_id        String
+  content                String?
+  price                  Int?
+  subscription           Subscription        @relation(fields: [subscription_id], references: [id])
+  status                 PaymentStatus       @default(PENDING)
+  payment_transaction    PaymentTransaction? @relation(fields: [payment_transaction_id], references: [id])
+  payment_transaction_id String?
+
+  @@map("payment")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 enum Role {
   MEMBER
   COACH
@@ -182,4 +352,10 @@ enum Status {
   ACTIVE
   INACTIVE
   BLOCKED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
 }

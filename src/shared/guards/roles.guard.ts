@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common'
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { RoleNameType } from '../constants/role.constant'
 import { ROLES_KEY } from '../decorators/roles.decorator'
@@ -20,14 +20,18 @@ export class RolesGuard implements CanActivate {
 
     const ctx = GqlExecutionContext.create(context)
     const request = ctx.getContext().req
-
-    // The user should already be set by JwtAuthGuard
     const user = request.user
 
-    if (!user || !user.role) {
-      return false
+    if (!user.role) {
+      throw new UnauthorizedException('User has no role!')
     }
 
-    return requiredRoles.some((role) => user.role === role)
+    const matchRole = requiredRoles.some((role) => user.role === role)
+
+    if (!matchRole) {
+      throw new ForbiddenException('Access denied')
+    }
+
+    return true
   }
 }

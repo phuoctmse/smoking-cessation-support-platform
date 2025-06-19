@@ -18,6 +18,8 @@ async function bootstrap() {
       maxFiles: 5,
     }),
   )
+  app.setGlobalPrefix('api')
+  
   await app.listen(process.env.PORT ?? 3000)
 }
 
