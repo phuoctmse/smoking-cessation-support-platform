@@ -12,10 +12,10 @@ import { PaginationParamsInput } from '../../shared/models/dto/request/paginatio
 import { SharedPostFiltersInput } from './dto/request/shared-post-filter.input'
 
 @Resolver(() => SharedPost)
-@UseGuards(JwtAuthGuard)
 export class SharedPostResolver {
   constructor(private readonly sharedPostService: SharedPostService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Mutation(() => SharedPost, { description: 'Create a new shared post from a UserBadge' })
   async createSharedPost(
     @Args('input') input: CreateSharedPostInput,
@@ -39,6 +39,7 @@ export class SharedPostResolver {
     return this.sharedPostService.findAll(params, filters);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Mutation(() => SharedPost, { description: 'Update the caption of a shared post' })
   async updateSharedPost(
     @Args('id', { type: () => ID }) id: string,
@@ -48,7 +49,8 @@ export class SharedPostResolver {
     return this.sharedPostService.update(id, input, currentUser);
   }
 
-  @Mutation(() => SharedPost, { description: 'Soft delete a shared post' })
+  @UseGuards(JwtAuthGuard)
+  @Mutation(() => SharedPost, { description: 'Delete a shared post' })
   async removeSharedPost(
     @Args('id', { type: () => ID }) id: string,
     @User() currentUser: UserType,

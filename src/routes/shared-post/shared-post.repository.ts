@@ -73,7 +73,7 @@ export class SharedPostRepository {
     if (filters?.badge_id) {
       if (!where.user_badge) where.user_badge = { is_active: true };
       (where.user_badge as Prisma.UserBadgeWhereInput).badge_id = filters.badge_id;
-      (where.user_badge as Prisma.UserBadgeWhereInput).badge = { is_active: true }; // Chỉ lấy badge active
+      (where.user_badge as Prisma.UserBadgeWhereInput).badge = { is_active: true };
     }
 
     if (filters?.badge_type_id) {

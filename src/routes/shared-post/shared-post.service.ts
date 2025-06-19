@@ -101,7 +101,7 @@ export class SharedPostService {
   }
 
   async update(id: string, input: UpdateSharedPostInput, user: UserType): Promise<SharedPost> {
-    const sharedPost = await this.sharedPostRepository.findOneWithAnyStatus(id); // Lấy cả post đã soft-delete để kiểm tra quyền
+    const sharedPost = await this.sharedPostRepository.findOneWithAnyStatus(id);
     if (!sharedPost || sharedPost.is_deleted) {
       throw new NotFoundException('Shared post not found or has been deleted.');
     }
