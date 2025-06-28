@@ -26,7 +26,6 @@ export class CessationPlanTemplateResolver {
     return this.cessationPlanTemplateService.create(input, user)
   }
 
-  @UseGuards(JwtAuthGuard)
   @Query(() => PaginatedCessationPlanTemplatesResponse)
   async cessationPlanTemplates(
     @Args('params', { nullable: true }) params?: PaginationParamsInput,
@@ -43,7 +42,6 @@ export class CessationPlanTemplateResolver {
     )
   }
 
-  @UseGuards(JwtAuthGuard)
   @Query(() => CessationPlanTemplate)
   async cessationPlanTemplate(@Args('id') id: string) {
     return this.cessationPlanTemplateService.findOne(id)
