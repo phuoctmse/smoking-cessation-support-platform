@@ -1,5 +1,6 @@
 import { registerEnumType } from '@nestjs/graphql'
 import { CessationPlanStatus, PlanStageStatus } from '@prisma/client'
+import { RoleName, Status } from '../constants/role.constant'
 
 registerEnumType(CessationPlanStatus, {
   name: 'CessationPlanStatus',
@@ -40,4 +41,26 @@ registerEnumType(PlanStageStatus, {
       description: 'Stage has been skipped',
     },
   },
+})
+
+export enum RoleNameEnum {
+  MEMBER = 'MEMBER',
+  COACH = 'COACH',
+  ADMIN = 'ADMIN',
+}
+
+export enum StatusEnum {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  BLOCKED = 'BLOCKED',
+}
+
+registerEnumType(RoleNameEnum, {
+  name: 'RoleNameEnum',
+  description: 'The role of the user',
+})
+
+registerEnumType(StatusEnum, {
+  name: 'StatusEnum',
+  description: 'The status of the user',
 })

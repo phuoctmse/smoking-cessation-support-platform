@@ -1,15 +1,15 @@
 import { z } from 'zod'
-import { RoleName, Status } from 'src/shared/constants/role.constant'
+import { RoleNameEnum, StatusEnum } from 'src/shared/enums/graphql-enums'
 
 export const UserSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(3).max(100),
   user_name: z.string().min(3).max(100),
-  avatar_url: z.string().nullable(),
-  role: z.enum([RoleName.Member, RoleName.Coach, RoleName.Admin]).default(RoleName.Member),
-  status: z.enum([Status.Active, Status.Inactive, Status.Blocked]).default(Status.Active),
-  created_at: z.date(),
-  updated_at: z.date(),
+  avatar_url: z.string().optional(),
+  role: z.nativeEnum(RoleNameEnum).default(RoleNameEnum.MEMBER),
+  status: z.nativeEnum(StatusEnum).default(StatusEnum.ACTIVE),
+  created_at: z.date().optional(),
+  updated_at: z.date().optional(),
 })
 
 export const MemberProfileSchema = z.object({

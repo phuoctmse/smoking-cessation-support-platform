@@ -9,6 +9,8 @@ import { Roles } from 'src/shared/decorators/roles.decorator'
 import { RoleName } from 'src/shared/constants/role.constant'
 import { RolesGuard } from 'src/shared/guards/roles.guard'
 import { UpdateUserProfileInput } from './dto/update-user-profile.input'
+import { SignupBodySchema, SignupBodyType } from '../auth/schema/signup.schema'
+import { AuthResponse } from '../auth/dto/response/auth.response'
 
 @Resolver(() => User)
 export class UserResolver {
@@ -30,13 +32,16 @@ export class UserResolver {
   }
 
   //Admin
-
-  @Mutation(() => User)
+  @Mutation(() => AuthResponse)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  async createUserByAdmin(@Args('createUserInput') createUserInput: CreateUserInput) {
+  async createUserByAdmin(
+    @Args('createUserInput', { type: () => CreateUserInput })
+    createUserInput: CreateUserInput
+  ) {
     return await this.userService.createUser(createUserInput)
   }
+
   @Mutation(() => User)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
@@ -57,5 +62,4 @@ export class UserResolver {
   async findAllUsers() {
     return await this.userService.findAll()
   }
-
 }

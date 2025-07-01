@@ -4,6 +4,7 @@ import { UserSchema } from '../schema/user.schema'
 import { createZodDto } from 'nestjs-zod'
 import { MemberProfile } from './member-profile.entity'
 import { CoachProfile } from './coach-profile.entity'
+import { RoleNameEnum, StatusEnum } from 'src/shared/enums/graphql-enums'
 
 @ObjectType()
 export class User extends createZodDto(UserSchema) {
@@ -19,11 +20,11 @@ export class User extends createZodDto(UserSchema) {
   @Field(() => String, { nullable: true })
   avatar_url?: string
 
-  @Field(() => String)
-  role: RoleNameType
+  @Field(() => RoleNameEnum)
+  role: RoleNameEnum
 
-  @Field(() => String)
-  status: StatusType
+  @Field(() => StatusEnum)
+  status: StatusEnum
 
   @Field(() => Date)
   created_at: Date

@@ -2,9 +2,10 @@ import { Inject, Injectable } from '@nestjs/common'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { PrismaService } from 'src/shared/services/prisma.service'
 import { SignupBodyType } from './schema/signup.schema'
-import { RoleName, Status, StatusType } from 'src/shared/constants/role.constant'
+import { RoleNameEnum, StatusEnum } from 'src/shared/enums/graphql-enums'
 import envConfig from 'src/shared/config/config'
 import { LoginBodyType } from './schema/login.schema'
+import { CreateUserInput } from '../user/dto/create-user.input'
 
 @Injectable()
 export class AuthRepository {
@@ -20,7 +21,7 @@ export class AuthRepository {
       phone: body.phoneNumber,
       options: {
         data: {
-          role: RoleName.Member,
+          role: RoleNameEnum.MEMBER,
           name: body.name,
           user_name: body.username,
         },
@@ -32,7 +33,7 @@ export class AuthRepository {
       id: data.user.id,
       name: body.name,
       user_name: body.username,
-      status: Status.Active,
+      status: StatusEnum.ACTIVE,
     })
     return {
       data,
@@ -40,6 +41,81 @@ export class AuthRepository {
     }
   }
 
+  async signupByAdmin(body: CreateUserInput) {
+    const { data, error } = await this.supabase.auth.signUp({
+      email: body.email,
+      password: body.password,
+      phone: body.phoneNumber,
+      options: {
+        data: {
+          role: body.role,
+          name: body.name,
+          user_name: body.username,
+        },
+        emailRedirectTo: `${envConfig.FRONTEND_URL}/auth/callback?type=signup`
+      }
+    })
+
+    if (error) {
+      throw error
+    }
+
+    try {
+      if (body.role === RoleNameEnum.COACH) {
+        const user = await this.prismaService.$transaction(async (prisma) => {
+          await prisma.user.create({
+            data: {
+              id: data.user.id,
+              name: body.name,
+              user_name: body.username,
+              status: body.status,
+              role: RoleNameEnum.COACH
+            }
+          })
+          await prisma.coachProfile.create({
+            data: {
+              id: data.user.id,
+              user_id: data.user.id,
+              experience_years: 0,
+              bio: '',
+            }
+          })
+        })
+      } else if (body.role === RoleNameEnum.MEMBER) {
+        const user = await this.prismaService.$transaction(async (prisma) => {
+          await prisma.user.create({
+            data: {
+              id: data.user.id,
+              name: body.name,
+              user_name: body.username,
+              status: body.status,
+              role: RoleNameEnum.MEMBER
+            }
+          })
+          await prisma.memberProfile.create({
+            data: {
+              id: data.user.id,
+              user_id: data.user.id,
+              cigarettes_per_day: 0,
+              sessions_per_day: 0,
+              price_per_pack: 0,
+              recorded_at: new Date(),
+            }
+          })
+        })
+      }
+    } catch (error) {
+      // If there's an error creating the user in our database, delete the user from Supabase
+      await this.supabase.auth.admin.deleteUser(data.user.id)
+      throw error
+    }
+
+    return {
+      data,
+      error
+    }
+  }
+  
   async handleEmailVerification(access_token: string) {
     const { data: { user } } = await this.supabase.auth.getUser(access_token)
 
@@ -49,7 +125,7 @@ export class AuthRepository {
 
     await this.prismaService.user.update({
       where: { id: user.id },
-      data: { status: Status.Active }
+      data: { status: StatusEnum.ACTIVE }
     })
 
     return user
@@ -59,19 +135,19 @@ export class AuthRepository {
     id: string
     name: string
     user_name: string
-    status: StatusType
+    status: StatusEnum
   }) {
-    return Promise.all([
-      this.prismaService.user.create({
+    return this.prismaService.$transaction(async (prisma) => {
+      await prisma.user.create({
         data: {
           id: data.id,
           name: data.name,
           user_name: data.user_name,
           status: data.status,
-          role: RoleName.Member
+          role: RoleNameEnum.MEMBER
         }
-      }),
-      this.prismaService.memberProfile.create({
+      })
+      await prisma.memberProfile.create({
         data: {
           id: data.id,
           user_id: data.id,
@@ -81,7 +157,7 @@ export class AuthRepository {
           recorded_at: new Date(),
         }
       })
-    ])
+    })
   }
 
   async logOut() {
@@ -108,8 +184,6 @@ export class AuthRepository {
       password: body.password,
     })
 
-    console.log(authResponse)
-
     const user = await this.prismaService.user.findUnique({
       where: {
         id: authResponse.data.user.id
@@ -122,7 +196,6 @@ export class AuthRepository {
         user_name: user.user_name,
       }
     })
-
 
     return {
       data: {

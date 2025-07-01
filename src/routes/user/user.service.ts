@@ -2,14 +2,17 @@ import { Injectable } from '@nestjs/common'
 import { CreateUserInput } from './dto/create-user.input'
 import { UpdateUserInput } from './dto/update-user.input'
 import { PrismaService } from 'src/shared/services/prisma.service'
-import { UserRepo } from './user.repo'
+import { UserRepository } from './user.repo'
 import { UpdateUserProfileInput } from './dto/update-user-profile.input'
+import { AuthService } from '../auth/auth.service'
+import { SignupBodyType } from '../auth/schema/signup.schema'
+import { AuthRepository } from '../auth/auth.repository'
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepo: UserRepo) { }
+  constructor(private readonly userRepo: UserRepository, private readonly authRepository: AuthRepository) { }
   async createUser(createUserInput: CreateUserInput) {
-    return await this.userRepo.createUser(createUserInput)
+    return await this.authRepository.signupByAdmin(createUserInput)
   }
 
   async findAll() {
@@ -21,7 +24,7 @@ export class UserService {
   }
 
   async updateProfile(id: string, updateUserInput: UpdateUserProfileInput) {
-    return await this.userRepo.update(id, updateUserInput)
+    return await this.userRepo.updateProfile(id, updateUserInput)
   }
 
   async updateByAdmin(id: string, updateUserInput: UpdateUserInput) {
