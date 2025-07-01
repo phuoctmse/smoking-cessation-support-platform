@@ -29,6 +29,9 @@ export class CessationPlanRepository {
               status: SubscriptionStatus.Active,
             },
           })
+          if (!subscription) {
+            throw new Error('Active subscription required for custom cessation plans')
+          }
           const plan = await tx.cessationPlan.create({
             data: {
               user_id: data.user_id,
