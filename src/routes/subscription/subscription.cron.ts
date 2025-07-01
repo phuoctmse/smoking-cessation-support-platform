@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { PrismaService } from 'src/shared/services/prisma.service';
 import { SubscriptionStatus } from 'src/shared/constants/subscription.constant';
+import { PrismaService } from 'src/shared/services/prisma.service';
+
 
 @Injectable()
 export class SubscriptionCronService {
@@ -11,11 +12,13 @@ export class SubscriptionCronService {
         private readonly prismaService: PrismaService,
     ) {}
 
-    @Cron(CronExpression.EVERY_HOUR)
+    @Cron(CronExpression.EVERY_12_HOURS)
     async handleExpiredSubscriptions() {
         this.logger.log('Checking for expired subscriptions...');
 
         try {
+            this.logger.log(`Starting subscription check at ${new Date().toISOString()}`);
+
             // Update expired subscriptions
             const expiredSubscriptions = await this.prismaService.subscription.updateMany({
                 where: {
@@ -31,8 +34,31 @@ export class SubscriptionCronService {
 
             this.logger.log(`Updated ${expiredSubscriptions.count} expired subscriptions`);
 
+            // Calculate end dates for subscriptions without end_date
+            const subscriptions = await this.prismaService.subscription.findMany({
+                where: {
+                    status: SubscriptionStatus.Active,
+                    end_date: null
+                },
+                include: {
+                    package: true
+                }
+            });
+
+            for (const subscription of subscriptions) {
+                const endDate = new Date(subscription.start_date);
+                endDate.setDate(endDate.getDate() + subscription.package.duration_days);
+
+                await this.prismaService.subscription.update({
+                    where: { id: subscription.id },
+                    data: { end_date: endDate }
+                });
+
+                this.logger.log(`Set end_date for subscription ${subscription.id} to ${endDate}`);
+            }
+
         } catch (error) {
-            this.logger.error('Error updating expired subscriptions:', error);
+            this.logger.error('Error in subscription cron job:', error);
         }
     }
 
