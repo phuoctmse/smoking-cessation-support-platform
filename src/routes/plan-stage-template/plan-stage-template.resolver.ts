@@ -9,7 +9,7 @@ import { RolesGuard } from '../../shared/guards/roles.guard'
 import { RoleName } from '../../shared/constants/role.constant'
 import { Roles } from '../../shared/decorators/roles.decorator'
 import { User } from '../../shared/decorators/current-user.decorator'
-import { UserType } from '../../shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { CreatePlanStageTemplateInput } from './dto/requests/create-plan-stage-template.input'
 import { UpdatePlanStageTemplateInput } from './dto/requests/update-plan-stage-template.input'
 import {StageOrderInput} from "./dto/requests/stage-order.input";

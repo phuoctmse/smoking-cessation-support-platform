@@ -7,8 +7,8 @@ export class CreateMembershipPackageInput extends createZodDto(CreateMembershipP
     @Field(() => String)
     name: string
 
-    @Field(() => String)
-    description: string
+    @Field(() => [String])
+    description: string[]
 
     @Field(() => Int)
     price: number

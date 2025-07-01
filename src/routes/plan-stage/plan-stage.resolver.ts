@@ -11,7 +11,7 @@ import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { User } from '../../shared/decorators/current-user.decorator';
 import { RoleName } from '../../shared/constants/role.constant';
-import { UserType } from '../../shared/models/share-user.model';
+import { UserType } from '../user/schema/user.schema';
 import { PlanStageOrderInput } from './dto/request/plan-stage-order.input'
 
 @Resolver(() => PlanStage)

@@ -9,7 +9,7 @@ import { RolesGuard } from 'src/shared/guards/roles.guard'
 import { Roles } from 'src/shared/decorators/roles.decorator'
 import { RoleName } from 'src/shared/constants/role.constant';
 import {User} from "../../shared/decorators/current-user.decorator";
-import {UserType} from "../../shared/models/share-user.model";
+import {UserType} from "../user/schema/user.schema";
 import {PaginatedBadgeTypesResponse} from "./dto/response/paginated-badge-type.response";
 import {PaginationParamsInput} from "../../shared/models/dto/request/pagination-params.input";
 import {BadgeTypeFiltersInput} from "./dto/request/badge-type-filter.input";

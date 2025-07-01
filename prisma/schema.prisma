@@ -14,10 +14,6 @@ model User {
   avatar_url             String?
   role                   Role                    @default(MEMBER)
   status                 Status                  @default(ACTIVE)
-  cigarettes_per_day     Int?
-  sessions_per_day       Int?
-  price_per_pack         Int?
-  recorded_at            DateTime?
   created_at             DateTime                @default(now())
   updated_at             DateTime                @updatedAt
   user_name              String                  @unique
@@ -30,6 +26,32 @@ model User {
   post_likes             PostLike[]
   post_comments          PostComment[]
   Payment                Payment[]
+  MemberProfile          MemberProfile[]
+  CoachProfile           CoachProfile[]
+
+  @@map("user")
+}
+
+model MemberProfile {
+  id                 String    @id @default(uuid())
+  user_id            String
+  user               User      @relation(fields: [user_id], references: [id])
+  cigarettes_per_day Int?
+  sessions_per_day   Int?
+  price_per_pack     Int?
+  recorded_at        DateTime?
+
+  @@map("member_profile")
+}
+
+model CoachProfile {
+  id               String  @id @default(uuid())
+  user_id          String
+  user             User    @relation(fields: [user_id], references: [id])
+  experience_years Int?
+  bio              String?
+
+  @@map("coach_profile")
 }
 
 model Blog {
@@ -276,7 +298,7 @@ enum DifficultyLevel {
 model MembershipPackage {
   id            String         @id @default(uuid())
   name          String
-  description   String
+  description   String[]
   price         Int
   duration_days Int
   created_at    DateTime       @default(now())

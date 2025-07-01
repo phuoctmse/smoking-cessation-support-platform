@@ -10,8 +10,8 @@ export class UpdateMembershipPackageInput extends createZodDto(UpdateMembershipP
     @Field(() => String, { nullable: true })
     name?: string
 
-    @Field(() => String, { nullable: true })
-    description?: string
+    @Field(() => [String], { nullable: true })
+    description?: string[]
 
     @Field(() => Int, { nullable: true })
     price?: number

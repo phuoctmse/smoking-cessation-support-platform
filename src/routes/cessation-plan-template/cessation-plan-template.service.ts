@@ -4,7 +4,7 @@ import { CreateCessationPlanTemplateType } from './schema/create-cessation-plan-
 import { UpdateCessationPlanTemplateType } from './schema/update-cessation-plan-template.schema'
 import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { RoleName } from '../../shared/constants/role.constant'
-import { UserType } from 'src/shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { CessationPlanTemplateFiltersInput } from './dto/request/cessation-plan-template-filters.input'
 
 @Injectable()

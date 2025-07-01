@@ -2,27 +2,41 @@ import { Injectable } from '@nestjs/common'
 import { CreateUserInput } from './dto/create-user.input'
 import { UpdateUserInput } from './dto/update-user.input'
 import { PrismaService } from 'src/shared/services/prisma.service'
+import { UserRepo } from './user.repo'
+import { UpdateUserProfileInput } from './dto/update-user-profile.input'
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prismaService: PrismaService) {}
-  create(createUserInput: CreateUserInput) {
-    return 'This action adds a new user'
+  constructor(private readonly userRepo: UserRepo) { }
+  async createUser(createUserInput: CreateUserInput) {
+    return await this.userRepo.createUser(createUserInput)
   }
 
-  findAll() {
-    return this.prismaService.user.findMany()
+  async findAll() {
+    return await this.userRepo.findAll()
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`
+  async findOne(id: string) {
+    return await this.userRepo.findOne(id)
   }
 
-  update(id: number, updateUserInput: UpdateUserInput) {
-    return `This action updates a #${id} user`
+  async updateProfile(id: string, updateUserInput: UpdateUserProfileInput) {
+    return await this.userRepo.update(id, updateUserInput)
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`
+  async updateByAdmin(id: string, updateUserInput: UpdateUserInput) {
+    return await this.userRepo.updateByAdmin(id, updateUserInput)
+  }
+
+  async removeByAdmin(id: string) {
+    const result = await this.userRepo.removeByAdmin(id)
+    if (result) {
+      return {
+        message: 'User removed successfully'
+      }
+    }
+    return {
+      message: 'delete failed'
+    }
   }
 }

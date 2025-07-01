@@ -8,35 +8,54 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard'
 import { Roles } from 'src/shared/decorators/roles.decorator'
 import { RoleName } from 'src/shared/constants/role.constant'
 import { RolesGuard } from 'src/shared/guards/roles.guard'
+import { UpdateUserProfileInput } from './dto/update-user-profile.input'
 
 @Resolver(() => User)
 export class UserResolver {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
+
+  //Member & Coach
+  @Mutation(() => User)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MEMBER', 'COACH')
+  async updateUserProfile(@Args('updateUserInput') updateUserInput: UpdateUserProfileInput) {
+    return await this.userService.updateProfile(updateUserInput.id, updateUserInput)
+  }
+
+  @Query(() => User, { name: 'findOneUser' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'MEMBER', 'COACH')
+  async findOneUser(@Args('id', { type: () => String }) id: string) {
+    return await this.userService.findOne(id)
+  }
+
+  //Admin
 
   @Mutation(() => User)
-  createUser(@Args('createUserInput') createUserInput: CreateUserInput) {
-    return this.userService.create(createUserInput)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async createUserByAdmin(@Args('createUserInput') createUserInput: CreateUserInput) {
+    return await this.userService.createUser(createUserInput)
+  }
+  @Mutation(() => User)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async updateUserByAdmin(@Args('updateUserInput') updateUserInput: UpdateUserInput) {
+    return await this.userService.updateByAdmin(updateUserInput.id, updateUserInput)
+  }
+
+  @Mutation(() => User)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async removeUserByAdmin(@Args('id', { type: () => String }) id: string) {
+    return await this.userService.removeByAdmin(id)
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.Member)
-  @Query(() => [User], { name: 'usergetall' })
-  findAll() {
-    return this.userService.findAll()
+  @Roles('ADMIN')
+  @Query(() => [User], { name: 'GetAllUsers' })
+  async findAllUsers() {
+    return await this.userService.findAll()
   }
 
-  @Query(() => User, { name: 'user' })
-  findOne(@Args('id', { type: () => Int }) id: number) {
-    return this.userService.findOne(id)
-  }
-
-  @Mutation(() => User)
-  updateUser(@Args('updateUserInput') updateUserInput: UpdateUserInput) {
-    return this.userService.update(updateUserInput.id, updateUserInput)
-  }
-
-  @Mutation(() => User)
-  removeUser(@Args('id', { type: () => Int }) id: number) {
-    return this.userService.remove(id)
-  }
 }

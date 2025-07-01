@@ -11,7 +11,7 @@ import { UpdateSharedPostInput } from './dto/request/update-shared-post.input'
 import { SharedPostRepository } from './shared-post.repository'
 import { UserBadgeRepository } from '../user-badge/user-badge.repository'
 import { SharedPost } from './entities/shared-post.entity'
-import { UserType } from 'src/shared/models/share-user.model';
+import { UserType } from '../user/schema/user.schema';
 import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { SharedPostFiltersInput } from './dto/request/shared-post-filter.input'
 import { PaginatedSharedPostsResponse } from './dto/response/paginated-shared-post.response'
