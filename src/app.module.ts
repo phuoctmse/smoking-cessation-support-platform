@@ -34,9 +34,11 @@ import { BadgeAwardModule } from './routes/badge-award/badge-award.module';
 import { SharedPostModule } from './routes/shared-post/shared-post.module';
 import { PostLikeModule } from './routes/post-like/post-like.module';
 import { PostCommentModule } from './routes/post-comment/post-comment.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     SharedModule,
     ConfigModule.forRoot({
       isGlobal: true,

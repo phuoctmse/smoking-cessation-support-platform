@@ -9,8 +9,8 @@ export const SignupBodySchema = z.object({
     username: z.string().min(3, 'Username is required').max(20, 'Username is too long'),
     name: z.string().min(2, 'Name is required').max(50, 'Name is too long'),
     phoneNumber: z.string().optional(),
-    role: z.nativeEnum(RoleNameEnum),
-    status: z.nativeEnum(StatusEnum),
+    role: z.nativeEnum(RoleNameEnum).default(RoleNameEnum.MEMBER),
+    status: z.nativeEnum(StatusEnum).default(StatusEnum.ACTIVE),
 })
     .strict()
     .superRefine(({ confirmPassword, password }, ctx) => {
