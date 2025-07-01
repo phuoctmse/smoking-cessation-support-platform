@@ -63,20 +63,4 @@ export class AuthResolver {
       data, error
     }
   }
-
-  @Mutation(() => AuthResponse)
-  async verifyEmail(@Args('token') token: string, @Context() context): Promise<AuthResponse> {
-    const data = await this.authService.verifyEmail(token)
-    if (context.req.res && typeof context.req.res.cookie === 'function') {
-      context.req.res.cookie('refreshToken', data.data.session.refresh_token, {
-        httpOnly: true,
-        sameSite: 'strict',
-      })
-    }
-    return {
-      message: data.message,
-      data: data.data,
-      error: data.error
-    }
-  }
 }

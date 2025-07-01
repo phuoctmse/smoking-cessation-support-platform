@@ -62,7 +62,7 @@ export class AuthService {
       if (error) {
         throw error
       }
-      
+
       return {
         error: USER_MESSAGES.LOGOUT_SUCCESS
       }
@@ -79,15 +79,4 @@ export class AuthService {
     }
   }
 
-  async verifyEmail(token: string) {
-    try {
-      const { data, error } = await this.authRepository.verifyEmail(token)
-      return {
-        message: USER_MESSAGES.VERIFY_EMAIL_SUCCESS,
-        data, error
-      }
-    } catch (error) {
-      throw error
-    }
-  }
 }
