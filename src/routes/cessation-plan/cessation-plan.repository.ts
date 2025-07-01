@@ -20,21 +20,31 @@ export class CessationPlanRepository {
   constructor(private readonly prisma: PrismaService) { }
 
   async create(data: CreateCessationPlanType & { user_id: string }) {
-    if (data.is_custom) {
-      this.prisma.$transaction(async (tx) => {
-        const subscription = await tx.subscription.findFirst({
-          where: {
-            user_id: data.user_id,
-            status: SubscriptionStatus.Active,
-          },
+    try {
+      if (data.is_custom) {
+        return this.prisma.$transaction(async (tx) => {
+          const subscription = await tx.subscription.findFirst({
+            where: {
+              user_id: data.user_id,
+              status: SubscriptionStatus.Active,
+            },
+          })
+          const plan = await tx.cessationPlan.create({
+            data: {
+              user_id: data.user_id,
+              template_id: data.template_id,
+              reason: data.reason,
+              start_date: data.start_date,
+              target_date: data.target_date,
+              is_custom: data.is_custom,
+              status: 'PLANNING',
+            },
+            include: this.getDefaultIncludes(),
+          })
+          return plan
         })
-        if (!subscription) {
-          throw new Error('User does not have a subscription')
-        }
-        if (subscription.status !== 'ACTIVE') {
-          throw new Error('User does not have an active subscription')
-        }
-        const plan = await tx.cessationPlan.create({
+      } else {
+        return this.prisma.cessationPlan.create({
           data: {
             user_id: data.user_id,
             template_id: data.template_id,
@@ -45,24 +55,11 @@ export class CessationPlanRepository {
             status: 'PLANNING',
           },
           include: this.getDefaultIncludes(),
-        })
-        return plan
-      })
-    } else {
-      return this.prisma.cessationPlan.create({
-        data: {
-          user_id: data.user_id,
-          template_id: data.template_id,
-          reason: data.reason,
-          start_date: data.start_date,
-          target_date: data.target_date,
-          is_custom: data.is_custom,
-          status: 'PLANNING',
-        },
-        include: this.getDefaultIncludes(),
-      });
+        });
+      }
+    } catch (error) {
+      throw error
     }
-
   }
 
   async findAll(params: PaginationParamsType, filters?: CessationPlanFilters) {
