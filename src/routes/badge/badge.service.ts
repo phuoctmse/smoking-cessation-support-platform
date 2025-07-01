@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common'
 import { BadgeRepository } from './badge.repository'
 import { CreateBadgeType } from './schema/create-badge.schema'
-import { UserType } from 'src/shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { Badge } from './entities/badge.entity'
 import { UpdateBadgeType } from './schema/update-badge.schema'
 import { BadgeFiltersInput } from './dto/request/badge-filter.input'

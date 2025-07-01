@@ -5,7 +5,7 @@ import { CessationPlan } from './entities/cessation-plan.entity';
 import { CreateCessationPlanInput } from './dto/request/create-cessation-plan.input';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { User } from '../../shared/decorators/current-user.decorator';
-import { UserType } from '../../shared/models/share-user.model';
+import { UserType } from '../user/schema/user.schema';
 import {PaginatedCessationPlansResponse} from "./dto/response/paginated-cessation-plans.response";
 import {PaginationParamsInput} from "../../shared/models/dto/request/pagination-params.input";
 import {CessationPlanFiltersInput} from "./dto/request/cessation-plan-filters.input";
@@ -14,6 +14,7 @@ import {RolesGuard} from "../../shared/guards/roles.guard";
 import {Roles} from "../../shared/decorators/roles.decorator";
 import {RoleName} from "../../shared/constants/role.constant";
 import {UpdateCessationPlanInput} from "./dto/request/update-cessation-plan.input";
+import { SubscriptionGuard } from 'src/shared/guards/subscription.guard';
 
 @Resolver(() => CessationPlan)
 export class CessationPlanResolver {
@@ -30,7 +31,7 @@ export class CessationPlanResolver {
   }
 
   @Query(() => PaginatedCessationPlansResponse)
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SubscriptionGuard)
   async cessationPlans(
       @Args('params', { nullable: true }) params?: PaginationParamsInput,
       @Args('filters', { nullable: true }) filters?: CessationPlanFiltersInput,

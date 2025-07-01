@@ -5,7 +5,7 @@ import { CreateBadgeInput } from './dto/request/create-badge.input';
 import { UpdateBadgeInput } from './dto/request/update-badge.input'
 import { UseGuards } from '@nestjs/common'
 import { Roles } from 'src/shared/decorators/roles.decorator';
-import { UserType } from '../../shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { User } from '../../shared/decorators/current-user.decorator'
 import { RoleName } from '../../shared/constants/role.constant'
 import { RolesGuard } from '../../shared/guards/roles.guard'

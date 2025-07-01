@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { PrismaService } from 'src/shared/services/prisma.service'
-import { UserType } from 'src/shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { RedisServices } from 'src/shared/services/redis.service'
 import envConfig from 'src/shared/config/config'
 import { AuthResponse, SupabaseClient } from '@supabase/supabase-js'
@@ -45,13 +45,26 @@ export class AuthRepository {
   }
 
   async createUser(user: UserType) {
-    return await this.prismaService.user.create({
-      data: {
-        id: user.id,
-        name: user.name,
-        user_name: user.user_name,
-      },
-    })
+    return await Promise.all([
+      this.prismaService.user.create({
+        data: {
+          id: user.id,
+          name: user.name,
+          user_name: user.user_name,
+          status: Status.Inactive,
+        }
+      }),
+      this.prismaService.memberProfile.create({
+        data: {
+          id: user.id,
+          user_id: user.id,
+          cigarettes_per_day: 0,
+          sessions_per_day: 0,
+          price_per_pack: 0,
+          recorded_at: new Date(),
+        }
+      })
+    ])
   }
 
   async logIn(body: LoginBodyType) {
@@ -59,6 +72,8 @@ export class AuthRepository {
       email: body.email,
       password: body.password,
     })
+
+    console.log(authResponse)
 
     const user = await this.prismaService.user.findUnique({
       where: {

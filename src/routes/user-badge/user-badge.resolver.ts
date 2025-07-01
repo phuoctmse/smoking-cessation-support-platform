@@ -8,7 +8,7 @@ import { PaginatedUserBadgesResponse } from './dto/response/paginated-user-badge
 import { PaginationParamsInput } from 'src/shared/models/dto/request/pagination-params.input';
 import { UserBadgeFiltersInput } from './dto/request/user-badge-filter.input'
 import { User } from '../../shared/decorators/current-user.decorator'
-import { UserType } from '../../shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { RolesGuard } from '../../shared/guards/roles.guard'
 import { Roles } from '../../shared/decorators/roles.decorator'
 

@@ -6,7 +6,7 @@ import { UpdateFeedbackInput } from './dto/request/update-feedback.input'
 import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
 import { User } from '../../shared/decorators/current-user.decorator'
-import { UserType } from 'src/shared/models/share-user.model';
+import { UserType } from '../user/schema/user.schema';
 import { PaginatedFeedbacksResponse } from './dto/response/paginated-feedbacks.response'
 import { PaginationParamsInput } from '../../shared/models/dto/request/pagination-params.input'
 import { FeedbackFiltersInput } from './dto/request/feedback-filters.input'

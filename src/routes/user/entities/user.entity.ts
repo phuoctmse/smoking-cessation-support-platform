@@ -1,9 +1,12 @@
-import { ObjectType, Field, Int } from '@nestjs/graphql'
-import { RoleName, RoleNameType, Status, StatusType } from 'src/shared/constants/role.constant'
-import { UserType } from 'src/shared/models/share-user.model'
+import { ObjectType, Field } from '@nestjs/graphql'
+import { RoleNameType, StatusType } from 'src/shared/constants/role.constant'
+import { UserSchema } from '../schema/user.schema'
+import { createZodDto } from 'nestjs-zod'
+import { MemberProfile } from './member-profile.entity'
+import { CoachProfile } from './coach-profile.entity'
 
 @ObjectType()
-export class User implements UserType {
+export class User extends createZodDto(UserSchema) {
   @Field(() => String)
   id: string
 
@@ -22,21 +25,15 @@ export class User implements UserType {
   @Field(() => String)
   status: StatusType
 
-  @Field(() => Int, { nullable: true })
-  cigarettes_per_day?: number
-
-  @Field(() => Int, { nullable: true })
-  sessions_per_day?: number
-
-  @Field(() => Int, { nullable: true })
-  price_per_pack?: number
-
-  @Field(() => Date, { nullable: true })
-  recorded_at?: Date
-
   @Field(() => Date)
   created_at: Date
 
   @Field(() => Date)
   updated_at: Date
+
+  @Field(() => MemberProfile, { nullable: true })
+  member_profile?: MemberProfile
+
+  @Field(() => CoachProfile, { nullable: true })
+  coach_profile?: CoachProfile
 }

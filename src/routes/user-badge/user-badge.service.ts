@@ -4,7 +4,7 @@ import { BadgeRepository } from '../badge/badge.repository'
 import { PaginationParamsType } from 'src/shared/models/pagination.model'
 import { PaginatedUserBadgesResponse } from './dto/response/paginated-user-badge.response'
 import { UserBadgeFiltersInput } from './dto/request/user-badge-filter.input'
-import { UserType } from 'src/shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { RoleName } from 'src/shared/constants/role.constant'
 import {UserBadge} from "./entities/user-badge.entity";
 

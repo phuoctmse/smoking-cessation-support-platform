@@ -15,7 +15,7 @@ import { RoleName } from '../../shared/constants/role.constant'
 import { CreateCessationPlanType } from './schema/create-cessation-plan.schema'
 import { UpdateCessationPlanType } from './schema/update-cessation-plan.schema'
 import { PlanStageRepository } from '../plan-stage/plan-stage.repository'
-import { UserType } from '../../shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { BadgeAwardService } from '../badge-award/badge-award.service'
 
 @Injectable()

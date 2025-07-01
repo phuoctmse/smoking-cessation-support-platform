@@ -11,31 +11,39 @@ import { RolesGuard } from 'src/shared/guards/roles.guard'
 
 @Resolver(() => User)
 export class UserResolver {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   @Mutation(() => User)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   createUser(@Args('createUserInput') createUserInput: CreateUserInput) {
     return this.userService.create(createUserInput)
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.Member)
-  @Query(() => [User], { name: 'usergetall' })
+  @Roles('ADMIN')
+  @Query(() => [User], { name: 'GetAllUsers' })
   findAll() {
     return this.userService.findAll()
   }
 
   @Query(() => User, { name: 'user' })
-  findOne(@Args('id', { type: () => Int }) id: number) {
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'MEMBER', 'COACH')
+  findOne(@Args('id', { type: () => String }) id: string) {
     return this.userService.findOne(id)
   }
 
   @Mutation(() => User)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'MEMBER', 'COACH')
   updateUser(@Args('updateUserInput') updateUserInput: UpdateUserInput) {
     return this.userService.update(updateUserInput.id, updateUserInput)
   }
 
   @Mutation(() => User)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   removeUser(@Args('id', { type: () => Int }) id: number) {
     return this.userService.remove(id)
   }

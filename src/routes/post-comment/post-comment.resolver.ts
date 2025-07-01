@@ -6,7 +6,7 @@ import { UpdatePostCommentInput } from './dto/request/update-post-comment.input'
 import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
 import { User } from '../../shared/decorators/current-user.decorator'
-import { UserType } from '../../shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { PaginatedPostCommentsResponse } from './dto/response/paginated-post-comment.response'
 import { PaginationParamsInput } from '../../shared/models/dto/request/pagination-params.input'
 

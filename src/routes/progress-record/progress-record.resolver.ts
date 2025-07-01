@@ -6,7 +6,7 @@ import { UpdateProgressRecordInput } from './dto/request/update-progress-record.
 import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import {User} from "../../shared/decorators/current-user.decorator";
-import {UserType} from "../../shared/models/share-user.model";
+import {UserType} from "../user/schema/user.schema";
 import { PaginatedProgressRecordsResponse } from './dto/response/paginated-progress-records.response'
 import { PaginationParamsInput } from 'src/shared/models/dto/request/pagination-params.input'
 import { ProgressRecordFiltersInput } from './dto/request/progress-record-filters.input';
