@@ -31,7 +31,7 @@ export class CessationPlanResolver {
   }
 
   @Query(() => PaginatedCessationPlansResponse)
-  @UseGuards(JwtAuthGuard, SubscriptionGuard)
+  @UseGuards(JwtAuthGuard)
   async cessationPlans(
       @Args('params', { nullable: true }) params?: PaginationParamsInput,
       @Args('filters', { nullable: true }) filters?: CessationPlanFiltersInput,
