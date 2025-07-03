@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -11,7 +10,11 @@ import { CessationPlanTemplateRepository } from '../cessation-plan-template/cess
 import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { CreatePlanStageTemplateType } from './schema/create-plan-stage-template.schema'
 import { UpdatePlanStageTemplateType } from './schema/update-plan-stage-template.schema'
-import { RoleName } from '../../shared/constants/role.constant'
+import { RedisServices } from 'src/shared/services/redis.service'
+import { buildCacheKey, buildOneCacheKey, deleteKeysByPattern, reviveDates } from '../../shared/utils/cache-key.util'
+
+const CACHE_TTL = 60 * 5
+const CACHE_PREFIX = 'plan-stage-template'
 
 @Injectable()
 export class PlanStageTemplateService {
@@ -20,29 +23,51 @@ export class PlanStageTemplateService {
   constructor(
     private readonly planStageTemplateRepository: PlanStageTemplateRepository,
     private readonly cessationPlanTemplateRepository: CessationPlanTemplateRepository,
+    private readonly redisServices: RedisServices,
   ) {}
 
   async findAll(params: PaginationParamsType, templateId: string) {
     await this.validateTemplateExists(templateId);
-    return this.planStageTemplateRepository.findAll(params, templateId);
+    const cacheKey = buildCacheKey(CACHE_PREFIX, 'all', params, templateId);
+    const cached = await this.redisServices.getClient().get(cacheKey);
+    if (typeof cached === 'string') {
+      const parsed = JSON.parse(cached);
+      if (parsed && Array.isArray(parsed.data)) {
+        reviveDates(parsed.data, ['created_at', 'updated_at']);
+      } else {
+        reviveDates(parsed, ['created_at', 'updated_at']);
+      }
+      return parsed;
+    }
+    const result = await this.planStageTemplateRepository.findAll(params, templateId);
+    await this.redisServices.getClient().set(cacheKey, JSON.stringify(result), { EX: CACHE_TTL });
+    return result;
   }
 
   async findOne(id: string) {
+    const cacheKey = buildOneCacheKey(CACHE_PREFIX, id);
+    const cached = await this.redisServices.getClient().get(cacheKey);
+    if (typeof cached === 'string') {
+      const parsed = JSON.parse(cached);
+      reviveDates(parsed, ['created_at', 'updated_at']);
+      return parsed;
+    }
     const stageTemplate = await this.planStageTemplateRepository.findOne(id);
     if (!stageTemplate) {
       throw new NotFoundException('Plan stage template not found');
     }
+    await this.redisServices.getClient().set(cacheKey, JSON.stringify(stageTemplate), { EX: CACHE_TTL });
     return stageTemplate;
   }
 
   async create(data: CreatePlanStageTemplateType, userRole: string) {
-    this.validateManagePermission(userRole);
     await this.validateTemplateExists(data.template_id);
     await this.validateUniqueStageOrder(data.template_id, data.stage_order);
 
     try {
       const stageTemplate = await this.planStageTemplateRepository.create(data);
       this.logger.log(`Plan stage template created: ${stageTemplate.id}`);
+      await deleteKeysByPattern(this.redisServices.getClient(), `${CACHE_PREFIX}:*`);
       return stageTemplate;
     } catch (error) {
       this.logger.error(`Failed to create plan stage template: ${error.message}`);
@@ -56,8 +81,6 @@ export class PlanStageTemplateService {
   }
 
   async update(id: string, data: Omit<UpdatePlanStageTemplateType, 'id'>, userRole: string) {
-    this.validateManagePermission(userRole);
-
     const existingStage = await this.findOne(id);
 
     if (data.template_id) {
@@ -72,6 +95,8 @@ export class PlanStageTemplateService {
     try {
       const stageTemplate = await this.planStageTemplateRepository.update(id, data);
       this.logger.log(`Plan stage template updated: ${stageTemplate.id}`);
+      await this.redisServices.getClient().del(buildOneCacheKey(CACHE_PREFIX, id));
+      await deleteKeysByPattern(this.redisServices.getClient(), `${CACHE_PREFIX}:*`);
       return stageTemplate;
     } catch (error) {
       this.logger.error(`Failed to update plan stage template: ${error.message}`);
@@ -85,12 +110,12 @@ export class PlanStageTemplateService {
   }
 
   async remove(id: string, userRole: string) {
-    this.validateDeletePermission(userRole);
-
     await this.findOne(id);
 
     const stageTemplate = await this.planStageTemplateRepository.delete(id);
     this.logger.log(`Plan stage template deleted: ${id}`);
+    await this.redisServices.getClient().del(buildOneCacheKey(CACHE_PREFIX, id));
+    await deleteKeysByPattern(this.redisServices.getClient(), `${CACHE_PREFIX}:*`);
     return stageTemplate;
   }
 
@@ -99,10 +124,7 @@ export class PlanStageTemplateService {
     stageOrders: { id: string; order: number }[],
     userRole: string,
   ) {
-    this.validateManagePermission(userRole);
-
     await this.validateTemplateExists(templateId);
-
     await this.validateStagesBelongToTemplate(templateId, stageOrders.map(s => s.id));
 
     this.validateOrderSequence(stageOrders);
@@ -113,22 +135,11 @@ export class PlanStageTemplateService {
         stageOrders,
       );
       this.logger.log(`Reordered ${stageOrders.length} stages for template: ${templateId}`);
+      await deleteKeysByPattern(this.redisServices.getClient(), `${CACHE_PREFIX}:*`);
       return reorderedStages;
     } catch (error) {
       this.logger.error(`Failed to reorder stages: ${error.message}`);
       throw new BadRequestException('Failed to reorder stages');
-    }
-  }
-
-  private validateManagePermission(userRole: string): void {
-    if (userRole !== RoleName.Coach) {
-      throw new ForbiddenException('Only coaches can manage plan stage templates');
-    }
-  }
-
-  private validateDeletePermission(userRole: string): void {
-    if (userRole !== RoleName.Coach) {
-      throw new ForbiddenException('Only coaches can delete plan stage templates');
     }
   }
 
