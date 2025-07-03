@@ -3,15 +3,22 @@ import { CessationPlanTemplateRepository } from './cessation-plan-template.repos
 import { CreateCessationPlanTemplateType } from './schema/create-cessation-plan-template.schema'
 import { UpdateCessationPlanTemplateType } from './schema/update-cessation-plan-template.schema'
 import { PaginationParamsType } from '../../shared/models/pagination.model'
-import { RoleName } from '../../shared/constants/role.constant'
 import { UserType } from '../user/schema/user.schema'
 import { CessationPlanTemplateFiltersInput } from './dto/request/cessation-plan-template-filters.input'
+import { RedisServices } from 'src/shared/services/redis.service'
+import { buildCacheKey, buildOneCacheKey, deleteKeysByPattern, reviveDates } from '../../shared/utils/cache-key.util'
+
+const CACHE_TTL = 60 * 5
+const CACHE_PREFIX = 'cessation-plan-template'
 
 @Injectable()
 export class CessationPlanTemplateService {
   private readonly logger = new Logger(CessationPlanTemplateService.name)
 
-  constructor(private readonly cessationPlanTemplateRepository: CessationPlanTemplateRepository) {}
+  constructor(
+    private readonly cessationPlanTemplateRepository: CessationPlanTemplateRepository,
+    private readonly redisServices: RedisServices,
+  ) {}
 
   async create(data: CreateCessationPlanTemplateType, user: UserType) {
     if (!data.name) {
@@ -29,24 +36,42 @@ export class CessationPlanTemplateService {
         }
     )
     this.logger.log(`Cessation plan template created: ${template.id} by coach: ${user.id}`)
-    return template
+    await deleteKeysByPattern(this.redisServices.getClient(), `${CACHE_PREFIX}:all*`);
+    return template;
   }
 
   async findAll(
     params: PaginationParamsType,
     filters?: CessationPlanTemplateFiltersInput,
   ) {
-    return this.cessationPlanTemplateRepository.findAll(params, filters)
+    const cacheKey = buildCacheKey(CACHE_PREFIX, 'all', params, filters);
+    const cached = await this.redisServices.getClient().get(cacheKey);
+    if (typeof cached === 'string') {
+      const parsed = JSON.parse(cached);
+      reviveDates(parsed.data, ['created_at', 'updated_at']);
+      return parsed;
+    }
+    const result = await this.cessationPlanTemplateRepository.findAll(params, filters);
+    await this.redisServices.getClient().set(cacheKey, JSON.stringify(result), { EX: CACHE_TTL });
+    return result;
   }
 
   async findOne(id: string) {
-    const template = await this.cessationPlanTemplateRepository.findOne(id)
+    const cacheKey = buildCacheKey(CACHE_PREFIX, 'one', id);
+    const cached = await this.redisServices.getClient().get(cacheKey);
+    if (typeof cached === 'string') {
+      const parsed = JSON.parse(cached);
+      reviveDates(parsed, ['created_at', 'updated_at']);
+      return parsed;
+    }
+    const template = await this.cessationPlanTemplateRepository.findOne(id);
 
     if (!template) {
-      throw new NotFoundException('Cessation plan template not found')
+      throw new NotFoundException('Cessation plan template not found');
     }
 
-    return template
+    await this.redisServices.getClient().set(cacheKey, JSON.stringify(template), { EX: CACHE_TTL });
+    return template;
   }
 
   async update(id: string, data: Omit<UpdateCessationPlanTemplateType, 'id'>) {
@@ -64,14 +89,12 @@ export class CessationPlanTemplateService {
 
     const template = await this.cessationPlanTemplateRepository.update(id, data)
     this.logger.log(`Cessation plan template updated: ${template.id}`)
+    await this.redisServices.getClient().del(buildOneCacheKey(CACHE_PREFIX, id));
+    await deleteKeysByPattern(this.redisServices.getClient(), `${CACHE_PREFIX}:all*`);
     return template
   }
 
   async remove(id: string, userRole: string) {
-    if (userRole !== RoleName.Coach) {
-      throw new ConflictException('Only coach can delete cessation plan templates')
-    }
-
     const existingTemplate = await this.cessationPlanTemplateRepository.findOne(id)
     if (!existingTemplate) {
       throw new NotFoundException('Cessation plan template not found')
@@ -79,6 +102,8 @@ export class CessationPlanTemplateService {
 
     const template = await this.cessationPlanTemplateRepository.delete(id)
     this.logger.log(`Cessation plan template deleted: ${template.id}`)
+    await this.redisServices.getClient().del(buildOneCacheKey(CACHE_PREFIX, id));
+    await deleteKeysByPattern(this.redisServices.getClient(), `${CACHE_PREFIX}:all*`);
     return template
   }
 }
