@@ -21,13 +21,16 @@ model User {
   created_plan_templates CessationPlanTemplate[]
   cessation_plans        CessationPlan[]
   feedbacks              Feedback[]
-  Subscription           Subscription[]
+  user_subscriptions     UserSubscription[]
   user_badges            UserBadge[]
   post_likes             PostLike[]
   post_comments          PostComment[]
   Payment                Payment[]
   MemberProfile          MemberProfile[]
   CoachProfile           CoachProfile[]
+  ChatRoomCreator        ChatRoom[]              @relation("ChatRoomCreator")
+  ChatRoomReceiver       ChatRoom[]              @relation("ChatRoomReceiver")
+  ChatMessage            ChatMessage[]
 
   @@map("user")
 }
@@ -296,19 +299,19 @@ enum DifficultyLevel {
 }
 
 model MembershipPackage {
-  id            String         @id @default(uuid())
+  id            String             @id @default(uuid())
   name          String
   description   String[]
   price         Int
   duration_days Int
-  created_at    DateTime       @default(now())
-  updated_at    DateTime       @updatedAt
-  Subscription  Subscription[]
+  created_at    DateTime           @default(now())
+  updated_at    DateTime           @updatedAt
+  subscriptions UserSubscription[]
 
   @@map("membership_package")
 }
 
-model Subscription {
+model UserSubscription {
   id         String             @id @default(uuid())
   user_id    String
   user       User               @relation(fields: [user_id], references: [id])
@@ -350,12 +353,41 @@ model Payment {
   subscription_id        String
   content                String?
   price                  Int?
-  subscription           Subscription        @relation(fields: [subscription_id], references: [id])
+  subscription           UserSubscription    @relation(fields: [subscription_id], references: [id])
   status                 PaymentStatus       @default(PENDING)
   payment_transaction    PaymentTransaction? @relation(fields: [payment_transaction_id], references: [id])
   payment_transaction_id String?
 
   @@map("payment")
+}
+
+model ChatRoom {
+  id          String        @id @default(uuid())
+  creator_id  String
+  creator     User          @relation("ChatRoomCreator", fields: [creator_id], references: [id])
+  receiver_id String
+  receiver    User          @relation("ChatRoomReceiver", fields: [receiver_id], references: [id])
+  is_deleted  Boolean       @default(false)
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
+  ChatMessage ChatMessage[]
+
+  @@map("chat_room")
+}
+
+model ChatMessage {
+  id           String   @id @default(uuid())
+  session_id   String
+  chat_room_id String
+  chat_room    ChatRoom @relation(fields: [chat_room_id], references: [id])
+  sender_id    String
+  sender       User     @relation(fields: [sender_id], references: [id])
+  content      String
+  is_read      Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@map("chat_message")
 }
 
 enum PaymentStatus {

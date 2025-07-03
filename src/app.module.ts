@@ -35,6 +35,7 @@ import { SharedPostModule } from './routes/shared-post/shared-post.module';
 import { PostLikeModule } from './routes/post-like/post-like.module';
 import { PostCommentModule } from './routes/post-comment/post-comment.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ChatModule } from './routes/chat/chat.module';
 
 @Module({
   imports: [
@@ -50,6 +51,10 @@ import { ScheduleModule } from '@nestjs/schedule';
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       context: ({ req }) => ({ req }),
       cache: 'bounded',
+      subscriptions: {
+        "graphql-ws": true,
+        "subscriptions-transport-ws": true,
+      }
     }),
     // ThrottlerModule.forRoot({
     //   throttlers: [
@@ -84,6 +89,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     SharedPostModule,
     PostLikeModule,
     PostCommentModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [

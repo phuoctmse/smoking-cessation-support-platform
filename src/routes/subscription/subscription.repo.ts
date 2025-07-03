@@ -16,7 +16,7 @@ export class SubscriptionRepo {
         }
         const start_date = new Date()
         const end_date = new Date(start_date.getTime() + membershipPackage.duration_days * 24 * 60 * 60 * 1000)
-        const subscription = await this.prisma.subscription.create({
+        const subscription = await this.prisma.userSubscription.create({
             data: {
                 user_id: input.user_id,
                 package_id: input.package_id,
@@ -28,14 +28,14 @@ export class SubscriptionRepo {
     }
 
     async getUserSubscription(user_id: string) {
-        const subscription = await this.prisma.subscription.findFirst({
+        const subscription = await this.prisma.userSubscription.findFirst({
             where: { user_id }
         })
         return subscription
     }
 
     async update(id: string, input: UpdateSubscriptionSchemaType) {
-        const subscription = await this.prisma.subscription.update({
+        const subscription = await this.prisma.userSubscription.update({
             where: { id },
             data: {
                 status: input.status,
