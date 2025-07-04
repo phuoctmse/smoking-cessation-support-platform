@@ -9,13 +9,24 @@ import {
 import { PlanStageStatus, Prisma } from '@prisma/client'
 import { PlanStageRepository, PlanStageFilters } from './plan-stage.repository';
 import { CessationPlanRepository } from '../cessation-plan/cessation-plan.repository';
-import { PaginationParamsType } from '../../shared/models/pagination.model';
 import { RoleName } from '../../shared/constants/role.constant';
 import { CreatePlanStageType } from './schema/create-plan-stage.schema';
 import { UpdatePlanStageType } from './schema/update-plan-stage.schema';
 import { PlanStage } from './entities/plan-stage.entity'
 import { CessationPlan } from '../cessation-plan/entities/cessation-plan.entity'
 import { BadgeAwardService } from '../badge-award/badge-award.service';
+import { RedisServices } from 'src/shared/services/redis.service';
+import {
+  buildCacheKey,
+  buildOneCacheKey,
+  buildTrackerKey,
+  invalidateCacheForId,
+  reviveDates,
+  trackCacheKey,
+} from '../../shared/utils/cache-key.util'
+
+const CACHE_TTL = 60 * 5;
+const CACHE_PREFIX = 'plan-stage';
 
 @Injectable()
 export class PlanStageService {
@@ -25,6 +36,7 @@ export class PlanStageService {
     private readonly planStageRepository: PlanStageRepository,
     private readonly cessationPlanRepository: CessationPlanRepository,
     private readonly badgeAwardService: BadgeAwardService,
+    private readonly redisServices: RedisServices,
   ) {}
 
   async create(data: CreatePlanStageType, userRole: string, userId: string) {
@@ -35,6 +47,9 @@ export class PlanStageService {
     try {
       const stage = await this.planStageRepository.create(data);
       this.logger.log(`Plan stage created: ${stage.id} for plan: ${stage.plan_id}`);
+
+      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, data.plan_id);
+
       return this.enrichWithComputedFields(stage);
     } catch (error) {
       this.handleDatabaseError(error);
@@ -54,42 +69,50 @@ export class PlanStageService {
     const result = await this.planStageRepository.createStagesFromTemplate(planId, plan.template_id);
     this.logger.log(`Created ${result.count} stages for plan: ${planId}`);
 
+    await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, planId);
+
     const createdStages = await this.planStageRepository.findByPlanId(planId);
     return createdStages.map(stage => this.enrichWithComputedFields(stage));
   }
 
-  async findAll(
-    params: PaginationParamsType,
-    filters?: PlanStageFilters,
-    userRole?: string,
-    userId?: string,
-  ) {
-    const effectiveFilters = this.applyRoleBasedFilters(filters, userRole, userId);
-    const result = await this.planStageRepository.findAll(params, effectiveFilters);
-
-    return {
-      ...result,
-      data: result.data.map(stage => this.enrichWithComputedFields(stage)),
-    };
-  }
-
   async findOne(id: string, userRole: string, userId: string) {
-    const stage = await this.planStageRepository.findOne(id);
-
-    if (!stage) {
-      throw new NotFoundException('Plan stage not found');
+    const cacheKey = buildOneCacheKey(CACHE_PREFIX, id);
+    const cached = await this.redisServices.getClient().get(cacheKey);
+    if (typeof cached === 'string') {
+      const parsed = JSON.parse(cached);
+      reviveDates(parsed, ['start_date', 'end_date', 'created_at', 'updated_at']);
+      return parsed;
     }
 
+    const stage = await this.planStageRepository.findOne(id);
+    if (!stage) throw new NotFoundException('Plan stage not found');
     await this.validateAccessAndGetPlan(stage.plan_id, userId, userRole);
 
-    return this.enrichWithComputedFields(stage);
+    const enriched = this.enrichWithComputedFields(stage);
+    const trackerKey = buildTrackerKey(CACHE_PREFIX, stage.plan_id);
+    await this.redisServices.getClient().set(cacheKey, JSON.stringify(enriched), { EX: CACHE_TTL });
+    await trackCacheKey(this.redisServices.getClient(), trackerKey, cacheKey);
+
+    return enriched;
   }
 
   async findByPlanId(planId: string, userRole: string, userId: string) {
     await this.validateAccessAndGetPlan(planId, userId, userRole);
-
+    const cacheKey = buildCacheKey(CACHE_PREFIX, 'byPlan', planId);
+    const cached = await this.redisServices.getClient().get(cacheKey);
+    if (typeof cached === 'string') {
+      const parsed = JSON.parse(cached);
+      reviveDates(parsed, ['start_date', 'end_date', 'created_at', 'updated_at']);
+      return parsed;
+    }
     const stages = await this.planStageRepository.findByPlanId(planId);
-    return stages.map(stage => this.enrichWithComputedFields(stage));
+    const enriched = stages.map(stage => this.enrichWithComputedFields(stage));
+
+    const trackerKey = buildTrackerKey(CACHE_PREFIX, planId);
+    await this.redisServices.getClient().set(cacheKey, JSON.stringify(enriched), { EX: CACHE_TTL });
+    await trackCacheKey(this.redisServices.getClient(), trackerKey, cacheKey);
+
+    return enriched;
   }
 
   async findActiveByPlanId(planId: string, userRole: string, userId: string) {
@@ -121,13 +144,26 @@ export class PlanStageService {
     }
 
     const plan = await this.validateAccessAndGetPlan(existingStage.plan_id, userId, userRole);
-    this.validatePlanIsCustomizable(plan);
+
+    if (plan.is_custom === false) {
+      const updateKeys = Object.keys(data);
+      const allowedKeysForNonCustom = ['status', 'completion_notes'];
+      const hasStructuralChanges = updateKeys.some(key => !allowedKeysForNonCustom.includes(key));
+
+      if (hasStructuralChanges) {
+        throw new ForbiddenException(
+          'This plan is not customizable. Only stage status and completion notes can be updated.',
+        );
+      }
+    }
 
     if (data.status && data.status !== existingStage.status) {
       this.validateStatusTransition(existingStage.status, data.status);
     }
 
-    this.validateUpdateRules(data, existingStage);
+    if (plan.is_custom === true) {
+      this.validateUpdateRules(data, existingStage);
+    }
 
     try {
       const updatedStage = await this.planStageRepository.update(id, data);
@@ -138,6 +174,8 @@ export class PlanStageService {
         const completedStagesInPlan = planStages.filter(s => s.status === PlanStageStatus.COMPLETED).length;
         await this.badgeAwardService.processStageCompletion(userId, updatedStage.plan_id, completedStagesInPlan);
       }
+
+      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, existingStage.plan_id);
 
       return this.enrichWithComputedFields(updatedStage);
     } catch (error) {
@@ -159,6 +197,7 @@ export class PlanStageService {
     try {
       const reorderedStages = await this.planStageRepository.reorderStages(planId, stageOrders);
       this.logger.log(`Reordered ${stageOrders.length} stages for plan: ${planId}`);
+      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, planId);
       return reorderedStages.map(stage => this.enrichWithComputedFields(stage));
     } catch (error) {
       this.logger.error(`Failed to reorder stages: ${error.message}`);
@@ -178,6 +217,7 @@ export class PlanStageService {
     try {
       const removedStage = await this.planStageRepository.remove(id);
       this.logger.log(`Plan stage removed (soft delete): ${removedStage.id}`);
+      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, existingStage.plan_id);
       return this.enrichWithComputedFields(removedStage);
     } catch (error) {
       this.handleDatabaseError(error);
