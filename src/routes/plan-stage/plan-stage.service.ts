@@ -145,7 +145,7 @@ export class PlanStageService {
 
     const plan = await this.validateAccessAndGetPlan(existingStage.plan_id, userId, userRole);
 
-    if (plan.is_custom === false) {
+    if (!plan.is_custom) {
       const updateKeys = Object.keys(data);
       const allowedKeysForNonCustom = ['status', 'completion_notes'];
       const hasStructuralChanges = updateKeys.some(key => !allowedKeysForNonCustom.includes(key));
