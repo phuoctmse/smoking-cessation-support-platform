@@ -15,13 +15,25 @@ export function buildOneCacheKey(prefix: string, id: string): string {
   return `${prefix}:one:${id}`;
 }
 
-export async function deleteKeysByPattern(client: RedisClientType, pattern: string) {
-  const keys: string[] = [];
-  for await (const key of client.scanIterator({ MATCH: pattern })) {
-    keys.push(String(key));
-  }
-  if (keys.length) {
-    await client.del(keys);
+export function buildTrackerKey(prefix: string, entityId: string): string {
+  return `${prefix}:tracker:${entityId}`;
+}
+
+export async function trackCacheKey(client: RedisClientType, trackerKey: string, keyToTrack: string) {
+  await client.sAdd(trackerKey, keyToTrack);
+}
+
+export async function invalidateCacheForId(client: RedisClientType, prefix: string, entityId: string) {
+  const trackerKey = buildTrackerKey(prefix, entityId);
+  const listCacheKey = buildCacheKey(prefix, 'byPlan', entityId);
+
+  const keysToDelete = await client.sMembers(trackerKey);
+
+  // Add the list key and the tracker key itself to the deletion list
+  keysToDelete.push(listCacheKey, trackerKey);
+
+  if (keysToDelete.length > 0) {
+    await client.del(keysToDelete);
   }
 }
 
