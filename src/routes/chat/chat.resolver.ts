@@ -1,5 +1,5 @@
 import { UseGuards } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
 import { PubSub } from 'graphql-subscriptions';
 import { ChatMessage } from './entities/chat-message.entity';
 import { ChatRoom } from './entities/chat-room.entity';
@@ -19,40 +19,40 @@ export class ChatResolver {
   ) {}
 
   @Query(() => [ChatRoom])
-  async chatRooms(@User() userId: string) {
-    return this.chatRepository.getChatRooms(userId);
+  async chatRooms(@User() user: any) {
+    return this.chatRepository.getChatRooms(user.id);
   }
 
   @Query(() => ChatRoom, { nullable: true })
   async chatRoom(
     @Args('id') id: string,
-    @User() userId: string,
+    @User() user: any,
   ) {
-    return this.chatRepository.getChatRoom(id, userId);
+    return this.chatRepository.getChatRoom(id, user.id);
   }
 
   @Query(() => [ChatMessage])
   async chatMessages(
     @Args('roomId') roomId: string,
-    @User() userId: string,
+    @User() user: any,
   ) {
-    return this.chatRepository.getChatMessages(roomId, userId);
+    return this.chatRepository.getChatMessages(roomId, user.id);
   }
 
   @Mutation(() => ChatRoom)
   async createChatRoom(
     @Args('input') input: CreateChatRoomInput,
-    @User() userId: string,
+    @User() user: any,
   ) {
-    return this.chatRepository.createChatRoom(userId, input);
+    return this.chatRepository.createChatRoom(user.id, input);
   }
 
   @Mutation(() => ChatMessage)
   async sendMessage(
     @Args('input') input: CreateChatMessageInput,
-    @User() userId: string,
+    @User() user: any,
   ) {
-    const message = await this.chatRepository.createMessage(userId, input);
+    const message = await this.chatRepository.createMessage(user.id, input);
     
     // Publish to room-specific channel
     await this.pubSub.publish(`chatRoom:${input.chat_room_id}`, {
@@ -70,22 +70,37 @@ export class ChatResolver {
   @Mutation(() => Boolean)
   async markMessagesAsRead(
     @Args('roomId') roomId: string,
-    @User() userId: string,
+    @User() user: any,
   ) {
-    await this.chatRepository.markMessagesAsRead(roomId, userId);
+    await this.chatRepository.markMessagesAsRead(roomId, user.id);
     return true;
   }
 
   @Subscription(() => ChatMessage, {
-    filter: (payload, variables) =>
-      payload.chatRoomMessages.chat_room_id === variables.roomId,
+    filter: (payload, variables, context) => {
+      const user = context.user;
+      if (!user) return false;
+      return payload.chatRoomMessages.chat_room_id === variables.roomId;
+    },
   })
-  chatRoomMessages(@Args('roomId') roomId: string) {
+  chatRoomMessages(
+    @Args('roomId') roomId: string,
+    @Context() context: any,
+  ) {
+    const user = context.user;
+    if (!user) throw new Error('Unauthorized');
     return this.pubSub.asyncIterableIterator(`chatRoom:${roomId}`);
   }
 
-  @Subscription(() => ChatMessage)
-  messageCreated() {
+  @Subscription(() => ChatMessage, {
+    filter: (payload, variables, context) => {
+      const user = context.user;
+      return !!user;
+    },
+  })
+  messageCreated(@Context() context: any) {
+    const user = context.user;
+    if (!user) throw new Error('Unauthorized');
     return this.pubSub.asyncIterableIterator('messageCreated');
   }
 } 

@@ -36,6 +36,9 @@ import { PostLikeModule } from './routes/post-like/post-like.module';
 import { PostCommentModule } from './routes/post-comment/post-comment.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ChatModule } from './routes/chat/chat.module';
+import { createWebSocketContext } from './shared/config/websocket.config';
+import { PrismaService } from './shared/services/prisma.service';
+import { SupabaseModule } from './shared/modules/supabase.module';
 
 @Module({
   imports: [
@@ -44,17 +47,33 @@ import { ChatModule } from './routes/chat/chat.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    GraphQLModule.forRoot<ApolloDriverConfig>({
+    GraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
-      playground: false,
-      plugins: [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })],
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
-      context: ({ req }) => ({ req }),
-      cache: 'bounded',
-      subscriptions: {
-        "graphql-ws": true,
-        "subscriptions-transport-ws": true,
-      }
+      imports: [SupabaseModule],
+      inject: ['SUPABASE', PrismaService],
+      useFactory: (supabase, prisma) => {
+        const wsContext = createWebSocketContext(supabase, prisma);
+        return {
+          playground: false,
+          plugins: [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })],
+          autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+          context: ({ req }) => ({ req }),
+          cache: 'bounded',
+          subscriptions: {
+            'graphql-ws': {
+              onConnect: async (context: any) => {
+                const { connectionParams } = context;
+                const { user } = await wsContext.subscriptionContextBuilder(context);
+                return { user };
+              },
+              onDisconnect: () => {
+                console.log('Client disconnected');
+              },
+            },
+            'subscriptions-transport-ws': false,
+          },
+        };
+      },
     }),
     // ThrottlerModule.forRoot({
     //   throttlers: [

@@ -4,7 +4,7 @@ import { ChatMessage } from './chat-message.entity';
 
 @ObjectType()
 export class ChatRoom {
-  @Field(() => ID)
+  @Field(() => String)
   id: string;
 
   @Field(() => User)
