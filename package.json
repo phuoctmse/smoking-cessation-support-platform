@@ -52,6 +52,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^16.5.0",
     "graphql": "^16.11.0",
+    "graphql-subscriptions": "^3.0.0",
     "graphql-tools": "^9.0.18",
     "graphql-upload": "^17.0.0",
     "multer": "^2.0.0",

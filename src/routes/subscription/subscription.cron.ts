@@ -20,7 +20,7 @@ export class SubscriptionCronService {
             this.logger.log(`Starting subscription check at ${new Date().toISOString()}`);
 
             // Update expired subscriptions
-            const expiredSubscriptions = await this.prismaService.subscription.updateMany({
+            const expiredSubscriptions = await this.prismaService.userSubscription.updateMany({
                 where: {
                     status: SubscriptionStatus.Active,
                     end_date: {
@@ -35,7 +35,7 @@ export class SubscriptionCronService {
             this.logger.log(`Updated ${expiredSubscriptions.count} expired subscriptions`);
 
             // Calculate end dates for subscriptions without end_date
-            const subscriptions = await this.prismaService.subscription.findMany({
+            const subscriptions = await this.prismaService.userSubscription.findMany({
                 where: {
                     status: SubscriptionStatus.Active,
                     end_date: null
@@ -49,7 +49,7 @@ export class SubscriptionCronService {
                 const endDate = new Date(subscription.start_date);
                 endDate.setDate(endDate.getDate() + subscription.package.duration_days);
 
-                await this.prismaService.subscription.update({
+                await this.prismaService.userSubscription.update({
                     where: { id: subscription.id },
                     data: { end_date: endDate }
                 });
@@ -68,7 +68,7 @@ export class SubscriptionCronService {
 
         try {
             // Get all active subscriptions without end_date
-            const subscriptions = await this.prismaService.subscription.findMany({
+            const subscriptions = await this.prismaService.userSubscription.findMany({
                 where: {
                     status: SubscriptionStatus.Active,
                     end_date: null
@@ -83,7 +83,7 @@ export class SubscriptionCronService {
                 const endDate = new Date(subscription.start_date);
                 endDate.setDate(endDate.getDate() + subscription.package.duration_days);
 
-                await this.prismaService.subscription.update({
+                await this.prismaService.userSubscription.update({
                     where: {
                         id: subscription.id
                     },

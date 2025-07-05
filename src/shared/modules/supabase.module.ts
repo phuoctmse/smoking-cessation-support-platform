@@ -4,6 +4,6 @@ import { SupabaseStorageService } from '../services/supabase-storage.service';
 
 @Module({
   providers: [SupabaseConfigProvider, SupabaseStorageService],
-  exports: [SupabaseConfigProvider, SupabaseStorageService],
+  exports: [SupabaseConfigProvider, SupabaseStorageService, 'SUPABASE'],
 })
 export class SupabaseModule {}

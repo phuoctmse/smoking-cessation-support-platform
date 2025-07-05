@@ -89,7 +89,7 @@ export class TransactionRepo {
                 }
             })
 
-            await tx.subscription.update({
+            await tx.userSubscription.update({
                 where: {
                     id: payment.subscription_id
                 },
