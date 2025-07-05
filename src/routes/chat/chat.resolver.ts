@@ -16,23 +16,15 @@ export class ChatResolver {
   constructor(
     private readonly chatRepository: ChatRepository,
     @Inject('PUB_SUB') private readonly pubSub: PubSub,
-  ) {}
+  ) { }
 
   @Query(() => [ChatRoom])
-  async chatRooms(@User() user: any) {
+  async getAllChatRoomsByUser(@User() user: any) {
     return this.chatRepository.getChatRooms(user.id);
   }
 
-  @Query(() => ChatRoom, { nullable: true })
-  async chatRoom(
-    @Args('id') id: string,
-    @User() user: any,
-  ) {
-    return this.chatRepository.getChatRoom(id, user.id);
-  }
-
   @Query(() => [ChatMessage])
-  async chatMessages(
+  async getChatMessagesByRoomId(
     @Args('roomId') roomId: string,
     @User() user: any,
   ) {
@@ -53,7 +45,7 @@ export class ChatResolver {
     @User() user: any,
   ) {
     const message = await this.chatRepository.createMessage(user.id, input);
-    
+
     // Publish to room-specific channel
     await this.pubSub.publish(`chatRoom:${input.chat_room_id}`, {
       chatRoomMessages: message,
@@ -67,6 +59,10 @@ export class ChatResolver {
     return message;
   }
 
+  //Use when:
+  // Khi người dùng mở một phòng chat
+  // Khi người dùng đang active trong phòng chat và nhận tin nhắn mới
+  // Khi người dùng scroll và đọc các tin nhắn cũ
   @Mutation(() => Boolean)
   async markMessagesAsRead(
     @Args('roomId') roomId: string,
@@ -92,15 +88,16 @@ export class ChatResolver {
     return this.pubSub.asyncIterableIterator(`chatRoom:${roomId}`);
   }
 
-  @Subscription(() => ChatMessage, {
-    filter: (payload, variables, context) => {
-      const user = context.user;
-      return !!user;
-    },
-  })
-  messageCreated(@Context() context: any) {
-    const user = context.user;
-    if (!user) throw new Error('Unauthorized');
-    return this.pubSub.asyncIterableIterator('messageCreated');
-  }
+  // Plan for feature admin to see all messages created
+  // @Subscription(() => ChatMessage, {
+  //   filter: (payload, variables, context) => {
+  //     const user = context.user;
+  //     return !!user;
+  //   },
+  // })
+  // messageCreated(@Context() context: any) {
+  //   const user = context.user;
+  //   if (!user) throw new Error('Unauthorized');
+  //   return this.pubSub.asyncIterableIterator('messageCreated');
+  // }
 } 
