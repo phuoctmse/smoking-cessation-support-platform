@@ -64,6 +64,7 @@ import { SupabaseModule } from './shared/modules/supabase.module';
               onConnect: async (context: any) => {
                 const { connectionParams } = context;
                 const { user } = await wsContext.subscriptionContextBuilder(context);
+                console.log('Client connected');
                 return { user };
               },
               onDisconnect: () => {
