@@ -8,6 +8,7 @@ import { PaidSubscriptionGuard } from "src/shared/guards/paid-subscription.guard
 import { CurrentUser } from "src/shared/decorators/current-user.decorator";
 import { UserType } from "../user/schema/user.schema";
 import { JwtAuthGuard } from "src/shared/guards/jwt-auth.guard";
+import { Roles } from "src/shared/decorators/roles.decorator";
 
 @Resolver()
 @UseGuards(JwtAuthGuard)
@@ -32,6 +33,7 @@ export class PaymentResolver {
     }
 
     @Mutation(() => PaymentEntity)
+    @Roles("ADMIN")
     async updatePayment(@Args('input') input: UpdatePaymentInput) {
         return this.paymentService.updatePayment(input);
     }
