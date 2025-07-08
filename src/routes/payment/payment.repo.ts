@@ -57,7 +57,7 @@ export class PaymentRepo {
                 user_id,
                 subscription_id: subscription.id,
                 status: PaymentStatus.PENDING,
-                content: envConfig.PREFIX_PAYMENT_CODE + paymentId,
+                content: envConfig.PREFIX_PAYMENT_CODE + "_" +paymentId,
                 price: membershipPackage.price
             },
         });
