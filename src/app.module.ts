@@ -39,6 +39,9 @@ import { ChatModule } from './routes/chat/chat.module';
 import { createWebSocketContext } from './shared/config/websocket.config';
 import { PrismaService } from './shared/services/prisma.service';
 import { SupabaseModule } from './shared/modules/supabase.module';
+import { SearchModule } from './shared/modules/elasticsearch.module';
+import { CustomLogger } from './shared/services/logger.service';
+import { DashboardModule } from './routes/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -110,6 +113,8 @@ import { SupabaseModule } from './shared/modules/supabase.module';
     PostLikeModule,
     PostCommentModule,
     ChatModule,
+    SearchModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [
@@ -126,6 +131,10 @@ import { SupabaseModule } from './shared/modules/supabase.module';
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
+    },
+    {
+      provide: 'Logger',
+      useClass: CustomLogger,
     },
     // {
     //   provide: APP_GUARD,
