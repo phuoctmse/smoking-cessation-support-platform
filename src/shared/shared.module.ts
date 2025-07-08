@@ -21,7 +21,7 @@ const sharedService = [
 @Global()
 @Module({
   providers: [...sharedService],
-  exports: [...sharedService],
+  exports: [...sharedService, SupabaseModule],
   imports: [JwtModule, GuardModule, SupabaseModule],
 })
 export class SharedModule {}

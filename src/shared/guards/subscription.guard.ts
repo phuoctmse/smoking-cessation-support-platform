@@ -16,7 +16,7 @@ export class SubscriptionGuard implements CanActivate {
 
         try {
             const user_id = request.user.id
-            const subscription = await this.prisma.subscription.findFirst({
+            const subscription = await this.prisma.userSubscription.findFirst({
                 where: {
                     user_id: user_id,
                     status: SubscriptionStatus.Active

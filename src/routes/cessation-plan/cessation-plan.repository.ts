@@ -23,7 +23,7 @@ export class CessationPlanRepository {
     try {
       if (data.is_custom) {
         return this.prisma.$transaction(async (tx) => {
-          const subscription = await tx.subscription.findFirst({
+          const subscription = await tx.userSubscription.findFirst({
             where: {
               user_id: data.user_id,
               status: SubscriptionStatus.Active,
