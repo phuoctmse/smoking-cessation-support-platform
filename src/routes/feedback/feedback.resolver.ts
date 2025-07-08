@@ -5,7 +5,7 @@ import { CreateFeedbackInput } from './dto/request/create-feedback.input';
 import { UpdateFeedbackInput } from './dto/request/update-feedback.input'
 import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
-import { User } from '../../shared/decorators/current-user.decorator'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { UserType } from '../user/schema/user.schema';
 import { PaginatedFeedbacksResponse } from './dto/response/paginated-feedbacks.response'
 import { PaginationParamsInput } from '../../shared/models/dto/request/pagination-params.input'
@@ -19,7 +19,7 @@ export class FeedbackResolver {
   @Mutation(() => Feedback)
   async createFeedback(
     @Args('input') input: CreateFeedbackInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<Feedback> {
     return this.feedbackService.create(input, user);
   }
@@ -38,7 +38,7 @@ export class FeedbackResolver {
     }) params: PaginationParamsInput,
     @Args('filters', { nullable: true, type: () => FeedbackFiltersInput })
     filters: FeedbackFiltersInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ) {
     return this.feedbackService.findAll(params, filters, user);
   }
@@ -47,7 +47,7 @@ export class FeedbackResolver {
   async updateFeedback(
     @Args('id', { type: () => ID }) id: string,
     @Args('input') input: UpdateFeedbackInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<Feedback> {
     return this.feedbackService.update(id, input, user);
   }
@@ -55,7 +55,7 @@ export class FeedbackResolver {
   @Mutation(() => Feedback)
   async removeFeedback(
     @Args('id', { type: () => ID }) id: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<Feedback> {
     return this.feedbackService.remove(id, user);
   }

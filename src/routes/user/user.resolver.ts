@@ -11,6 +11,8 @@ import { RolesGuard } from 'src/shared/guards/roles.guard'
 import { UpdateUserProfileInput } from './dto/update-user-profile.input'
 import { SignupBodySchema, SignupBodyType } from '../auth/schema/signup.schema'
 import { AuthResponse } from '../auth/dto/response/auth.response'
+import { CurrentUser } from 'src/shared/decorators/current-user.decorator'
+import { UserType } from './schema/user.schema'
 
 @Resolver(() => User)
 export class UserResolver {
@@ -20,15 +22,16 @@ export class UserResolver {
   @Mutation(() => User)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MEMBER', 'COACH')
-  async updateUserProfile(@Args('updateUserInput') updateUserInput: UpdateUserProfileInput) {
-    return await this.userService.updateProfile(updateUserInput.id, updateUserInput)
+  async updateUserProfile(@Args('updateUserInput') updateUserInput: UpdateUserProfileInput,
+    @CurrentUser() user: UserType) {
+    return await this.userService.updateProfile(user.id, updateUserInput)
   }
 
   @Query(() => User, { name: 'findOneUser' })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'MEMBER', 'COACH')
-  async findOneUser(@Args('id', { type: () => String }) id: string) {
-    return await this.userService.findOne(id)
+  @Roles('MEMBER', 'COACH')
+  async findOneUser(@CurrentUser() user: UserType) {
+    return await this.userService.findOne(user.id)
   }
 
   //Admin

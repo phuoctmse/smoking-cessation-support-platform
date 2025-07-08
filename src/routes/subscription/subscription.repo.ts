@@ -28,7 +28,7 @@ export class SubscriptionRepo {
     }
 
     async getUserSubscription(user_id: string) {
-        const subscription = await this.prisma.userSubscription.findFirst({
+        const subscription = await this.prisma.userSubscription.findMany({
             where: { user_id }
         })
         return subscription

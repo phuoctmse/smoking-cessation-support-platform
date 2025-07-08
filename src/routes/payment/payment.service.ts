@@ -13,17 +13,15 @@ export class PaymentService {
     ) {
     }
 
-    async createPayment(input: CreatePaymentInput): Promise<PaymentType> {
+    async createPayment(input: CreatePaymentInput, user_id: string): Promise<PaymentType> {
         // Create initial payment record
-        const payment = await this.paymentRepo.createPayment({
-            ...input,
-        });
+        const payment = await this.paymentRepo.createPayment(input, user_id);
 
         return payment;
     }
 
-    async getPayments() {
-        return this.paymentRepo.getPayments();
+    async getPayments(user_id: string) {
+        return this.paymentRepo.getPayments(user_id);
     }
 
     async getPaymentById(id: string) {

@@ -8,7 +8,8 @@ import { CreateChatMessageInput } from './dto/request/create-chat-message.input'
 import { ChatRepository } from './chat.repository';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { Inject } from '@nestjs/common';
-import { User } from 'src/shared/decorators/current-user.decorator';
+import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
+import { UserType } from '../user/schema/user.schema';
 
 @Resolver(() => ChatRoom)
 @UseGuards(JwtAuthGuard)
@@ -19,14 +20,14 @@ export class ChatResolver {
   ) { }
 
   @Query(() => [ChatRoom])
-  async getAllChatRoomsByUser(@User() user: any) {
+  async getAllChatRoomsByUser(@CurrentUser() user: any) {
     return this.chatRepository.getChatRooms(user.id);
   }
 
   @Query(() => [ChatMessage])
   async getChatMessagesByRoomId(
     @Args('roomId') roomId: string,
-    @User() user: any,
+    @CurrentUser() user: any,
   ) {
     return this.chatRepository.getChatMessages(roomId, user.id);
   }
@@ -34,7 +35,7 @@ export class ChatResolver {
   @Mutation(() => ChatRoom)
   async createChatRoom(
     @Args('input') input: CreateChatRoomInput,
-    @User() user: any,
+    @CurrentUser() user: any,
   ) {
     return this.chatRepository.createChatRoom(user.id, input);
   }
@@ -42,7 +43,7 @@ export class ChatResolver {
   @Mutation(() => ChatMessage)
   async sendMessage(
     @Args('input') input: CreateChatMessageInput,
-    @User() user: any,
+    @CurrentUser() user: any,
   ) {
     const message = await this.chatRepository.createMessage(user.id, input);
 
@@ -66,7 +67,7 @@ export class ChatResolver {
   @Mutation(() => Boolean)
   async markMessagesAsRead(
     @Args('roomId') roomId: string,
-    @User() user: any,
+    @CurrentUser() user: UserType,
   ) {
     await this.chatRepository.markMessagesAsRead(roomId, user.id);
     return true;

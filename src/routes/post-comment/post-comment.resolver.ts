@@ -5,7 +5,7 @@ import { CreatePostCommentInput } from './dto/request/create-post-comment.input'
 import { UpdatePostCommentInput } from './dto/request/update-post-comment.input';
 import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
-import { User } from '../../shared/decorators/current-user.decorator'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { UserType } from '../user/schema/user.schema'
 import { PaginatedPostCommentsResponse } from './dto/response/paginated-post-comment.response'
 import { PaginationParamsInput } from '../../shared/models/dto/request/pagination-params.input'
@@ -20,7 +20,7 @@ export class PostCommentResolver {
   @Mutation(() => PostComment, { description: 'Create a new comment on a shared post.' })
   async createPostComment(
     @Args('input') input: CreatePostCommentInput,
-    @User() currentUser: UserType,
+    @CurrentUser() currentUser: UserType,
   ): Promise<PostComment> {
     return this.postCommentService.createComment(input, currentUser);
   }
@@ -55,7 +55,7 @@ export class PostCommentResolver {
   async updatePostComment(
     @Args('commentId', { type: () => ID }) commentId: string,
     @Args('input') input: UpdatePostCommentInput,
-    @User() currentUser: UserType,
+    @CurrentUser() currentUser: UserType,
   ): Promise<PostComment> {
     return this.postCommentService.updateComment(commentId, input, currentUser);
   }
@@ -63,7 +63,7 @@ export class PostCommentResolver {
   @Mutation(() => PostComment, { description: 'Delete a comment.' })
   async deletePostComment(
     @Args('commentId', { type: () => ID }) commentId: string,
-    @User() currentUser: UserType,
+    @CurrentUser() currentUser: UserType,
   ): Promise<PostComment> {
     return this.postCommentService.deleteComment(commentId, currentUser);
   }

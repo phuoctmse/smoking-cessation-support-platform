@@ -5,7 +5,7 @@ import { CreateProgressRecordInput } from './dto/request/create-progress-record.
 import { UpdateProgressRecordInput } from './dto/request/update-progress-record.input'
 import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
-import {User} from "../../shared/decorators/current-user.decorator";
+import {CurrentUser} from "../../shared/decorators/current-user.decorator";
 import {UserType} from "../user/schema/user.schema";
 import { PaginatedProgressRecordsResponse } from './dto/response/paginated-progress-records.response'
 import { PaginationParamsInput } from 'src/shared/models/dto/request/pagination-params.input'
@@ -23,7 +23,7 @@ export class ProgressRecordResolver {
   @Mutation(() => ProgressRecord)
   async createProgressRecord(
     @Args('input') input: CreateProgressRecordInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<ProgressRecord> {
     return this.progressRecordService.create(input, user);
   }
@@ -34,7 +34,7 @@ export class ProgressRecordResolver {
     params: PaginationParamsInput,
     @Args('filters', { nullable: true, type: () => ProgressRecordFiltersInput })
     filters: ProgressRecordFiltersInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ) {
     return this.progressRecordService.findAll(params, filters, user);
   }
@@ -43,7 +43,7 @@ export class ProgressRecordResolver {
   @Query(() => ProgressRecord, { nullable: true })
   async progressRecord(
     @Args('id', { type: () => ID }) id: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<ProgressRecord | null> {
     return this.progressRecordService.findOne(id, user);
   }
@@ -52,7 +52,7 @@ export class ProgressRecordResolver {
   @Mutation(() => ProgressRecord)
   async updateProgressRecord(
     @Args('input') input: UpdateProgressRecordInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<ProgressRecord> {
     const { id, ...data } = input;
     return this.progressRecordService.update(id, data, user);
@@ -62,7 +62,7 @@ export class ProgressRecordResolver {
   @Mutation(() => ProgressRecord)
   async removeProgressRecord(
     @Args('id', { type: () => ID }) id: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<ProgressRecord> {
     return this.progressRecordService.remove(id, user);
   }
