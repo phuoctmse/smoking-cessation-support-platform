@@ -4,7 +4,7 @@ import { CessationPlanService } from './cessation-plan.service';
 import { CessationPlan } from './entities/cessation-plan.entity';
 import { CreateCessationPlanInput } from './dto/request/create-cessation-plan.input';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
-import { User } from '../../shared/decorators/current-user.decorator';
+import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import { UserType } from '../user/schema/user.schema';
 import {PaginatedCessationPlansResponse} from "./dto/response/paginated-cessation-plans.response";
 import {PaginationParamsInput} from "../../shared/models/dto/request/pagination-params.input";
@@ -25,7 +25,7 @@ export class CessationPlanResolver {
   @Roles(RoleName.Member)
   async createCessationPlan(
     @Args('input') input: CreateCessationPlanInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<CessationPlan> {
     return this.cessationPlanService.create(input, user.id);
   }
@@ -35,7 +35,7 @@ export class CessationPlanResolver {
   async cessationPlans(
       @Args('params', { nullable: true }) params?: PaginationParamsInput,
       @Args('filters', { nullable: true }) filters?: CessationPlanFiltersInput,
-      @User() user?: UserType,
+      @CurrentUser() user?: UserType,
   ): Promise<PaginatedCessationPlansResponse> {
     return this.cessationPlanService.findAll(
         params || { page: 1, limit: 10, orderBy: 'created_at', sortOrder: 'desc' },
@@ -49,7 +49,7 @@ export class CessationPlanResolver {
   @UseGuards(JwtAuthGuard)
   async cessationPlan(
       @Args('id') id: string,
-      @User() user: UserType,
+      @CurrentUser() user: UserType,
   ): Promise<CessationPlan> {
     return this.cessationPlanService.findOne(id, user.role, user.id);
   }
@@ -57,7 +57,7 @@ export class CessationPlanResolver {
   @Query(() => [CessationPlan])
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Member)
-  async userCessationPlans(@User() user?: UserType): Promise<CessationPlan[]> {
+  async userCessationPlans(@CurrentUser() user?: UserType): Promise<CessationPlan[]> {
     return this.cessationPlanService.findByUserId(user);
   }
 
@@ -66,7 +66,7 @@ export class CessationPlanResolver {
   @Roles(RoleName.Coach, RoleName.Admin)
   async cessationPlanStatistics(
       @Args('filters', { nullable: true }) filters?: CessationPlanFiltersInput,
-      @User() user?: UserType,
+      @CurrentUser() user?: UserType,
   ): Promise<CessationPlanStatisticsResponse> {
     return this.cessationPlanService.getStatistics(filters, user?.role, user?.id);
   }
@@ -76,7 +76,7 @@ export class CessationPlanResolver {
   @Roles(RoleName.Member)
   async updateCessationPlan(
       @Args('input') input: UpdateCessationPlanInput,
-      @User() user: UserType,
+      @CurrentUser() user: UserType,
   ): Promise<CessationPlan> {
     const { id, ...updateData } = input;
     return this.cessationPlanService.update(id, updateData, user.role, user.id);

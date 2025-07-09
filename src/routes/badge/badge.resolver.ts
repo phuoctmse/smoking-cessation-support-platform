@@ -6,7 +6,7 @@ import { UpdateBadgeInput } from './dto/request/update-badge.input'
 import { UseGuards } from '@nestjs/common'
 import { Roles } from 'src/shared/decorators/roles.decorator';
 import { UserType } from '../user/schema/user.schema'
-import { User } from '../../shared/decorators/current-user.decorator'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { RoleName } from '../../shared/constants/role.constant'
 import { RolesGuard } from '../../shared/guards/roles.guard'
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
@@ -24,7 +24,7 @@ export class BadgeResolver {
   @Roles(RoleName.Admin, RoleName.Coach)
   async createBadge(
     @Args('input') input: CreateBadgeInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<Badge> {
     return this.badgeService.create(input, user);
   }
@@ -48,7 +48,7 @@ export class BadgeResolver {
     params: PaginationParamsInput,
     @Args('filters', { nullable: true, type: () => BadgeFiltersInput })
     filters: BadgeFiltersInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PaginatedBadgesResponse> {
     return this.badgeService.findAll(params, filters, user);
   }
@@ -56,7 +56,7 @@ export class BadgeResolver {
   @Query(() => String, { description: 'Get badge statistics for admin/coach' })
   @UseGuards(RolesGuard)
   @Roles(RoleName.Admin, RoleName.Coach)
-  async badgeStatistics(@User() user: UserType): Promise<string> {
+  async badgeStatistics(@CurrentUser() user: UserType): Promise<string> {
     const stats = await this.badgeService.getStatistics(user);
     return JSON.stringify(stats);
   }
@@ -67,7 +67,7 @@ export class BadgeResolver {
   async updateBadge(
     @Args('id', { type: () => ID }) id: string,
     @Args('input') input: UpdateBadgeInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<Badge> {
     return this.badgeService.update(id, input, user);
   }
@@ -77,7 +77,7 @@ export class BadgeResolver {
   @Roles(RoleName.Admin, RoleName.Coach)
   async removeBadge(
     @Args('id', { type: () => ID }) id: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<Badge> {
     return this.badgeService.remove(id, user);
   }

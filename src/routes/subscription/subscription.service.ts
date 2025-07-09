@@ -22,8 +22,8 @@ export class SubscriptionService {
     }
 
     async getUserSubscription(user_id: string) {
-        const subscription = await this.subscriptionRepo.getUserSubscription(user_id)
-        return subscription
+        const subscriptions = await this.subscriptionRepo.getUserSubscription(user_id)
+        return subscriptions || [];
     }
 }
 
