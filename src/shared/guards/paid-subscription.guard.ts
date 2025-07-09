@@ -5,7 +5,7 @@ import { SubscriptionStatus } from '../constants/subscription.constant';
 
 @Injectable()
 export class PaidSubscriptionGuard implements CanActivate {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const ctx = GqlExecutionContext.create(context);
@@ -14,11 +14,10 @@ export class PaidSubscriptionGuard implements CanActivate {
         if (!user) {
             throw new ForbiddenException('User not authenticated');
         }
-
         // Check if user has any active subscriptions
-        const activeSubscriptions = await this.prisma.userSubscription.findMany({
+        const activeSubscriptions = await this.prisma.userSubscription.findMany({   
             where: {
-                user_id: user.id,
+                user_id: user.user_id,
                 status: SubscriptionStatus.Active
             }
         });
