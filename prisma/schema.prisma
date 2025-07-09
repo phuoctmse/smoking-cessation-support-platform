@@ -9,50 +9,89 @@ datasource db {
 }
 
 model User {
-  id                     String                  @id @default(uuid())
-  name                   String
-  avatar_url             String?
-  role                   Role                    @default(MEMBER)
-  status                 Status                  @default(ACTIVE)
-  created_at             DateTime                @default(now())
-  updated_at             DateTime                @updatedAt
-  user_name              String                  @unique
-  blogs                  Blog[]
-  created_plan_templates CessationPlanTemplate[]
-  cessation_plans        CessationPlan[]
-  feedbacks              Feedback[]
-  user_subscriptions     UserSubscription[]
-  user_badges            UserBadge[]
-  post_likes             PostLike[]
-  post_comments          PostComment[]
-  Payment                Payment[]
-  MemberProfile          MemberProfile[]
-  CoachProfile           CoachProfile[]
-  ChatRoomCreator        ChatRoom[]              @relation("ChatRoomCreator")
-  ChatRoomReceiver       ChatRoom[]              @relation("ChatRoomReceiver")
-  ChatMessage            ChatMessage[]
+  id                        String                   @id @default(uuid())
+  name                      String
+  avatar_url                String?
+  role                      Role                     @default(MEMBER)
+  status                    Status                   @default(ACTIVE)
+  created_at                DateTime                 @default(now())
+  updated_at                DateTime                 @updatedAt
+  user_name                 String                   @unique
+  blogs                     Blog[]
+  created_plan_templates    CessationPlanTemplate[]
+  cessation_plans           CessationPlan[]
+  feedbacks                 Feedback[]
+  user_subscriptions        UserSubscription[]
+  user_badges               UserBadge[]
+  post_likes                PostLike[]
+  post_comments             PostComment[]
+  Payment                   Payment[]
+  MemberProfile             MemberProfile[]
+  CoachProfile              CoachProfile[]
+  ChatRoomCreator           ChatRoom[]               @relation("ChatRoomCreator")
+  ChatRoomReceiver          ChatRoom[]               @relation("ChatRoomReceiver")
+  ChatMessage               ChatMessage[]
+  template_matching_results TemplateMatchingResult[]
+  quiz_attempts             QuizAttempt[]
 
   @@map("user")
 }
 
 model MemberProfile {
-  id                 String    @id @default(uuid())
-  user_id            String
-  user               User      @relation(fields: [user_id], references: [id])
+  id      String @id @default(uuid())
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id])
+
+  // Thông tin về thói quen hút thuốc
   cigarettes_per_day Int?
   sessions_per_day   Int?
   price_per_pack     Int?
-  recorded_at        DateTime?
+  smoking_years      Int? // Số năm đã hút thuốc
+  brand_preference   String? // Nhãn hiệu thuốc lá thường dùng
+  nicotine_level     Float? // Hàm lượng nicotine của thuốc lá thường dùng
+
+  // Thông tin sức khỏe
+  health_conditions String[] // Các vấn đề sức khỏe liên quan
+  allergies         String[] // Dị ứng nếu có
+  medications       String[] // Các thuốc đang sử dụng
+
+  // Thêm thông tin cho hệ thống gợi ý
+  quit_motivation   String? // Động lực cai thuốc (LOW, MEDIUM, HIGH)
+  previous_attempts Int? // Số lần đã thử cai thuốc
+  preferred_support String[] // Hình thức hỗ trợ ưa thích
+  stress_level      Int? // Mức độ stress (1-5)
+  daily_routine     Json? // Thông tin về thói quen hàng ngày
+  social_support    Boolean? // Có sự hỗ trợ từ gia đình/bạn bè
+  trigger_factors   String[] // Các yếu tố kích thích hút thuốc
+
+  recorded_at    DateTime?
+  quiz_attempts  QuizAttempt[]
 
   @@map("member_profile")
 }
 
 model CoachProfile {
-  id               String  @id @default(uuid())
-  user_id          String
-  user             User    @relation(fields: [user_id], references: [id])
+  id      String @id @default(uuid())
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id])
+
+  // Thông tin chuyên môn
   experience_years Int?
-  bio              String?
+  specializations  String[] // Các lĩnh vực chuyên môn
+  certifications   String[] // Chứng chỉ liên quan
+  education        String? // Trình độ học vấn
+  professional_bio String? // Tiểu sử chuyên môn
+
+  // Thống kê hiệu quả
+  success_rate   Float? // Tỷ lệ thành công
+  total_clients  Int? // Tổng số thành viên đã hỗ trợ
+  average_rating Float? // Đánh giá trung bình
+  total_sessions Int? // Tổng số buổi tư vấn đã thực hiện
+
+  // Thông tin bổ sung
+  approach_description String? // Mô tả phương pháp tiếp cận
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
 
   @@map("coach_profile")
 }
@@ -74,22 +113,31 @@ model Blog {
 }
 
 model CessationPlanTemplate {
-  id                      String              @id @default(uuid())
-  name                    String              @unique @db.VarChar(100)
+  id                      String                   @id @default(uuid())
+  name                    String                   @unique @db.VarChar(100)
   description             String?
-  difficulty_level        DifficultyLevel     @default(MEDIUM)
+  difficulty_level        DifficultyLevel          @default(MEDIUM)
   estimated_duration_days Int
-  average_rating          Float?              @default(0)
-  total_reviews           Int                 @default(0)
-  success_rate            Float?              @default(0)
-  is_active               Boolean             @default(true)
-  created_at              DateTime            @default(now())
-  updated_at              DateTime            @updatedAt
+  average_rating          Float?                   @default(0)
+  total_reviews           Int                      @default(0)
+  success_rate            Float?                   @default(0)
+  is_active               Boolean                  @default(true)
+  created_at              DateTime                 @default(now())
+  updated_at              DateTime                 @updatedAt
   coach_id                String?
-  coach                   User?               @relation(fields: [coach_id], references: [id])
+  coach                   User?                    @relation(fields: [coach_id], references: [id])
   plans                   CessationPlan[]
   feedbacks               Feedback[]
   stages                  PlanStageTemplate[]
+  matching_results        TemplateMatchingResult[]
+
+  // Thêm các trường mới để hỗ trợ matching
+  target_addiction_level String? // LOW, MEDIUM, HIGH
+  psychological_approach String[] // Các phương pháp tâm lý được áp dụng
+  physical_approach      String[] // Các phương pháp vật lý được áp dụng
+  support_methods        String[] // Các phương pháp hỗ trợ (thuốc, miếng dán, etc.)
+  intensity_level        String? // LOW, MEDIUM, HIGH - Mức độ cam go của kế hoạch
+  flexibility_level      String? // LOW, MEDIUM, HIGH - Khả năng điều chỉnh theo người dùng
 
   @@map("cessation_plan_template")
 }
@@ -412,4 +460,102 @@ enum SubscriptionStatus {
   ACTIVE
   INACTIVE
   EXPIRED
+}
+
+// Thêm model để lưu trữ kết quả matching
+model TemplateMatchingResult {
+  id                   String   @id @default(uuid())
+  user_id              String
+  template_id          String
+  matching_score       Float // Điểm số matching từ AI (0-100)
+  matching_factors     Json // Chi tiết các yếu tố matching và giải thích của AI
+  recommendation_level String // HIGH, MEDIUM, LOW
+  created_at           DateTime @default(now())
+
+  user     User                  @relation(fields: [user_id], references: [id])
+  template CessationPlanTemplate @relation(fields: [template_id], references: [id])
+
+  @@unique([user_id, template_id])
+  @@map("template_matching_result")
+}
+
+model ProfileQuiz {
+  id          String         @id @default(uuid())
+  title       String
+  description String?
+  is_active   Boolean        @default(true)
+  created_at  DateTime       @default(now())
+  updated_at  DateTime       @updatedAt
+  questions   QuizQuestion[]
+  attempts    QuizAttempt[]
+
+  @@map("profile_quiz")
+}
+
+model QuizQuestion {
+  id              String         @id @default(uuid())
+  quiz_id         String
+  quiz            ProfileQuiz    @relation(fields: [quiz_id], references: [id])
+  question_text   String
+  description     String?
+  question_type   QuestionType
+  options         Json? // Cho câu hỏi multiple choice
+  target_field    String // Field trong MemberProfile mà câu trả lời sẽ map vào
+  order           Int
+  is_required     Boolean        @default(true)
+  validation_rule Json? // Quy tắc validate câu trả lời
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+  responses       QuizResponse[]
+
+  @@map("quiz_question")
+}
+
+model QuizResponse {
+  id              String      @id @default(uuid())
+  question_id     String
+  question        QuizQuestion @relation(fields: [question_id], references: [id])
+  attempt_id      String
+  attempt         QuizAttempt @relation(fields: [attempt_id], references: [id])
+  answer          Json // Lưu câu trả lời dưới dạng JSON để linh hoạt với các loại câu hỏi
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+
+  @@unique([question_id, attempt_id])
+  @@map("quiz_response")
+}
+
+model QuizAttempt {
+  id                String        @id @default(uuid())
+  quiz_id           String
+  quiz              ProfileQuiz   @relation(fields: [quiz_id], references: [id])
+  user_id           String
+  user              User          @relation(fields: [user_id], references: [id])
+  member_profile_id String
+  member_profile    MemberProfile @relation(fields: [member_profile_id], references: [id])
+  status            QuizStatus    @default(IN_PROGRESS)
+  started_at        DateTime      @default(now())
+  completed_at      DateTime?
+  responses         QuizResponse[]
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+
+  @@index([member_profile_id])
+  @@map("quiz_attempt")
+}
+
+// Thêm enum cho trạng thái quiz
+enum QuizStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum QuestionType {
+  TEXT
+  NUMBER
+  MULTIPLE_CHOICE
+  BOOLEAN
+  SCALE
+  DATE
 }

@@ -77,7 +77,8 @@ export class AuthRepository {
               id: data.user.id,
               user_id: data.user.id,
               experience_years: 0,
-              bio: '',
+              approach_description: '',
+              
             }
           })
         })
