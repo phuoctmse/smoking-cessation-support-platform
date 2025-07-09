@@ -6,13 +6,15 @@ import { CessationPlanModule } from '../cessation-plan/cessation-plan.module'
 import { ProgressRecordRepository } from './progress-record.repository'
 import { SupabaseModule } from '../../shared/modules/supabase.module'
 import { BadgeAwardModule } from '../badge-award/badge-award.module'
+import { LeaderboardModule } from '../leaderboard/leaderboard.module'
 
 @Module({
   imports: [
     GuardModule,
     SupabaseModule,
     forwardRef(() => CessationPlanModule),
-    BadgeAwardModule
+    BadgeAwardModule,
+    LeaderboardModule
   ],
   providers: [
     ProgressRecordResolver,

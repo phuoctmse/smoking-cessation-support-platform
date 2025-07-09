@@ -11,7 +11,14 @@ import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { CreatePlanStageTemplateType } from './schema/create-plan-stage-template.schema'
 import { UpdatePlanStageTemplateType } from './schema/update-plan-stage-template.schema'
 import { RedisServices } from 'src/shared/services/redis.service'
-import { buildCacheKey, buildOneCacheKey, deleteKeysByPattern, reviveDates } from '../../shared/utils/cache-key.util'
+import {
+  buildCacheKey,
+  buildOneCacheKey,
+  buildTrackerKey,
+  invalidateCacheForId,
+  reviveDates,
+  trackCacheKey,
+} from '../../shared/utils/cache-key.util'
 
 const CACHE_TTL = 60 * 5
 const CACHE_PREFIX = 'plan-stage-template'
@@ -41,6 +48,8 @@ export class PlanStageTemplateService {
     }
     const result = await this.planStageTemplateRepository.findAll(params, templateId);
     await this.redisServices.getClient().set(cacheKey, JSON.stringify(result), { EX: CACHE_TTL });
+    const trackerKey = buildTrackerKey(CACHE_PREFIX, templateId);
+    await trackCacheKey(this.redisServices.getClient(), trackerKey, cacheKey);
     return result;
   }
 
@@ -57,6 +66,8 @@ export class PlanStageTemplateService {
       throw new NotFoundException('Plan stage template not found');
     }
     await this.redisServices.getClient().set(cacheKey, JSON.stringify(stageTemplate), { EX: CACHE_TTL });
+    const trackerKey = buildTrackerKey(CACHE_PREFIX, stageTemplate.template_id);
+    await trackCacheKey(this.redisServices.getClient(), trackerKey, cacheKey);
     return stageTemplate;
   }
 
@@ -67,7 +78,7 @@ export class PlanStageTemplateService {
     try {
       const stageTemplate = await this.planStageTemplateRepository.create(data);
       this.logger.log(`Plan stage template created: ${stageTemplate.id}`);
-      await deleteKeysByPattern(this.redisServices.getClient(), `${CACHE_PREFIX}:*`);
+      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, data.template_id);
       return stageTemplate;
     } catch (error) {
       this.logger.error(`Failed to create plan stage template: ${error.message}`);
@@ -95,8 +106,10 @@ export class PlanStageTemplateService {
     try {
       const stageTemplate = await this.planStageTemplateRepository.update(id, data);
       this.logger.log(`Plan stage template updated: ${stageTemplate.id}`);
-      await this.redisServices.getClient().del(buildOneCacheKey(CACHE_PREFIX, id));
-      await deleteKeysByPattern(this.redisServices.getClient(), `${CACHE_PREFIX}:*`);
+      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, existingStage.template_id);
+      if (data.template_id && data.template_id !== existingStage.template_id) {
+        await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, data.template_id);
+      }
       return stageTemplate;
     } catch (error) {
       this.logger.error(`Failed to update plan stage template: ${error.message}`);
@@ -110,12 +123,12 @@ export class PlanStageTemplateService {
   }
 
   async remove(id: string, userRole: string) {
-    await this.findOne(id);
+    const existingStage = await this.findOne(id);
 
     const stageTemplate = await this.planStageTemplateRepository.delete(id);
     this.logger.log(`Plan stage template deleted: ${id}`);
-    await this.redisServices.getClient().del(buildOneCacheKey(CACHE_PREFIX, id));
-    await deleteKeysByPattern(this.redisServices.getClient(), `${CACHE_PREFIX}:*`);
+    // Invalidate all caches related to the parent template
+    await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, existingStage.template_id);
     return stageTemplate;
   }
 
@@ -135,7 +148,7 @@ export class PlanStageTemplateService {
         stageOrders,
       );
       this.logger.log(`Reordered ${stageOrders.length} stages for template: ${templateId}`);
-      await deleteKeysByPattern(this.redisServices.getClient(), `${CACHE_PREFIX}:*`);
+      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, templateId);
       return reorderedStages;
     } catch (error) {
       this.logger.error(`Failed to reorder stages: ${error.message}`);

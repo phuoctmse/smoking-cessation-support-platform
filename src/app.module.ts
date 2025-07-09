@@ -42,6 +42,7 @@ import { SupabaseModule } from './shared/modules/supabase.module';
 import { SearchModule } from './shared/modules/elasticsearch.module';
 import { CustomLogger } from './shared/services/logger.service';
 import { DashboardModule } from './routes/dashboard/dashboard.module';
+import { LeaderboardModule } from './routes/leaderboard/leaderboard.module'
 
 @Module({
   imports: [
@@ -115,6 +116,7 @@ import { DashboardModule } from './routes/dashboard/dashboard.module';
     ChatModule,
     SearchModule,
     DashboardModule,
+    LeaderboardModule
   ],
   controllers: [AppController],
   providers: [
