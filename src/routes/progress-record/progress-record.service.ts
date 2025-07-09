@@ -16,6 +16,7 @@ import { UpdateProgressRecordType } from './schema/update-progress-record.schema
 import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { ProgressRecordFiltersInput } from './dto/request/progress-record-filters.input'
 import { BadgeAwardService } from '../badge-award/badge-award.service'
+import { LeaderboardService } from '../leaderboard/leaderboard.service'
 
 @Injectable()
 export class ProgressRecordService {
@@ -25,6 +26,7 @@ export class ProgressRecordService {
     private readonly progressRecordRepository: ProgressRecordRepository,
     private readonly cessationPlanRepository: CessationPlanRepository,
     private readonly badgeAwardService: BadgeAwardService,
+    private readonly leaderboardService: LeaderboardService,
   ) {}
 
   async create(data: CreateProgressRecordType, user: UserType): Promise<ProgressRecord> {
@@ -48,8 +50,12 @@ export class ProgressRecordService {
     try {
       const record = await this.progressRecordRepository.create(data);
       this.logger.log(`Progress record created: ${record.id} for plan: ${record.plan_id}`);
+      const currentStreak = await this.calculateUserStreak(user.id, record.plan_id);
+      const prevStreak = await this.leaderboardService.getUserStreak(user.id) || 0;
+      if (currentStreak !== prevStreak) {
+        await this.leaderboardService.updateUserStreak(user.id, currentStreak);
+      }
       if (data.cigarettes_smoked === 0) {
-        const currentStreak = await this.calculateUserStreak(user.id, record.plan_id);
         await this.badgeAwardService.processStreakUpdate(user.id, currentStreak);
       }
       return record as ProgressRecord;
@@ -120,9 +126,13 @@ export class ProgressRecordService {
       const updatedRecord = await this.progressRecordRepository.update(id, data);
       if (!updatedRecord) throw new NotFoundException('Progress record not found or already deleted.');
       this.logger.log(`Progress record updated: ${updatedRecord.id}`);
+      const currentStreak = await this.calculateUserStreak(user.id, updatedRecord.plan_id);
+      const prevStreak = await this.leaderboardService.getUserStreak(user.id) || 0;
+      if (currentStreak !== prevStreak) {
+        await this.leaderboardService.updateUserStreak(user.id, currentStreak);
+      }
       if (data.cigarettes_smoked === 0) {
-        const currentStreak = await this.calculateUserStreak(user.id, updatedRecord.plan_id); // Bạn cần implement hàm này
-        await this.badgeAwardService.processStreakUpdate(user.id, currentStreak); // <<< GỌI HÀM
+        await this.badgeAwardService.processStreakUpdate(user.id, currentStreak);
       }
       return updatedRecord as ProgressRecord;
     } catch (error) {
@@ -157,7 +167,6 @@ export class ProgressRecordService {
   }
 
   private async calculateUserStreak(userId: string, planId: string): Promise<number> {
-    this.logger.log(`Calculating streak for user ${userId} on plan ${planId}. Implementation needed.`);
     const records = await this.progressRecordRepository.findAll({ page: 1, limit: 1000, orderBy: 'record_date', sortOrder: 'desc' }, {planId});
     let streak = 0;
     for (const record of records.data) {
