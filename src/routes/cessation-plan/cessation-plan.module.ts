@@ -7,6 +7,7 @@ import { CessationPlanRepository } from './cessation-plan.repository'
 import { PlanStageModule } from '../plan-stage/plan-stage.module'
 import { BadgeAwardModule } from '../badge-award/badge-award.module'
 import { SubscriptionGuard } from 'src/shared/guards/subscription.guard'
+import { CustomAIRecommendationService } from '../../shared/services/custom-ai-recommendation.service';
 
 @Module({
   imports: [
@@ -15,7 +16,13 @@ import { SubscriptionGuard } from 'src/shared/guards/subscription.guard'
     forwardRef(() => PlanStageModule),
     BadgeAwardModule,
   ],
-  providers: [CessationPlanResolver, CessationPlanService, CessationPlanRepository, SubscriptionGuard],
+  providers: [
+    CessationPlanResolver,
+    CessationPlanService,
+    CessationPlanRepository,
+    SubscriptionGuard,
+    CustomAIRecommendationService
+  ],
   exports: [CessationPlanService, CessationPlanRepository],
 })
 export class CessationPlanModule { }

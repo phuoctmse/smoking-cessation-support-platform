@@ -13,7 +13,7 @@ import {
 export class CustomAIRecommendationService {
     private readonly logger = new Logger(CustomAIRecommendationService.name);
     private genAI: GoogleGenAI;
-    private model: any; // Replace with actual type
+    private model: any; // Replace with actual type (e.g., GenerativeModel)
 
     private readonly SYSTEM_PROMPT = `You are an expert AI system specializing in smoking cessation recommendations. 
 Your role is to analyze smoker profiles and recommend the most suitable cessation plan templates from the provided list.
@@ -65,10 +65,11 @@ Based on this profile, please:
             this.logger.error('GEMINI_API_KEY is not defined in environment variables');
             throw new Error('GEMINI_API_KEY is required');
         }
-        const modelName = process.env.GENAI_MODEL || 'gemini-2.5-flash';
+        const modelName = 'gemini-2.5-flash';
         this.genAI = new GoogleGenAI({ apiKey });
         try {
-            this.model = this.genAI.models.generateContent({ model: modelName, contents: [] });
+            // Initialize the model without calling generateContent
+            this.model = this.genAI.models.generateContent({ model: modelName, contents: [] }); 
         } catch (error) {
             this.logger.error(`Failed to initialize model ${modelName}:`, error);
             throw new Error(`Invalid or unsupported model: ${modelName}`);
@@ -160,10 +161,14 @@ Based on this profile, please:
         }
 
         try {
+            // Map profile to AI input
             const input = this.mapProfileToInput(memberProfile);
             const prompt = this.generatePrompt(input);
+
+            // Fetch available templates
             const availableTemplates = await this.prisma.cessationPlanTemplate.findMany({
-                where: { is_active: true }
+                where: { is_active: true },
+                select: { name: true, description: true }
             });
 
             if (!availableTemplates.length) {
@@ -171,20 +176,42 @@ Based on this profile, please:
                 throw new Error('No active cessation plan templates available');
             }
 
+            // Build context with available templates
             const context = `Available Templates:\n${availableTemplates
                 .map(t => `- ${t.name}: ${t.description}`)
                 .join('\n')}`;
 
-            const result = await this.model.generateContent([
-                { text: this.SYSTEM_PROMPT },
-                { text: context },
-                { text: prompt }
-            ]);
-            const response = result.response.text();
-            return this.parseAIResponse(response);
+            // Generate content using the model
+            const result = await this.model.generateContent({
+                contents: [
+                    { role: 'system', parts: [{ text: this.SYSTEM_PROMPT }] },
+                    { role: 'user', parts: [{ text: context }] },
+                    { role: 'user', parts: [{ text: prompt }] }
+                ]
+            });
+
+            // Extract response text
+            const responseText = result.response.text();
+            this.logger.debug('AI response received:', responseText);
+
+            // Parse and validate response
+            const recommendation = await this.parseAIResponse(responseText);
+
+            // Verify recommended template exists
+            if (!availableTemplates.some(t => t.name === recommendation.recommendedTemplate.name)) {
+                this.logger.warn(`Recommended template "${recommendation.recommendedTemplate}" not found in available templates`);
+                throw new Error('Invalid recommended template');
+            }
+
+            // Verify alternative templates exist
+            recommendation.alternativeTemplates = recommendation.alternativeTemplates.filter(alt =>
+                availableTemplates.some(t => t.name === alt.name)
+            );
+
+            return recommendation;
         } catch (error) {
             this.logger.error('Error getting AI recommendation:', error);
-            throw new Error('Failed to get cessation plan recommendation');
+            throw new Error(`Failed to get cessation plan recommendation: ${error.message}`);
         }
     }
 }
