@@ -48,7 +48,7 @@ export class PlanStageService {
       const stage = await this.planStageRepository.create(data);
       this.logger.log(`Plan stage created: ${stage.id} for plan: ${stage.plan_id}`);
 
-      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, data.plan_id);
+      await this.invalidateRelatedCaches(data.plan_id, plan.user_id);
 
       return this.enrichWithComputedFields(stage);
     } catch (error) {
@@ -63,10 +63,13 @@ export class PlanStageService {
     }
     const existingStages = await this.planStageRepository.findByPlanId(planId);
     if (existingStages.length > 0) {
-      throw new ConflictException('Plan already has stages. If you want to customize, please do so manually or ensure the plan is empty before generating from template.');
+      throw new ConflictException(
+        'Plan already has stages. If you want to customize, please do so manually or ensure the plan is empty before generating from template.');
     }
 
-    const result = await this.planStageRepository.createStagesFromTemplate(planId, plan.template_id);
+    const result = await this.planStageRepository.createStagesFromTemplate(
+      planId, plan.template_id, plan.start_date
+    );
     this.logger.log(`Created ${result.count} stages for plan: ${planId}`);
 
     await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, planId);
@@ -158,7 +161,7 @@ export class PlanStageService {
     }
 
     if (data.status && data.status !== existingStage.status) {
-      this.validateStatusTransition(existingStage.status, data.status);
+      this.validateStatusTransition(existingStage.status, data.status, existingStage);
     }
 
     if (plan.is_custom === true) {
@@ -167,7 +170,6 @@ export class PlanStageService {
 
     try {
       const updatedStage = await this.planStageRepository.update(id, data);
-      this.logger.log(`Plan stage updated: ${updatedStage.id}`);
 
       if (updatedStage.status === PlanStageStatus.COMPLETED) {
         const planStages = await this.planStageRepository.findByPlanId(updatedStage.plan_id);
@@ -175,7 +177,7 @@ export class PlanStageService {
         await this.badgeAwardService.processStageCompletion(userId, updatedStage.plan_id, completedStagesInPlan);
       }
 
-      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, existingStage.plan_id);
+      await this.invalidateRelatedCaches(existingStage.plan_id, plan.user_id);
 
       return this.enrichWithComputedFields(updatedStage);
     } catch (error) {
@@ -197,7 +199,7 @@ export class PlanStageService {
     try {
       const reorderedStages = await this.planStageRepository.reorderStages(planId, stageOrders);
       this.logger.log(`Reordered ${stageOrders.length} stages for plan: ${planId}`);
-      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, planId);
+      await this.invalidateRelatedCaches(planId, plan.user_id);
       return reorderedStages.map(stage => this.enrichWithComputedFields(stage));
     } catch (error) {
       this.logger.error(`Failed to reorder stages: ${error.message}`);
@@ -217,10 +219,31 @@ export class PlanStageService {
     try {
       const removedStage = await this.planStageRepository.remove(id);
       this.logger.log(`Plan stage removed (soft delete): ${removedStage.id}`);
-      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, existingStage.plan_id);
+      await this.invalidateRelatedCaches(existingStage.plan_id, plan.user_id);
       return this.enrichWithComputedFields(removedStage);
     } catch (error) {
       this.handleDatabaseError(error);
+    }
+  }
+
+  private async invalidateRelatedCaches(planId: string, userId: string): Promise<void> {
+    try {
+      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, planId);
+
+      const cessationPlanCacheKeys = [
+        buildOneCacheKey('cessation-plan', planId),
+        buildCacheKey('cessation-plan', 'byUser', userId),
+      ];
+
+      await this.redisServices.getClient().del(cessationPlanCacheKeys);
+
+      await invalidateCacheForId(this.redisServices.getClient(), 'cessation-plan', userId);
+      await invalidateCacheForId(this.redisServices.getClient(), 'cessation-plan', 'all-lists');
+      await invalidateCacheForId(this.redisServices.getClient(), 'cessation-plan', 'stats-cache');
+
+      this.logger.log(`Invalidated plan stage and cessation plan caches for plan: ${planId}`);
+    } catch (cacheError) {
+      this.logger.error('Error invalidating cache:', cacheError);
     }
   }
 
@@ -268,7 +291,24 @@ export class PlanStageService {
   }
 
   private canStartStage(stage: any): boolean {
-    return stage.status === PlanStageStatus.PENDING;
+    if (stage.status !== PlanStageStatus.PENDING) {
+      return false;
+    }
+
+    if (!stage.start_date) {
+      return true;
+    }
+
+    const now = new Date();
+    const stageStartDate = new Date(stage.start_date);
+
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    const startDateOnly = new Date(stageStartDate);
+    startDateOnly.setHours(0, 0, 0, 0);
+
+    return startDateOnly <= today;
   }
 
   private canCompleteStage(stage: any): boolean {
@@ -287,7 +327,7 @@ export class PlanStageService {
     return plan as unknown as CessationPlan;
   }
 
-  private validateStatusTransition(currentStatus: PlanStageStatus, newStatus: PlanStageStatus): void {
+  private validateStatusTransition(currentStatus: PlanStageStatus, newStatus: PlanStageStatus, stage?: any): void {
     const validTransitions: Record<PlanStageStatus, PlanStageStatus[]> = {
       PENDING: ['ACTIVE', 'SKIPPED'],
       ACTIVE: ['COMPLETED', 'SKIPPED', 'PENDING'],
@@ -298,10 +338,38 @@ export class PlanStageService {
     if (!validTransitions[currentStatus]?.includes(newStatus)) {
       throw new BadRequestException(`Invalid status transition from ${currentStatus} to ${newStatus}`);
     }
+
+    if (currentStatus === PlanStageStatus.PENDING && newStatus === PlanStageStatus.ACTIVE) {
+      this.validateCanActivateStage(stage);
+    }
+  }
+
+  private validateCanActivateStage(stage: any): void {
+    if (!stage?.start_date) {
+      return;
+    }
+
+    const now = new Date();
+    const stageStartDate = new Date(stage.start_date);
+
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    const startDateOnly = new Date(stageStartDate);
+    startDateOnly.setHours(0, 0, 0, 0);
+
+    if (startDateOnly > today) {
+      const daysUntilStart = Math.ceil((startDateOnly.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      throw new BadRequestException(
+        `Cannot activate stage before its start date. Stage can be activated in ${daysUntilStart} day(s) (${stageStartDate.toDateString()}).`
+      );
+    }
   }
 
   private async validateCreateRules(data: CreatePlanStageType): Promise<void> {
-    const existingStage = await this.planStageRepository.findByStageOrder(data.plan_id, data.stage_order);
+    const existingStage = await this.planStageRepository.findByStageOrder(
+      data.plan_id, data.stage_order
+    );
     if (existingStage) {
       throw new ConflictException('Stage order already exists for this plan');
     }
