@@ -9,7 +9,7 @@ import { PlanStageStatisticsResponse } from './dto/response/plan-stage-statistic
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/decorators/roles.decorator';
-import { User } from '../../shared/decorators/current-user.decorator';
+import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import { RoleName } from '../../shared/constants/role.constant';
 import { UserType } from '../user/schema/user.schema';
 import { PlanStageOrderInput } from './dto/request/plan-stage-order.input'
@@ -22,7 +22,7 @@ export class PlanStageResolver {
   @UseGuards(JwtAuthGuard)
   async planStagesByPlan(
     @Args('planId') planId: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PlanStage[]> {
     return this.planStageService.findByPlanId(planId, user.role, user.id);
   }
@@ -31,7 +31,7 @@ export class PlanStageResolver {
   @UseGuards(JwtAuthGuard)
   async planStage(
     @Args('id') id: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PlanStage> {
     return this.planStageService.findOne(id, user.role, user.id);
   }
@@ -40,7 +40,7 @@ export class PlanStageResolver {
   @UseGuards(JwtAuthGuard)
   async activePlanStagesByPlan(
     @Args('planId') planId: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PlanStage[]> {
     return this.planStageService.findActiveByPlanId(planId, user.role, user.id);
   }
@@ -50,7 +50,7 @@ export class PlanStageResolver {
   @Roles(RoleName.Coach, RoleName.Admin)
   async planStageStatistics(
     @Args('filters', { nullable: true }) filters?: PlanStageFiltersInput,
-    @User() user?: UserType,
+    @CurrentUser() user?: UserType,
   ): Promise<PlanStageStatisticsResponse> {
     return this.planStageService.getStageStatistics(filters, user?.role, user?.id);
   }
@@ -59,7 +59,7 @@ export class PlanStageResolver {
   @UseGuards(JwtAuthGuard)
   async createPlanStage(
     @Args('input') input: CreatePlanStageInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PlanStage> {
     return this.planStageService.create(input, user.role, user.id);
   }
@@ -68,7 +68,7 @@ export class PlanStageResolver {
   @UseGuards(JwtAuthGuard)
   async updatePlanStage(
     @Args('input') input: UpdatePlanStageInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PlanStage> {
     const { id, ...updateData } = input;
     return this.planStageService.update(id, updateData, user.role, user.id);
@@ -78,7 +78,7 @@ export class PlanStageResolver {
   @UseGuards(JwtAuthGuard)
   async createStagesFromTemplate(
     @Args('planId') planId: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PlanStage[]> {
     return this.planStageService.createStagesFromTemplate(planId, user.role, user.id);
   }
@@ -88,7 +88,7 @@ export class PlanStageResolver {
   async reorderPlanStages(
     @Args('planId') planId: string,
     @Args('stageOrders', { type: () => [PlanStageOrderInput] }) stageOrders: PlanStageOrderInput[],
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PlanStage[]> {
     return this.planStageService.reorderStages(
       planId,
@@ -102,7 +102,7 @@ export class PlanStageResolver {
   @UseGuards(JwtAuthGuard)
   async removePlanStage(
     @Args('id', { type: () => ID }) id: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PlanStage> {
     return this.planStageService.remove(id, user.role, user.id);
   }

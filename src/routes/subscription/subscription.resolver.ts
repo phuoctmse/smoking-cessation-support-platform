@@ -8,23 +8,25 @@ import { UseGuards } from "@nestjs/common";
 import { Roles } from "src/shared/decorators/roles.decorator";
 import { RoleName } from "src/shared/constants/role.constant";
 import { UpdateSubscriptionInput } from "./dto/request/update-subscription.input";
+import { CurrentUser } from "src/shared/decorators/current-user.decorator";
+import { UserType } from "../user/schema/user.schema";
 
 @Resolver(() => UserSubscription)
 @UseGuards(JwtAuthGuard)
 export class SubscriptionResolver {
     constructor(private readonly subscriptionService: SubscriptionService) { }
 
-    @Query(() => UserSubscription)
-    async getUserSubscription(@Args('user_id') user_id: string) {
-        return this.subscriptionService.getUserSubscription(user_id);
+    @Query(() => [UserSubscription])
+    async getUserSubscription(@CurrentUser() user: UserType) {
+        return this.subscriptionService.getUserSubscription(user.id);
     }
 
-    @UseGuards(RolesGuard)
-    @Roles(RoleName.Admin)
-    @Mutation(() => UserSubscription)
-    async createSubscription(@Args('input') input: CreateSubscriptionInput) {
-        return this.subscriptionService.createSubscription(input);
-    }
+    // @UseGuards(RolesGuard)
+    // @Roles(RoleName.Admin)
+    // @Mutation(() => UserSubscription)
+    // async createSubscription(@Args('input') input: CreateSubscriptionInput) {
+    //     return this.subscriptionService.createSubscription(input);
+    // }
 
     @UseGuards(RolesGuard)
     @Roles(RoleName.Admin)

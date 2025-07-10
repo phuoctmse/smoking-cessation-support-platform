@@ -1,7 +1,7 @@
 import { Resolver, Query, Args, Int } from '@nestjs/graphql';
 import { LeaderboardService } from './leaderboard.service';
 import { UserType } from '../user/schema/user.schema'
-import { User } from '../../shared/decorators/current-user.decorator'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { PrismaService } from '../../shared/services/prisma.service'
 import { LeaderboardStats } from './dto/response/leaderboard-stats.response'
 import { PaginatedStreakLeaderboard } from './dto/response/paginated-streak-leaderboard.response'
@@ -20,7 +20,7 @@ export class LeaderboardResolver {
   async streakLeaderboard(
     @Args('limit', { type: () => Int, defaultValue: 10 }) limit: number,
     @Args('offset', { type: () => Int, defaultValue: 0 }) offset: number,
-    @User() currentUser: UserType,
+    @CurrentUser() currentUser: UserType,
   ): Promise<PaginatedStreakLeaderboard> {
     const rawLeaderboard = await this.leaderboardService.getTopStreaks(limit, offset);
     if (rawLeaderboard.length === 0) {
@@ -67,7 +67,7 @@ export class LeaderboardResolver {
     nullable: true, description: "Get current user's streak and rank."
   })
   @UseGuards(JwtAuthGuard)
-  async myStreakRank(@User() currentUser: UserType): Promise<StreakLeaderboardEntry | null> {
+  async myStreakRank(@CurrentUser() currentUser: UserType): Promise<StreakLeaderboardEntry | null> {
     const streakData = await this.leaderboardService.getUserStreakWithRank(currentUser.id);
     if (!streakData) {
       return null;

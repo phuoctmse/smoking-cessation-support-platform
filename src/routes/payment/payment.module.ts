@@ -7,12 +7,14 @@ import { EventEmitterModule } from "@nestjs/event-emitter";
 import { EventService } from "src/shared/services/event.service";
 import { SubscriptionModule } from "../subscription/subscription.module";
 import { MembershipModule } from "../membership-package/membership.module";
+import { GuardModule } from "src/shared/guards/guard.module";
 
 @Module({
     imports: [
         EventEmitterModule.forRoot(),
         SubscriptionModule,
-        MembershipModule
+        MembershipModule,
+        GuardModule
     ],
     providers: [PaymentService, PaymentRepo, PrismaService, PaymentResolver, EventService],
     exports: [PaymentService],

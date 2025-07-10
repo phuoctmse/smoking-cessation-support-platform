@@ -6,7 +6,7 @@ import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
 import { RolesGuard } from '../../shared/guards/roles.guard'
 import { Roles } from '../../shared/decorators/roles.decorator'
 import { RoleName } from '../../shared/constants/role.constant'
-import { User } from '../../shared/decorators/current-user.decorator'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { UserType } from '../user/schema/user.schema'
 import { PaginationParamsInput } from '../../shared/models/dto/request/pagination-params.input'
 import { PaginatedCessationPlanTemplatesResponse } from './dto/response/paginated-cessation-plan-templates.response'
@@ -22,7 +22,7 @@ export class CessationPlanTemplateResolver {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Coach)
   @Mutation(() => CessationPlanTemplate)
-  async createCessationPlanTemplate(@Args('input') input: CreateCessationPlanTemplateInput, @User() user: UserType) {
+  async createCessationPlanTemplate(@Args('input') input: CreateCessationPlanTemplateInput, @CurrentUser() user: UserType) {
     return this.cessationPlanTemplateService.create(input, user)
   }
 
@@ -58,7 +58,7 @@ export class CessationPlanTemplateResolver {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Coach)
   @Mutation(() => CessationPlanTemplate)
-  async removeCessationPlanTemplate(@Args('id') id: string, @User() user: UserType) {
+  async removeCessationPlanTemplate(@Args('id') id: string, @CurrentUser() user: UserType) {
     return this.cessationPlanTemplateService.remove(id, user.role)
   }
 }
