@@ -14,6 +14,7 @@ import {
   reviveDates,
   trackCacheKey,
 } from '../../shared/utils/cache-key.util'
+import { PlanStageTemplateRepository } from '../plan-stage-template/plan-stage-template.repository'
 
 const CACHE_TTL = 60 * 5
 const CACHE_PREFIX = 'cessation-plan-template'
@@ -24,6 +25,7 @@ export class CessationPlanTemplateService {
 
   constructor(
     private readonly cessationPlanTemplateRepository: CessationPlanTemplateRepository,
+    private readonly planStageTemplateRepository: PlanStageTemplateRepository,
     private readonly redisServices: RedisServices,
   ) {}
 
@@ -103,6 +105,15 @@ export class CessationPlanTemplateService {
     await this.redisServices.getClient().del(buildOneCacheKey(CACHE_PREFIX, id));
     await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, 'all-lists');
     return template
+  }
+
+  async updateTemplateDuration(templateId: string): Promise<void> {
+    const totalDuration = await this.planStageTemplateRepository.sumDurationByTemplate(templateId);
+    await this.cessationPlanTemplateRepository.update(templateId, {
+      estimated_duration_days: totalDuration,
+    });
+    this.logger.log(`Updated estimated duration for template ${templateId} to ${totalDuration} days.`);
+    await this.redisServices.getClient().del(buildOneCacheKey(CACHE_PREFIX, templateId));
   }
 
   async remove(id: string, userRole: string) {

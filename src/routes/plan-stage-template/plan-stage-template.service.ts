@@ -1,6 +1,6 @@
 import {
   BadRequestException,
-  ConflictException,
+  ConflictException, forwardRef, Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -19,6 +19,7 @@ import {
   reviveDates,
   trackCacheKey,
 } from '../../shared/utils/cache-key.util'
+import { CessationPlanTemplateService } from '../cessation-plan-template/cessation-plan-template.service'
 
 const CACHE_TTL = 60 * 5
 const CACHE_PREFIX = 'plan-stage-template'
@@ -30,8 +31,30 @@ export class PlanStageTemplateService {
   constructor(
     private readonly planStageTemplateRepository: PlanStageTemplateRepository,
     private readonly cessationPlanTemplateRepository: CessationPlanTemplateRepository,
+    @Inject(forwardRef(() => CessationPlanTemplateService))
+    private readonly cessationPlanTemplateService: CessationPlanTemplateService,
     private readonly redisServices: RedisServices,
   ) {}
+
+  async create(data: CreatePlanStageTemplateType, userRole: string) {
+    await this.validateTemplateExists(data.template_id);
+    await this.validateUniqueStageOrder(data.template_id, data.stage_order);
+
+    try {
+      const stageTemplate = await this.planStageTemplateRepository.create(data);
+      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, data.template_id);
+      await this.cessationPlanTemplateService.updateTemplateDuration(data.template_id);
+      return stageTemplate;
+    } catch (error) {
+      this.logger.error(`Failed to create plan stage template: ${error.message}`);
+
+      if (error.code === 'P2002') {
+        throw new ConflictException('Stage order already exists for this template');
+      }
+
+      throw new BadRequestException('Failed to create plan stage template');
+    }
+  }
 
   async findAll(params: PaginationParamsType, templateId: string) {
     await this.validateTemplateExists(templateId);
@@ -71,26 +94,6 @@ export class PlanStageTemplateService {
     return stageTemplate;
   }
 
-  async create(data: CreatePlanStageTemplateType, userRole: string) {
-    await this.validateTemplateExists(data.template_id);
-    await this.validateUniqueStageOrder(data.template_id, data.stage_order);
-
-    try {
-      const stageTemplate = await this.planStageTemplateRepository.create(data);
-      this.logger.log(`Plan stage template created: ${stageTemplate.id}`);
-      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, data.template_id);
-      return stageTemplate;
-    } catch (error) {
-      this.logger.error(`Failed to create plan stage template: ${error.message}`);
-
-      if (error.code === 'P2002') {
-        throw new ConflictException('Stage order already exists for this template');
-      }
-
-      throw new BadRequestException('Failed to create plan stage template');
-    }
-  }
-
   async update(id: string, data: Omit<UpdatePlanStageTemplateType, 'id'>, userRole: string) {
     const existingStage = await this.findOne(id);
 
@@ -105,8 +108,8 @@ export class PlanStageTemplateService {
 
     try {
       const stageTemplate = await this.planStageTemplateRepository.update(id, data);
-      this.logger.log(`Plan stage template updated: ${stageTemplate.id}`);
       await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, existingStage.template_id);
+      await this.cessationPlanTemplateService.updateTemplateDuration(stageTemplate.template_id);
       if (data.template_id && data.template_id !== existingStage.template_id) {
         await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, data.template_id);
       }
@@ -127,8 +130,8 @@ export class PlanStageTemplateService {
 
     const stageTemplate = await this.planStageTemplateRepository.delete(id);
     this.logger.log(`Plan stage template deleted: ${id}`);
-    // Invalidate all caches related to the parent template
     await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, existingStage.template_id);
+    await this.cessationPlanTemplateService.updateTemplateDuration(existingStage.template_id);
     return stageTemplate;
   }
 
