@@ -111,7 +111,8 @@ import { LeaderboardModule } from './routes/leaderboard/leaderboard.module'
     PostLikeModule,
     PostCommentModule,
     ChatModule,
-    LeaderboardModule
+    LeaderboardModule,
+    ScheduleModule.forRoot()
   ],
   controllers: [AppController],
   providers: [

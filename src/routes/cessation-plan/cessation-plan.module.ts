@@ -7,6 +7,9 @@ import { CessationPlanRepository } from './cessation-plan.repository'
 import { PlanStageModule } from '../plan-stage/plan-stage.module'
 import { BadgeAwardModule } from '../badge-award/badge-award.module'
 import { SubscriptionGuard } from 'src/shared/guards/subscription.guard'
+import { CessationPlanTemplateModule } from '../cessation-plan-template/cessation-plan-template.module'
+import { CessationPlanCronService } from './cessation-plan.cron'
+import { RedisServices } from 'src/shared/services/redis.service'
 
 @Module({
   imports: [
@@ -14,8 +17,19 @@ import { SubscriptionGuard } from 'src/shared/guards/subscription.guard'
     SupabaseModule,
     forwardRef(() => PlanStageModule),
     BadgeAwardModule,
+    CessationPlanTemplateModule,
   ],
-  providers: [CessationPlanResolver, CessationPlanService, CessationPlanRepository, SubscriptionGuard],
-  exports: [CessationPlanService, CessationPlanRepository],
+  providers: [
+    CessationPlanResolver,
+    CessationPlanService,
+    CessationPlanRepository,
+    SubscriptionGuard,
+    CessationPlanCronService,
+    RedisServices,
+  ],
+  exports: [
+    CessationPlanService,
+    CessationPlanRepository
+  ],
 })
 export class CessationPlanModule { }
