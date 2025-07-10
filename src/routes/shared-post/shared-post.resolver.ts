@@ -5,7 +5,7 @@ import { CreateSharedPostInput } from './dto/request/create-shared-post.input';
 import { UpdateSharedPostInput } from './dto/request/update-shared-post.input'
 import { UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
-import { User } from '../../shared/decorators/current-user.decorator'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { UserType } from '../user/schema/user.schema'
 import { PaginatedSharedPostsResponse } from './dto/response/paginated-shared-post.response'
 import { PaginationParamsInput } from '../../shared/models/dto/request/pagination-params.input'
@@ -19,7 +19,7 @@ export class SharedPostResolver {
   @Mutation(() => SharedPost, { description: 'Create a new shared post from a UserBadge' })
   async createSharedPost(
     @Args('input') input: CreateSharedPostInput,
-    @User() currentUser: UserType,
+    @CurrentUser() currentUser: UserType,
   ): Promise<SharedPost> {
     return this.sharedPostService.create(input, currentUser);
   }
@@ -44,7 +44,7 @@ export class SharedPostResolver {
   async updateSharedPost(
     @Args('id', { type: () => ID }) id: string,
     @Args('input') input: UpdateSharedPostInput,
-    @User() currentUser: UserType,
+    @CurrentUser() currentUser: UserType,
   ): Promise<SharedPost> {
     return this.sharedPostService.update(id, input, currentUser);
   }
@@ -53,7 +53,7 @@ export class SharedPostResolver {
   @Mutation(() => SharedPost, { description: 'Delete a shared post' })
   async removeSharedPost(
     @Args('id', { type: () => ID }) id: string,
-    @User() currentUser: UserType,
+    @CurrentUser() currentUser: UserType,
   ): Promise<SharedPost> {
     return this.sharedPostService.remove(id, currentUser);
   }

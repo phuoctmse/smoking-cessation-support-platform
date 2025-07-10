@@ -13,8 +13,8 @@ import { MembershipService } from "../membership-package/membership.service";
 export class PaymentRepo {
     constructor(private readonly prisma: PrismaService, private readonly subscriptionService: SubscriptionService, private readonly membershipService: MembershipService) { }
 
-    async createPayment(input: CreatePaymentInput) {
-        const { user_id, membership_package_id } = input;
+    async createPayment(input: CreatePaymentInput, user_id: string) {
+        const { membership_package_id } = input;
 
         const membershipPackage = await this.membershipService.findById(membership_package_id);
 
@@ -57,7 +57,7 @@ export class PaymentRepo {
                 user_id,
                 subscription_id: subscription.id,
                 status: PaymentStatus.PENDING,
-                content: envConfig.PREFIX_PAYMENT_CODE + "_" +paymentId,
+                content: envConfig.PREFIX_PAYMENT_CODE + "_" + paymentId,
                 price: membershipPackage.price
             },
         });
@@ -65,8 +65,12 @@ export class PaymentRepo {
         return payment;
     }
 
-    async getPayments() {
-        return this.prisma.payment.findMany();
+    async getPayments(user_id: string) {
+        return this.prisma.payment.findMany({
+            where: {
+                user_id
+            }
+        });
     }
 
     async getPaymentById(id: string) {

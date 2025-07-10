@@ -15,9 +15,9 @@ import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RoleName } from '../../shared/constants/role.constant';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
-import { User } from 'src/shared/decorators/current-user.decorator';
 import { UserType } from '../user/schema/user.schema';
 import { AIRecommendationOutput } from './schema/ai-recommendation.schema';
+import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
 
 @Resolver(() => CessationPlan)
 @UseGuards(JwtAuthGuard)
@@ -29,7 +29,7 @@ export class CessationPlanResolver {
   ) {}
 
   @Query(() => AIRecommendationOutput)
-  async getAIRecommendation(@User() user: UserType): Promise<AIRecommendationOutput> {
+  async getAIRecommendation(@CurrentUser() user: UserType): Promise<AIRecommendationOutput> {
     // Get user's member profile
     const memberProfile = await this.prisma.memberProfile.findFirst({
       where: {
@@ -52,7 +52,7 @@ export class CessationPlanResolver {
   @Roles(RoleName.Member)
   async createCessationPlan(
     @Args('input') input: CreateCessationPlanInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<CessationPlan> {
     return this.cessationPlanService.create(input, user.id);
   }
@@ -62,7 +62,7 @@ export class CessationPlanResolver {
   async cessationPlans(
       @Args('params', { nullable: true }) params?: PaginationParamsInput,
       @Args('filters', { nullable: true }) filters?: CessationPlanFiltersInput,
-      @User() user?: UserType,
+      @CurrentUser() user?: UserType,
   ): Promise<PaginatedCessationPlansResponse> {
     return this.cessationPlanService.findAll(
         params || { page: 1, limit: 10, orderBy: 'created_at', sortOrder: 'desc' },
@@ -76,7 +76,7 @@ export class CessationPlanResolver {
   @UseGuards(JwtAuthGuard)
   async cessationPlan(
       @Args('id') id: string,
-      @User() user: UserType,
+      @CurrentUser() user: UserType,
   ): Promise<CessationPlan> {
     return this.cessationPlanService.findOne(id, user.role, user.id);
   }
@@ -84,7 +84,7 @@ export class CessationPlanResolver {
   @Query(() => [CessationPlan])
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Member)
-  async userCessationPlans(@User() user?: UserType): Promise<CessationPlan[]> {
+  async userCessationPlans(@CurrentUser() user?: UserType): Promise<CessationPlan[]> {
     return this.cessationPlanService.findByUserId(user);
   }
 
@@ -93,7 +93,7 @@ export class CessationPlanResolver {
   @Roles(RoleName.Coach, RoleName.Admin)
   async cessationPlanStatistics(
       @Args('filters', { nullable: true }) filters?: CessationPlanFiltersInput,
-      @User() user?: UserType,
+      @CurrentUser() user?: UserType,
   ): Promise<CessationPlanStatisticsResponse> {
     return this.cessationPlanService.getStatistics(filters, user?.role, user?.id);
   }
@@ -103,7 +103,7 @@ export class CessationPlanResolver {
   @Roles(RoleName.Member)
   async updateCessationPlan(
       @Args('input') input: UpdateCessationPlanInput,
-      @User() user: UserType,
+      @CurrentUser() user: UserType,
   ): Promise<CessationPlan> {
     const { id, ...updateData } = input;
     return this.cessationPlanService.update(id, updateData, user.role, user.id);

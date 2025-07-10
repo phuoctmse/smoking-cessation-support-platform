@@ -20,34 +20,18 @@ export class CessationPlanRepository {
   constructor(private readonly prisma: PrismaService) { }
 
   async create(data: CreateCessationPlanType & { user_id: string }) {
-    try {
-      if (data.is_custom) {
-        return this.prisma.$transaction(async (tx) => {
-          const subscription = await tx.userSubscription.findFirst({
-            where: {
-              user_id: data.user_id,
-              status: SubscriptionStatus.Active,
-            },
-          })
-          if (!subscription) {
-            throw new Error('Active subscription required for custom cessation plans')
-          }
-          const plan = await tx.cessationPlan.create({
-            data: {
-              user_id: data.user_id,
-              template_id: data.template_id,
-              reason: data.reason,
-              start_date: data.start_date,
-              target_date: data.target_date,
-              is_custom: data.is_custom,
-              status: 'PLANNING',
-            },
-            include: this.getDefaultIncludes(),
-          })
-          return plan
+    if (data.is_custom) {
+      return this.prisma.$transaction(async (tx) => {
+        const subscription = await tx.userSubscription.findFirst({
+          where: {
+            user_id: data.user_id,
+            status: SubscriptionStatus.Active,
+          },
         })
-      } else {
-        return this.prisma.cessationPlan.create({
+        if (!subscription) {
+          throw new Error('Active subscription required for custom cessation plans')
+        }
+        return tx.cessationPlan.create({
           data: {
             user_id: data.user_id,
             template_id: data.template_id,
@@ -58,10 +42,21 @@ export class CessationPlanRepository {
             status: 'PLANNING',
           },
           include: this.getDefaultIncludes(),
-        });
-      }
-    } catch (error) {
-      throw error
+        })
+      })
+    } else {
+      return this.prisma.cessationPlan.create({
+        data: {
+          user_id: data.user_id,
+          template_id: data.template_id,
+          reason: data.reason,
+          start_date: data.start_date,
+          target_date: data.target_date,
+          is_custom: data.is_custom,
+          status: 'PLANNING',
+        },
+        include: this.getDefaultIncludes(),
+      });
     }
   }
 
@@ -173,6 +168,21 @@ export class CessationPlanRepository {
       where: { id },
       data,
       include: this.getDefaultIncludes(),
+    });
+  }
+
+  async countByStatusForTemplate(templateId: string) {
+    return this.prisma.cessationPlan.groupBy({
+      by: ['status'],
+      where: {
+        template_id: templateId,
+        status: {
+          in: ['COMPLETED', 'ABANDONED'],
+        },
+      },
+      _count: {
+        id: true,
+      },
     });
   }
 

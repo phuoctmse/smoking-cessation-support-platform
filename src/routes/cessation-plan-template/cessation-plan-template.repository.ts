@@ -169,6 +169,9 @@ export class CessationPlanTemplateRepository {
     if (data.estimated_duration_days !== undefined) {
       updateData.estimated_duration_days = data.estimated_duration_days;
     }
+    if (data.success_rate !== undefined) {
+      updateData.success_rate = data.success_rate;
+    }
 
     return this.prisma.cessationPlanTemplate.update({
       where: { id },

@@ -8,6 +8,9 @@ import { PlanStageModule } from '../plan-stage/plan-stage.module'
 import { BadgeAwardModule } from '../badge-award/badge-award.module'
 import { SubscriptionGuard } from 'src/shared/guards/subscription.guard'
 import { CustomAIRecommendationService } from '../../shared/services/custom-ai-recommendation.service';
+import { CessationPlanTemplateModule } from '../cessation-plan-template/cessation-plan-template.module'
+import { CessationPlanCronService } from './cessation-plan.cron'
+import { RedisServices } from 'src/shared/services/redis.service'
 
 @Module({
   imports: [
@@ -15,6 +18,7 @@ import { CustomAIRecommendationService } from '../../shared/services/custom-ai-r
     SupabaseModule,
     forwardRef(() => PlanStageModule),
     BadgeAwardModule,
+    CessationPlanTemplateModule,
   ],
   providers: [
     CessationPlanResolver,
@@ -24,5 +28,6 @@ import { CustomAIRecommendationService } from '../../shared/services/custom-ai-r
     CustomAIRecommendationService
   ],
   exports: [CessationPlanService, CessationPlanRepository],
+
 })
 export class CessationPlanModule { }
