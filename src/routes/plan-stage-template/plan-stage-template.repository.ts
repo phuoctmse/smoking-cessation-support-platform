@@ -196,4 +196,17 @@ export class PlanStageTemplateRepository {
       });
     });
   }
+
+  async sumDurationByTemplate(templateId: string): Promise<number> {
+    const result = await this.prisma.planStageTemplate.aggregate({
+      _sum: {
+        duration_days: true,
+      },
+      where: {
+        template_id: templateId,
+        is_active: true,
+      },
+    });
+    return result._sum.duration_days || 0;
+  }
 }

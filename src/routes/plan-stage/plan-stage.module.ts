@@ -6,6 +6,8 @@ import { GuardModule } from '../../shared/guards/guard.module'
 import { SupabaseModule } from '../../shared/modules/supabase.module'
 import { CessationPlanModule } from '../cessation-plan/cessation-plan.module'
 import { BadgeAwardModule } from '../badge-award/badge-award.module'
+import { PlanStageCronService } from './plan-stage.cron'
+import { RedisServices } from '../../shared/services/redis.service'
 
 @Module({
   imports: [
@@ -14,7 +16,13 @@ import { BadgeAwardModule } from '../badge-award/badge-award.module'
     forwardRef(() => CessationPlanModule),
     BadgeAwardModule
   ],
-  providers: [PlanStageResolver, PlanStageService, PlanStageRepository],
+  providers: [
+    PlanStageResolver,
+    PlanStageService,
+    PlanStageRepository,
+    PlanStageCronService,
+    RedisServices,
+  ],
   exports: [PlanStageService, PlanStageRepository],
 })
 export class PlanStageModule {}
