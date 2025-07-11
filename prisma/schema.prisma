@@ -31,6 +31,7 @@ model User {
   ChatRoomCreator        ChatRoom[]              @relation("ChatRoomCreator")
   ChatRoomReceiver       ChatRoom[]              @relation("ChatRoomReceiver")
   ChatMessage            ChatMessage[]
+  HealthScoreCriteria    HealthScoreCriteria[]
 
   @@map("user")
 }
@@ -388,6 +389,23 @@ model ChatMessage {
   updated_at   DateTime @updatedAt
 
   @@map("chat_message")
+}
+
+model HealthScoreCriteria {
+  id          String   @id @default(uuid())
+  coach_id    String
+  title       String   @db.VarChar(200)
+  description String
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  coach User @relation(fields: [coach_id], references: [id], onDelete: Cascade)
+
+  @@index([coach_id])
+  @@index([is_active])
+  @@index([created_at])
+  @@map("health_score_criteria")
 }
 
 enum PaymentStatus {
