@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { GoogleGenAI } from '@google/genai'; // Adjust import based on actual library
+import { GoogleGenAI } from '@google/genai'; // Correct import for new library
 import { PrismaService } from './prisma.service';
 import { MemberProfile, CessationPlanTemplate } from '@prisma/client';
 import {
@@ -12,8 +12,7 @@ import {
 @Injectable()
 export class CustomAIRecommendationService {
     private readonly logger = new Logger(CustomAIRecommendationService.name);
-    private genAI: GoogleGenAI;
-    private model: any; // Replace with actual type (e.g., GenerativeModel)
+    private ai: GoogleGenAI;
 
     private readonly SYSTEM_PROMPT = `You are an expert AI system specializing in smoking cessation recommendations. 
 Your role is to analyze smoker profiles and recommend the most suitable cessation plan templates from the provided list.
@@ -65,15 +64,7 @@ Based on this profile, please:
             this.logger.error('GEMINI_API_KEY is not defined in environment variables');
             throw new Error('GEMINI_API_KEY is required');
         }
-        const modelName = 'gemini-2.5-flash';
-        this.genAI = new GoogleGenAI({ apiKey });
-        try {
-            // Initialize the model without calling generateContent
-            this.model = this.genAI.models.generateContent({ model: modelName, contents: [] }); 
-        } catch (error) {
-            this.logger.error(`Failed to initialize model ${modelName}:`, error);
-            throw new Error(`Invalid or unsupported model: ${modelName}`);
-        }
+        this.ai = new GoogleGenAI({ apiKey });
     }
 
     private mapProfileToInput(profile: MemberProfile): AIRecommendationInput {
@@ -181,17 +172,25 @@ Based on this profile, please:
                 .map(t => `- ${t.name}: ${t.description}`)
                 .join('\n')}`;
 
-            // Generate content using the model
-            const result = await this.model.generateContent({
-                contents: [
-                    { role: 'system', parts: [{ text: this.SYSTEM_PROMPT }] },
-                    { role: 'user', parts: [{ text: context }] },
-                    { role: 'user', parts: [{ text: prompt }] }
-                ]
+            // Generate content using the new API
+            const result = await this.ai.models.generateContent({
+                model: 'gemini-1.5-flash',
+                contents: `${this.SYSTEM_PROMPT}\n\n${context}\n\n${prompt}`
             });
 
-            // Extract response text
-            const responseText = result.response.text();
+            // Extract response text using the correct path for the new library
+            let responseText = '';
+            if (result.candidates && result.candidates.length > 0) {
+                const candidate = result.candidates[0];
+                if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+                    responseText = candidate.content.parts[0].text || '';
+                }
+            }
+
+            if (!responseText) {
+                throw new Error('No response received from AI model');
+            }
+
             this.logger.debug('AI response received:', responseText);
 
             // Parse and validate response
