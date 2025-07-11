@@ -1,4 +1,5 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { GraphQLJSON } from 'graphql-type-json';
 import { QuizResponseService } from './quiz-response.service';
 import { QuizResponse } from './entities/quiz-response.entity';
 import { CreateQuizResponseInput } from './dto/request/create-quiz-response.input';
@@ -24,7 +25,7 @@ export class QuizResponseResolver {
     @Mutation(() => Boolean)
     async validateQuizResponse(
         @Args('questionId') questionId: string,
-        @Args('answer') answer: any,
+        @Args('answer', { type: () => GraphQLJSON }) answer: any,
     ): Promise<boolean> {
         return this.quizResponseService.validateResponse(questionId, answer);
     }

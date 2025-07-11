@@ -1,8 +1,9 @@
-export enum QuestionType {
-    TEXT = 'TEXT',
-    NUMBER = 'NUMBER',
-    MULTIPLE_CHOICE = 'MULTIPLE_CHOICE',
-    BOOLEAN = 'BOOLEAN',
-    SCALE = 'SCALE',
-    DATE = 'DATE',
-}
+import { registerEnumType } from "@nestjs/graphql";
+import { QuestionType } from '@prisma/client';
+
+registerEnumType(QuestionType, {
+    name: 'QuestionType',
+    description: 'The type of quiz question',
+})
+
+export { QuestionType };
