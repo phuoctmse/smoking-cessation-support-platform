@@ -500,7 +500,6 @@ model QuizQuestion {
   description     String?
   question_type   QuestionType
   options         Json? // Cho câu hỏi multiple choice
-  target_field    String // Field trong MemberProfile mà câu trả lời sẽ map vào
   order           Int
   is_required     Boolean        @default(true)
   validation_rule Json? // Quy tắc validate câu trả lời

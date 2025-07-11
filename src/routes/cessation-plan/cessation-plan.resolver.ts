@@ -44,7 +44,15 @@ export class CessationPlanResolver {
     }
 
     // Get AI recommendation
-    return this.aiRecommendationService.getRecommendation(memberProfile);
+    const recommendation = await this.aiRecommendationService.getRecommendation(memberProfile);
+    
+    // Map the output to match the schema
+    return {
+      recommendedTemplate: recommendation.recommendedTemplate.id,
+      confidence: recommendation.confidence,
+      reasoning: recommendation.reasoning,
+      alternativeTemplates: recommendation.alternativeTemplates.map(t => t.id)
+    };
   }
 
   @Mutation(() => CessationPlan)

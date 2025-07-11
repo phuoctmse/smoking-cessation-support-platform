@@ -40,6 +40,9 @@ import { createWebSocketContext } from './shared/config/websocket.config';
 import { PrismaService } from './shared/services/prisma.service';
 import { SupabaseModule } from './shared/modules/supabase.module';
 import { LeaderboardModule } from './routes/leaderboard/leaderboard.module'
+import { ProfileQuizModule } from './routes/profile-quiz/profile-quiz.module'
+import { QuizQuestionModule } from './routes/quiz-question/quiz-question.module'
+import { QuizResponseModule } from './routes/quiz-response/quiz-reponse.module'
 
 @Module({
   imports: [
@@ -112,6 +115,9 @@ import { LeaderboardModule } from './routes/leaderboard/leaderboard.module'
     PostCommentModule,
     ChatModule,
     LeaderboardModule,
+    ProfileQuizModule,
+    QuizQuestionModule,
+    QuizResponseModule,
     ScheduleModule.forRoot()
   ],
   controllers: [AppController],
