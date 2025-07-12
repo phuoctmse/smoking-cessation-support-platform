@@ -32,6 +32,7 @@ model User {
   ChatRoomReceiver       ChatRoom[]              @relation("ChatRoomReceiver")
   ChatMessage            ChatMessage[]
   HealthScoreCriteria    HealthScoreCriteria[]
+  Notification           Notification[]
 
   @@map("user")
 }
@@ -406,6 +407,79 @@ model HealthScoreCriteria {
   @@index([is_active])
   @@index([created_at])
   @@map("health_score_criteria")
+}
+
+model NotificationTemplate {
+  id                String                @id @default(uuid())
+  name              String                @unique @db.VarChar(200)
+  title             String                @db.VarChar(300)
+  content           String
+  notification_type NotificationType
+  channel_types     NotificationChannel[] // Array of channels
+  variables         String[] // Dynamic variables like {user_name}, {plan_name}
+  is_active         Boolean               @default(true)
+  created_at        DateTime              @default(now())
+  updated_at        DateTime              @updatedAt
+
+  notifications Notification[]
+
+  @@index([notification_type])
+  @@index([is_active])
+  @@map("notification_template")
+}
+
+model Notification {
+  id                String              @id @default(uuid())
+  template_id       String?
+  user_id           String
+  title             String              @db.VarChar(300)
+  content           String
+  notification_type NotificationType
+  channel           NotificationChannel
+  status            NotificationStatus  @default(PENDING)
+  scheduled_at      DateTime?
+  sent_at           DateTime?
+  read_at           DateTime?
+  metadata          Json?
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+
+  template NotificationTemplate? @relation(fields: [template_id], references: [id])
+  user     User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([status])
+  @@index([scheduled_at])
+  @@index([notification_type])
+  @@index([channel])
+  @@map("notification")
+}
+
+enum NotificationType {
+  PLAN_REMINDER
+  STAGE_START
+  STAGE_COMPLETION
+  BADGE_EARNED
+  STREAK_MILESTONE
+  COACH_MESSAGE
+  SYSTEM_ANNOUNCEMENT
+  HEALTH_CHECK_REMINDER
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  PROCESSING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELLED
 }
 
 enum PaymentStatus {
