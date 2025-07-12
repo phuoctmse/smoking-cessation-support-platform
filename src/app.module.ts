@@ -43,6 +43,7 @@ import { LeaderboardModule } from './routes/leaderboard/leaderboard.module'
 import { ProfileQuizModule } from './routes/profile-quiz/profile-quiz.module'
 import { QuizQuestionModule } from './routes/quiz-question/quiz-question.module'
 import { QuizResponseModule } from './routes/quiz-response/quiz-reponse.module'
+import { HealthScoreCriteriaModule } from './routes/health-score-criteria/health-score-criteria.module'
 
 @Module({
   imports: [
@@ -118,7 +119,8 @@ import { QuizResponseModule } from './routes/quiz-response/quiz-reponse.module'
     ProfileQuizModule,
     QuizQuestionModule,
     QuizResponseModule,
-    ScheduleModule.forRoot()
+    ScheduleModule.forRoot(),
+    HealthScoreCriteriaModule
   ],
   controllers: [AppController],
   providers: [

@@ -28,6 +28,7 @@ export class ProgressRecordResolver {
     return this.progressRecordService.create(input, user);
   }
 
+  @Roles(RoleName.Member)
   @Query(() => PaginatedProgressRecordsResponse)
   async progressRecords(
     @Args('params', { nullable: true, type: () => PaginationParamsInput, defaultValue: { page: 1, limit: 10, orderBy: 'record_date', sortOrder: 'desc' } })
