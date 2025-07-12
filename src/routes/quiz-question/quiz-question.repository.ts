@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../shared/services/prisma.service';
 import { CreateQuizQuestionInput } from './dto/request/create-quiz-question.input';
 import { UpdateQuizQuestionInput } from './dto/request/update-quiz-question.input';
@@ -6,9 +6,27 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class QuizQuestionRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
+
+  private async getQuiz(quizId: string) {
+    return this.prisma.profileQuiz.findUnique({
+      where: { id: quizId },
+    });
+  }
+
+
 
   async create(input: CreateQuizQuestionInput) {
+    const quiz = await this.getQuiz(input.quiz_id);
+    if (!quiz) {
+      throw new NotFoundException('Quiz not found');
+    }
+
+    const questions = await this.findAll(input.quiz_id);
+    if (questions.some(question => question.order === input.order)) {
+      throw new BadRequestException('Order already exists');
+    }
+
     return this.prisma.quizQuestion.create({
       data: {
         quiz_id: input.quiz_id,
@@ -35,12 +53,23 @@ export class QuizQuestionRepository {
   }
 
   async findOne(id: string) {
-    return this.prisma.quizQuestion.findUnique({
+    const question = await this.prisma.quizQuestion.findUnique({
       where: { id },
     });
+
+    if (!question) {
+      throw new NotFoundException('Question not found');
+    }
+
+    return question;
   }
 
   async update(id: string, input: UpdateQuizQuestionInput) {
+
+    const questions = await this.findAll(input.quiz_id);
+    if (questions.some(question => question.order === input.order)) {
+      throw new BadRequestException('Order already exists');
+    }
     const updateData: Prisma.QuizQuestionUpdateInput = {
       question_text: input.question_text,
       description: input.description,
@@ -58,8 +87,14 @@ export class QuizQuestionRepository {
   }
 
   async delete(id: string) {
-    return this.prisma.quizQuestion.delete({
+    const question = await this.prisma.quizQuestion.delete({
       where: { id },
     });
+
+    if (!question) {
+      throw new NotFoundException('Question not found');
+    }
+
+    return question;
   }
 } 
