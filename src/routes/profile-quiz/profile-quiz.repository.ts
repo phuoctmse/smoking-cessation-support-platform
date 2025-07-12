@@ -68,6 +68,10 @@ export class ProfileQuizRepository {
   async delete(id: string) {
     return this.prisma.profileQuiz.delete({
       where: { id },
+      include: {
+        questions: true,
+        attempts: true
+      },
     });
   }
 } 

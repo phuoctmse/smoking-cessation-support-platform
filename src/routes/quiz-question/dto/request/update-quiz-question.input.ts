@@ -6,6 +6,6 @@ import { CreateQuizQuestionInput } from './create-quiz-question.input';
 
 @InputType()
 export class UpdateQuizQuestionInput extends PartialType(CreateQuizQuestionInput) {
-  @Field(() => String)
+  @Field(() => ID)
   id: string;
 } 

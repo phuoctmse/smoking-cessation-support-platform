@@ -24,7 +24,7 @@ export class ProfileQuizService {
         return this.profileQuizRepository.update(input.id, input);
     }
 
-    async deleteProfileQuiz(id: string): Promise<ProfileQuiz> {
-        return this.profileQuizRepository.delete(id);
+    async deleteProfileQuiz(id: string): Promise<void> {
+        await this.profileQuizRepository.delete(id);
     }
 }

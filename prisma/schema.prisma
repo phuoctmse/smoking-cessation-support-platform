@@ -32,9 +32,9 @@ model User {
   ChatRoomReceiver          ChatRoom[]               @relation("ChatRoomReceiver")
   ChatMessage               ChatMessage[]
   template_matching_results TemplateMatchingResult[]
-  HealthScoreCriteria    HealthScoreCriteria[]
+  HealthScoreCriteria       HealthScoreCriteria[]
   quiz_attempts             QuizAttempt[]
-  Notification           Notification[]
+  Notification              Notification[]
 
   @@map("user")
 }
@@ -66,8 +66,8 @@ model MemberProfile {
   social_support    Boolean? // Có sự hỗ trợ từ gia đình/bạn bè
   trigger_factors   String[] // Các yếu tố kích thích hút thuốc
 
-  recorded_at    DateTime?
-  quiz_attempts  QuizAttempt[]
+  recorded_at   DateTime?
+  quiz_attempts QuizAttempt[]
 
   @@map("member_profile")
 }
@@ -93,7 +93,7 @@ model CoachProfile {
   // Thông tin bổ sung
   approach_description String? // Mô tả phương pháp tiếp cận
   created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
+  updated_at           DateTime? @updatedAt
 
   @@map("coach_profile")
 }
@@ -603,33 +603,33 @@ model QuizQuestion {
 }
 
 model QuizResponse {
-  id              String      @id @default(uuid())
-  question_id     String
-  question        QuizQuestion @relation(fields: [question_id], references: [id])
-  attempt_id      String
-  attempt         QuizAttempt @relation(fields: [attempt_id], references: [id])
-  answer          Json // Lưu câu trả lời dưới dạng JSON để linh hoạt với các loại câu hỏi
-  created_at      DateTime    @default(now())
-  updated_at      DateTime    @updatedAt
+  id          String       @id @default(uuid())
+  question_id String
+  question    QuizQuestion @relation(fields: [question_id], references: [id])
+  attempt_id  String
+  attempt     QuizAttempt  @relation(fields: [attempt_id], references: [id])
+  answer      Json // Lưu câu trả lời dưới dạng JSON để linh hoạt với các loại câu hỏi
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
 
   @@unique([question_id, attempt_id])
   @@map("quiz_response")
 }
 
-model  QuizAttempt {
-  id                String        @id @default(uuid())
+model QuizAttempt {
+  id                String         @id @default(uuid())
   quiz_id           String
-  quiz              ProfileQuiz   @relation(fields: [quiz_id], references: [id])
+  quiz              ProfileQuiz    @relation(fields: [quiz_id], references: [id])
   user_id           String
-  user              User          @relation(fields: [user_id], references: [id])
+  user              User           @relation(fields: [user_id], references: [id])
   member_profile_id String
-  member_profile    MemberProfile @relation(fields: [member_profile_id], references: [id])
-  status            QuizStatus    @default(IN_PROGRESS)
-  started_at        DateTime      @default(now())
+  member_profile    MemberProfile  @relation(fields: [member_profile_id], references: [id])
+  status            QuizStatus     @default(IN_PROGRESS)
+  started_at        DateTime       @default(now())
   completed_at      DateTime?
   responses         QuizResponse[]
-  created_at        DateTime      @default(now())
-  updated_at        DateTime      @updatedAt
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
 
   @@index([member_profile_id])
   @@map("quiz_attempt")
