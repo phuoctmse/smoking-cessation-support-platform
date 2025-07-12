@@ -39,7 +39,8 @@ import { ChatModule } from './routes/chat/chat.module';
 import { createWebSocketContext } from './shared/config/websocket.config';
 import { PrismaService } from './shared/services/prisma.service';
 import { SupabaseModule } from './shared/modules/supabase.module';
-import { LeaderboardModule } from './routes/leaderboard/leaderboard.module'
+import { LeaderboardModule } from './routes/leaderboard/leaderboard.module';
+import { HealthScoreCriteriaModule } from './routes/health-score-criteria/health-score-criteria.module';
 
 @Module({
   imports: [
@@ -112,7 +113,8 @@ import { LeaderboardModule } from './routes/leaderboard/leaderboard.module'
     PostCommentModule,
     ChatModule,
     LeaderboardModule,
-    ScheduleModule.forRoot()
+    ScheduleModule.forRoot(),
+    HealthScoreCriteriaModule
   ],
   controllers: [AppController],
   providers: [
