@@ -37,9 +37,9 @@ export class SubscriptionRepo {
         return subscription
     }
 
-    async update(id: string, input: UpdateSubscriptionSchemaType) {
+    async update(input: UpdateSubscriptionSchemaType) {
         const subscription = await this.prisma.userSubscription.update({
-            where: { id },
+            where: { id: input.id },
             data: {
                 status: input.status,
                 start_date: input.start_date,

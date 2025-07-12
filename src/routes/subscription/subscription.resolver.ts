@@ -31,8 +31,8 @@ export class SubscriptionResolver {
     @UseGuards(RolesGuard)
     @Roles(RoleName.Admin)
     @Mutation(() => UserSubscription)
-    async updateSubscription(@Args('id') id: string, @Args('input') input: UpdateSubscriptionInput) {
-        return this.subscriptionService.updateSubscription(id, input);
+    async updateSubscription(@Args('input') input: UpdateSubscriptionInput) {
+        return this.subscriptionService.updateSubscription(input);
     }
 
 }

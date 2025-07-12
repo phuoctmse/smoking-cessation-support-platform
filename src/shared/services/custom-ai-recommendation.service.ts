@@ -14,10 +14,10 @@ export class CustomAIRecommendationService {
     private readonly logger = new Logger(CustomAIRecommendationService.name);
     private ai: GoogleGenAI;
 
-    private readonly SYSTEM_PROMPT = `You are an expert AI system specializing in smoking cessation recommendations. 
-Your role is to analyze smoker profiles and recommend the most suitable cessation plan templates from the provided list.
-Consider all aspects including physical addiction, psychological factors, health conditions, and lifestyle.
-Return your response in JSON format with the following structure:
+    private readonly SYSTEM_PROMPT = `Bạn là một hệ thống AI chuyên gia về việc đề xuất kế hoạch cai thuốc lá. 
+Nhiệm vụ của bạn là phân tích hồ sơ người hút thuốc và đề xuất kế hoạch cai thuốc phù hợp nhất từ danh sách các mẫu có sẵn.
+Hãy xem xét tất cả các khía cạnh bao gồm nghiện nicotine, yếu tố tâm lý, tình trạng sức khỏe và lối sống.
+Trả về phản hồi dưới dạng JSON với cấu trúc sau:
 {
     "recommendedTemplate": string,
     "confidence": number,
@@ -29,34 +29,36 @@ Return your response in JSON format with the following structure:
     },
     "alternativeTemplates": string[]
 }
-Ensure the recommendedTemplate and alternativeTemplates are selected from the provided list of available templates.`;
+Đảm bảo recommendedTemplate và alternativeTemplates được chọn từ danh sách các mẫu có sẵn được cung cấp.`;
 
-    private readonly USER_PROMPT_TEMPLATE = `Please analyze this smoker's profile and recommend the most suitable cessation plan:
+    private readonly USER_PROMPT_TEMPLATE = `Vui lòng phân tích hồ sơ người hút thuốc này và đề xuất kế hoạch cai thuốc phù hợp nhất:
 
-SMOKING HABITS:
-- Cigarettes per day: {cigarettesPerDay}
-- Years of smoking: {smokingYears}
-- Nicotine level: {nicotineLevel}mg
-- Preferred brand: {brand}
+THÓI QUEN HÚT THUỐC:
+- Số điếu thuốc mỗi ngày: {cigarettesPerDay}
+- Số năm hút thuốc: {smokingYears}
+- Nồng độ nicotine: {nicotineLevel}mg
+- Thương hiệu ưa thích: {brand}
 
-HEALTH INFORMATION:
-- Health conditions: {healthConditions}
-- Current medications: {medications}
-- Allergies: {allergies}
+THÔNG TIN SỨC KHỎE:
+- Tình trạng sức khỏe: {healthConditions}
+- Thuốc đang sử dụng: {medications}
+- Dị ứng: {allergies}
 
-PSYCHOLOGICAL FACTORS:
-- Quit motivation: {quitMotivation}
-- Previous quit attempts: {previousAttempts}
-- Stress level: {stressLevel}
-- Trigger factors: {triggerFactors}
-- Social support available: {socialSupport}
+YẾU TỐ TÂM LÝ:
+- Động lực cai thuốc: {quitMotivation}
+- Số lần cai thuốc trước đây: {previousAttempts}
+- Mức độ căng thẳng: {stressLevel}
+- Yếu tố gây kích thích: {triggerFactors}
+- Hỗ trợ xã hội: {socialSupport}
 
-Based on this profile, please:
-1. Recommend the most suitable cessation plan template
-2. Explain your reasoning
-3. Identify potential risks and challenges
-4. Suggest alternative templates if available
-5. Provide specific recommendations for customizing the plan`;
+Dựa trên hồ sơ này, vui lòng:
+1. Đề xuất kế hoạch cai thuốc phù hợp nhất
+2. Giải thích lý do lựa chọn
+3. Xác định các rủi ro và thách thức tiềm ẩn
+4. Đề xuất các kế hoạch thay thế nếu có
+5. Đưa ra các khuyến nghị cụ thể để tùy chỉnh kế hoạch
+
+Vui lòng trả lời bằng tiếng Việt.`;
 
     constructor(private prisma: PrismaService) {
         const apiKey = process.env.GEMINI_API_KEY;
@@ -174,7 +176,7 @@ Based on this profile, please:
 
             // Generate content using the new API
             const result = await this.ai.models.generateContent({
-                model: 'gemini-1.5-flash',
+                model: 'gemini-2.5-flash',
                 contents: `${this.SYSTEM_PROMPT}\n\n${context}\n\n${prompt}`
             });
 
