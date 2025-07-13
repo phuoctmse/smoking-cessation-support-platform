@@ -11,7 +11,7 @@ export class ProgressRecordRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: CreateProgressRecordType): Promise<ProgressRecord> {
-    return this.prisma.progressRecord.create({
+    return await this.prisma.progressRecord.create({
       data: {
         plan_id: data.plan_id,
         cigarettes_smoked: data.cigarettes_smoked ?? 0,
@@ -21,7 +21,7 @@ export class ProgressRecordRepository {
         is_deleted: false,
       },
       include: this.getDefaultIncludes(),
-    });
+    }) as unknown as ProgressRecord;
   }
 
   async findAll(params: PaginationParamsType, filters?: ProgressRecordFiltersInput) {
@@ -68,10 +68,17 @@ export class ProgressRecordRepository {
   }
 
   async findOne(id: string): Promise<ProgressRecord | null> {
-    return this.prisma.progressRecord.findUnique({
+    return await this.prisma.progressRecord.findUnique({
       where: { id, is_deleted: false },
       include: this.getDefaultIncludes(),
-    });
+    }) as unknown as ProgressRecord;
+  }
+
+  async findOneWithAnyStatus(id: string): Promise<ProgressRecord | null> {
+    return await this.prisma.progressRecord.findUnique({
+      where: { id },
+      include: this.getDefaultIncludes(),
+    }) as unknown as ProgressRecord;
   }
 
   async findByPlanIdAndDate(planId: string, recordDate: Date): Promise<ProgressRecord | null> {
@@ -80,7 +87,7 @@ export class ProgressRecordRepository {
     const endOfDay = new Date(recordDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return this.prisma.progressRecord.findFirst({
+    return await this.prisma.progressRecord.findFirst({
       where: {
         plan_id: planId,
         record_date: {
@@ -90,23 +97,41 @@ export class ProgressRecordRepository {
         is_deleted: false,
       },
       include: this.getDefaultIncludes(),
-    });
+    }) as unknown as ProgressRecord;
+  }
+
+  async findAnyByPlanIdAndDate(planId: string, recordDate: Date): Promise<ProgressRecord | null> {
+    const startOfDay = new Date(recordDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(recordDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return await this.prisma.progressRecord.findFirst({
+      where: {
+        plan_id: planId,
+        record_date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      include: this.getDefaultIncludes(),
+    }) as unknown as ProgressRecord;
   }
 
   async update(id: string, data: Omit<UpdateProgressRecordType, 'id' | 'plan_id'>): Promise<ProgressRecord | null> {
-    return this.prisma.progressRecord.update({
-      where: { id, is_deleted: false },
+    return await this.prisma.progressRecord.update({
+      where: { id },
       data,
       include: this.getDefaultIncludes(),
-    });
+    }) as unknown as ProgressRecord;
   }
 
   async remove(id: string): Promise<ProgressRecord | null> {
-    return this.prisma.progressRecord.update({
+    return await this.prisma.progressRecord.update({
       where: { id, is_deleted: false },
       data: { is_deleted: true },
       include: this.getDefaultIncludes(),
-    });
+    }) as unknown as ProgressRecord;
   }
 
   private getDefaultIncludes(): Prisma.ProgressRecordInclude {
