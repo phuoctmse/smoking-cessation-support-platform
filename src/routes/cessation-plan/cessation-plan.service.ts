@@ -27,6 +27,7 @@ import {
   reviveDates,
   trackCacheKey,
 } from '../../shared/utils/cache-key.util'
+import { NotificationEventService } from '../notification/notification.event'
 
 const CACHE_TTL = 60 * 5;
 const CACHE_PREFIX = 'cessation-plan';
@@ -42,6 +43,7 @@ export class CessationPlanService {
     private readonly planStageRepository: PlanStageRepository,
     private readonly badgeAwardService: BadgeAwardService,
     private readonly redisServices: RedisServices,
+    private readonly notificationEventService: NotificationEventService,
   ) {}
 
   async create(data: CreateCessationPlanType, requestUserId: string) {
@@ -71,6 +73,12 @@ export class CessationPlanService {
       this.logger.error(`Failed to retrieve newly created plan ${plan.id}`)
       throw new NotFoundException('Failed to retrieve newly created plan.')
     }
+
+    const planDisplayName = this.getPlanDisplayName(fullPlan);
+    await this.notificationEventService.sendPlanCreatedNotification(
+      requestUserId,
+      planDisplayName
+    );
 
     await this.invalidateUserRelatedCaches(requestUserId);
     await this.invalidateListCaches();
@@ -215,9 +223,30 @@ export class CessationPlanService {
     const updatedPlan = await this.cessationPlanRepository.update(id, data)
     this.logger.log(`Cessation plan updated: ${updatedPlan.id}`)
 
+    // Send notifications for status changes
+    if (data.status && data.status !== existingPlan.status) {
+      const planDisplayName = this.getPlanDisplayName(updatedPlan);
+
+      if (data.status === CessationPlanStatus.ACTIVE && existingPlan.status === CessationPlanStatus.PLANNING) {
+        await this.notificationEventService.sendPlanActivatedNotification(
+            updatedPlan.user_id,
+            planDisplayName
+        );
+      } else if (data.status === CessationPlanStatus.COMPLETED) {
+        const daysDuration = Math.floor(
+            (new Date().getTime() - updatedPlan.start_date.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        await this.notificationEventService.sendPlanCompletedNotification(
+            updatedPlan.user_id,
+            planDisplayName,
+            daysDuration
+        );
+      }
+    }
+
     if (
-      updatedPlan.template_id &&
-      (updatedPlan.status === CessationPlanStatus.COMPLETED || updatedPlan.status === CessationPlanStatus.ABANDONED)
+        updatedPlan.template_id &&
+        (updatedPlan.status === CessationPlanStatus.COMPLETED || updatedPlan.status === CessationPlanStatus.ABANDONED)
     ) {
       await this.updateTemplateSuccessRate(updatedPlan.template_id);
     }
@@ -260,6 +289,18 @@ export class CessationPlanService {
     }
 
     return effectiveFilters
+  }
+
+  private getPlanDisplayName(plan: any): string {
+    if (plan.template && plan.template.name) {
+      return plan.template.name;
+    }
+
+    if (plan.reason) {
+      return `Kế hoạch: ${plan.reason}`;
+    }
+
+    return 'Kế hoạch cai thuốc';
   }
 
   private enrichWithComputedFields(plan: any) {

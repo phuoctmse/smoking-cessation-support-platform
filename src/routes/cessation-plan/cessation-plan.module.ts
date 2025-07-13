@@ -10,6 +10,7 @@ import { SubscriptionGuard } from 'src/shared/guards/subscription.guard'
 import { CessationPlanTemplateModule } from '../cessation-plan-template/cessation-plan-template.module'
 import { CessationPlanCronService } from './cessation-plan.cron'
 import { RedisServices } from 'src/shared/services/redis.service'
+import { NotificationModule } from '../notification/notification.module'
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { RedisServices } from 'src/shared/services/redis.service'
     forwardRef(() => PlanStageModule),
     BadgeAwardModule,
     CessationPlanTemplateModule,
+    NotificationModule,
   ],
   providers: [
     CessationPlanResolver,
