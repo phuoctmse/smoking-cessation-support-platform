@@ -41,6 +41,8 @@ import { PrismaService } from './shared/services/prisma.service';
 import { SupabaseModule } from './shared/modules/supabase.module';
 import { LeaderboardModule } from './routes/leaderboard/leaderboard.module';
 import { HealthScoreCriteriaModule } from './routes/health-score-criteria/health-score-criteria.module';
+import { NotificationTemplateModule } from './routes/notification-template/notification-template.module';
+import { NotificationModule } from './routes/notification/notification.module';
 
 @Module({
   imports: [
@@ -114,7 +116,9 @@ import { HealthScoreCriteriaModule } from './routes/health-score-criteria/health
     ChatModule,
     LeaderboardModule,
     ScheduleModule.forRoot(),
-    HealthScoreCriteriaModule
+    HealthScoreCriteriaModule,
+    NotificationTemplateModule,
+    NotificationModule
   ],
   controllers: [AppController],
   providers: [
