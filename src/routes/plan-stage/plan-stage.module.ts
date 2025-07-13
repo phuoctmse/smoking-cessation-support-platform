@@ -8,13 +8,15 @@ import { CessationPlanModule } from '../cessation-plan/cessation-plan.module'
 import { BadgeAwardModule } from '../badge-award/badge-award.module'
 import { PlanStageCronService } from './plan-stage.cron'
 import { RedisServices } from '../../shared/services/redis.service'
+import { NotificationModule } from '../notification/notification.module'
 
 @Module({
   imports: [
     GuardModule,
     SupabaseModule,
     forwardRef(() => CessationPlanModule),
-    BadgeAwardModule
+    BadgeAwardModule,
+    NotificationModule,
   ],
   providers: [
     PlanStageResolver,
