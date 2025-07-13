@@ -252,6 +252,7 @@ export class CessationPlanRepository {
           name: true,
           difficulty_level: true,
           estimated_duration_days: true,
+          coach_id: true,
         },
       },
       stages: {
