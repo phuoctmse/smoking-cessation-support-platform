@@ -19,4 +19,5 @@ export class MemberProfile {
 
   @Field(() => Date, { nullable: true })
   recorded_at?: Date
+  
 } 

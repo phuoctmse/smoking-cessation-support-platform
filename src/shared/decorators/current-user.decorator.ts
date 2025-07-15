@@ -16,6 +16,6 @@ export const CurrentUser = createParamDecorator((data: unknown, ctx: ExecutionCo
     username: user.username,
     name: user.name,
     status: user.status,
-    member_profile_id: user.member_profile_id,
+    member_profile_id: user.user_id,
   }
 })

@@ -111,7 +111,7 @@ Vui lòng trả lời bằng tiếng Việt.`;
             .replace('{socialSupport}', input.psychologicalInfo.socialSupport ? 'Yes' : 'No');
     }
 
-    private async parseAIResponse(response: string): Promise<AIRecommendationOutput> {
+    private parseAIResponse(response: string): Promise<AIRecommendationOutput> {
         try {
             let parsed;
             try {
@@ -200,7 +200,7 @@ Vui lòng trả lời bằng tiếng Việt.`;
 
             // Verify recommended template exists
             if (!availableTemplates.some(t => t.name === recommendation.recommendedTemplate.name)) {
-                this.logger.warn(`Recommended template "${recommendation.recommendedTemplate}" not found in available templates`);
+                this.logger.warn(`Recommended template "${recommendation.recommendedTemplate.name}" not found in available templates`);
                 throw new Error('Invalid recommended template');
             }
 

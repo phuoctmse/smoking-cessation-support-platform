@@ -5,10 +5,24 @@ import { PrismaService } from 'src/shared/services/prisma.service';
 import { UserType } from '../user/schema/user.schema';
 import { QuizAttempt } from '../quiz-attempt/quiz-attempt.entity';
 import { QuizStatus } from 'src/shared/constants/question-type.constant';
+import { QuizStatus as PrismaQuizStatus } from '@prisma/client';
 
 @Injectable()
 export class QuizResponseRepository {
   constructor(private readonly prisma: PrismaService) { }
+
+  // Transform Prisma QuizStatus to our custom QuizStatus
+  private transformQuizStatus(prismaStatus: PrismaQuizStatus): QuizStatus {
+    return prismaStatus as unknown as QuizStatus;
+  }
+
+  // Transform QuizAttempt to fix QuizStatus enum
+  private transformQuizAttempt(attempt: any): QuizAttempt {
+    return {
+      ...attempt,
+      status: this.transformQuizStatus(attempt.status)
+    };
+  }
 
   // Tạo quiz attempt mới
   async createQuizAttempt(quizId: string, userId: string, memberProfileId: string): Promise<QuizAttempt> {
@@ -25,7 +39,7 @@ export class QuizResponseRepository {
       }
     });
 
-    return quiz_attempt
+    return this.transformQuizAttempt(quiz_attempt);
   }
 
   // Tìm quiz by ID
@@ -65,7 +79,7 @@ export class QuizResponseRepository {
         where: { id: attemptId },
         data: {
           status: 'COMPLETED',
-          completed_at: new Date()
+          completed_at: new Date(),
         }
       });
 

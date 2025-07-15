@@ -1,6 +1,6 @@
 import { Field, ID, ObjectType } from '@nestjs/graphql';
 import { QuizResponse } from '../quiz-response/entities/quiz-response.entity';
-import { QuizStatus } from '@prisma/client';
+import { QuizStatus } from 'src/shared/constants/question-type.constant';
 
 @ObjectType()
 export class QuizAttempt {
