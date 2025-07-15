@@ -24,6 +24,7 @@ import {
   reviveDates,
   trackCacheKey,
 } from '../../shared/utils/cache-key.util'
+import { NotificationEventService } from '../notification/notification.event';
 
 const CACHE_TTL = 60 * 5;
 const CACHE_PREFIX = 'plan-stage';
@@ -37,6 +38,7 @@ export class PlanStageService {
     private readonly cessationPlanRepository: CessationPlanRepository,
     private readonly badgeAwardService: BadgeAwardService,
     private readonly redisServices: RedisServices,
+    private readonly notificationEventService: NotificationEventService,
   ) {}
 
   async create(data: CreatePlanStageType, userRole: string, userId: string) {
@@ -141,26 +143,13 @@ export class PlanStageService {
     userId: string,
   ) {
     const existingStage = await this.planStageRepository.findOne(id);
-
     if (!existingStage) {
       throw new NotFoundException('Plan stage not found');
     }
 
     const plan = await this.validateAccessAndGetPlan(existingStage.plan_id, userId, userRole);
 
-    if (!plan.is_custom) {
-      const updateKeys = Object.keys(data);
-      const allowedKeysForNonCustom = ['status', 'completion_notes'];
-      const hasStructuralChanges = updateKeys.some(key => !allowedKeysForNonCustom.includes(key));
-
-      if (hasStructuralChanges) {
-        throw new ForbiddenException(
-          'This plan is not customizable. Only stage status and completion notes can be updated.',
-        );
-      }
-    }
-
-    if (data.status && data.status !== existingStage.status) {
+    if (data.status !== undefined) {
       this.validateStatusTransition(existingStage.status, data.status, existingStage);
     }
 
@@ -174,7 +163,15 @@ export class PlanStageService {
       if (updatedStage.status === PlanStageStatus.COMPLETED) {
         const planStages = await this.planStageRepository.findByPlanId(updatedStage.plan_id);
         const completedStagesInPlan = planStages.filter(s => s.status === PlanStageStatus.COMPLETED).length;
+
         await this.badgeAwardService.processStageCompletion(userId, updatedStage.plan_id, completedStagesInPlan);
+        const planDisplayName = this.getPlanDisplayName(plan);
+
+        await this.notificationEventService.sendStageCompletionNotification(
+          userId,
+          updatedStage.title,
+          planDisplayName
+        );
       }
 
       await this.invalidateRelatedCaches(existingStage.plan_id, plan.user_id);
@@ -184,6 +181,7 @@ export class PlanStageService {
       this.handleDatabaseError(error);
     }
   }
+
 
   async reorderStages(
     planId: string,
@@ -259,6 +257,18 @@ export class PlanStageService {
     }
 
     return effectiveFilters;
+  }
+
+  private getPlanDisplayName(plan: any): string {
+    if (plan.template && plan.template.name) {
+      return plan.template.name;
+    }
+
+    if (plan.reason) {
+      return `Kế hoạch: ${plan.reason}`;
+    }
+
+    return 'Kế hoạch cai thuốc';
   }
 
   private enrichWithComputedFields(stage: any): PlanStage {

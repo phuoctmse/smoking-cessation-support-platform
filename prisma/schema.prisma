@@ -463,8 +463,8 @@ model NotificationTemplate {
   title             String                @db.VarChar(300)
   content           String
   notification_type NotificationType
-  channel_types     NotificationChannel[] // Array of channels
-  variables         String[] // Dynamic variables like {user_name}, {plan_name}
+  channel_types     NotificationChannel[]
+  variables         String[]
   is_active         Boolean               @default(true)
   created_at        DateTime              @default(now())
   updated_at        DateTime              @updatedAt

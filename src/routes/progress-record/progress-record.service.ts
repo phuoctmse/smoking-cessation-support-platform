@@ -20,7 +20,6 @@ import { RedisServices } from '../../shared/services/redis.service'
 import {
   buildCacheKey,
   buildOneCacheKey,
-  invalidateCacheForId,
   reviveDates,
 } from '../../shared/utils/cache-key.util'
 
@@ -42,12 +41,23 @@ export class ProgressRecordService {
   async create(data: CreateProgressRecordType, user: UserType): Promise<ProgressRecord> {
     await this.validatePlanOwnership(data.plan_id, user.id);
     this.validateRecordDate(data.record_date);
-    await this.validateUniqueRecord(data.plan_id, data.record_date);
+
+    const existingRecord = await this.progressRecordRepository.findAnyByPlanIdAndDate(data.plan_id, data.record_date);
+
+    if (existingRecord) {
+      if (existingRecord.is_deleted) {
+        const { id, ...updateData } = { ...data, id: existingRecord.id };
+        return this.update(id, updateData, user, true);
+      } else {
+        throw new ConflictException('A progress record for this date already exists for this plan.');
+      }
+    }
 
     const record = await this.progressRecordRepository.create(data);
     this.logger.log(`Progress record created: ${record.id} for plan: ${record.plan_id}`);
+
     await this.processStreakAndBadges(user.id, record.plan_id, data.cigarettes_smoked);
-    await this.invalidateRecordCaches(record.plan_id, user.id);
+    await this.invalidateAllRelatedCaches(record.plan_id, user.id, record.id);
 
     return record as ProgressRecord;
   }
@@ -55,31 +65,48 @@ export class ProgressRecordService {
   async findAll(params: PaginationParamsType, filters: ProgressRecordFiltersInput | undefined, user: UserType) {
     const effectiveFilters = this.validateAndBuildFilters(filters, user.id);
     const cacheKey = buildCacheKey(CACHE_PREFIX, 'all', params, effectiveFilters, user.id);
-    const cached = await this.redisServices.getClient().get(cacheKey);
-    if (typeof cached === 'string') {
-      const parsed = JSON.parse(cached);
-      if (parsed && Array.isArray(parsed.data)) {
-        parsed.data.forEach((record: any) => {
-          reviveDates(record, ['record_date', 'created_at', 'updated_at']);
-        });
+
+    try {
+      const cached = await this.redisServices.getClient().get(cacheKey);
+      if (typeof cached === 'string') {
+        const parsed = JSON.parse(cached);
+        if (parsed && Array.isArray(parsed.data)) {
+          parsed.data.forEach((record: any) => {
+            reviveDates(record, ['record_date', 'created_at', 'updated_at']);
+          });
+        }
+        this.logger.debug(`Cache hit for progress records: ${cacheKey}`);
+        return parsed;
       }
-      return parsed;
+    } catch (error) {
+      this.logger.warn(`Cache get failed: ${error.message}`);
     }
+
     const result = await this.progressRecordRepository.findAll(params, effectiveFilters);
-    await this.redisServices.getClient().set(cacheKey, JSON.stringify(result), { EX: CACHE_TTL });
+
+    try {
+      await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(result));
+      this.logger.debug(`Cache set for progress records: ${cacheKey}`);
+    } catch (error) {
+      this.logger.warn(`Cache set failed: ${error.message}`);
+    }
 
     return result;
   }
 
   async findOne(id: string, user: UserType): Promise<ProgressRecord> {
     const cacheKey = buildOneCacheKey(CACHE_PREFIX, id);
-    const cached = await this.redisServices.getClient().get(cacheKey);
-    if (typeof cached === 'string') {
-      const parsed = JSON.parse(cached);
-      reviveDates(parsed, ['record_date', 'created_at', 'updated_at']);
 
-      await this.validateRecordOwnership(parsed, user.id);
-      return parsed as ProgressRecord;
+    try {
+      const cached = await this.redisServices.getClient().get(cacheKey);
+      if (typeof cached === 'string') {
+        const parsed = JSON.parse(cached);
+        reviveDates(parsed, ['record_date', 'created_at', 'updated_at']);
+        await this.validateRecordOwnership(parsed, user.id);
+        return parsed as ProgressRecord;
+      }
+    } catch (error) {
+      this.logger.warn(`Cache get failed: ${error.message}`);
     }
 
     const record = await this.progressRecordRepository.findOne(id);
@@ -89,13 +116,17 @@ export class ProgressRecordService {
 
     await this.validateRecordOwnership(record, user.id);
 
-    await this.redisServices.getClient().set(cacheKey, JSON.stringify(record), { EX: CACHE_TTL });
+    try {
+      await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(record));
+    } catch (error) {
+      this.logger.warn(`Cache set failed: ${error.message}`);
+    }
 
     return record as ProgressRecord;
   }
 
-  async update(id: string, data: Omit<UpdateProgressRecordType, 'id' | 'plan_id'>, user: UserType): Promise<ProgressRecord> {
-    const record = await this.progressRecordRepository.findOne(id);
+  async update(id: string, data: Omit<UpdateProgressRecordType, 'id' | 'plan_id'>, user: UserType, isReactivating = false): Promise<ProgressRecord> {
+    const record = await this.progressRecordRepository.findOneWithAnyStatus(id);
     if (!record) {
       throw new NotFoundException('Progress record not found.');
     }
@@ -107,19 +138,23 @@ export class ProgressRecordService {
       await this.validateUniqueRecordForUpdate(record.plan_id, data.record_date, id);
     }
 
-    const updatedRecord = await this.progressRecordRepository.update(id, data);
+    const updateData = { ...data };
+    if (isReactivating) {
+      (updateData as any).is_deleted = false;
+    }
+
+    const updatedRecord = await this.progressRecordRepository.update(id, updateData);
     if (!updatedRecord) {
       throw new NotFoundException('Progress record not found or already deleted.');
     }
 
     this.logger.log(`Progress record updated: ${updatedRecord.id}`);
 
-    // Handle streak and badge processing if cigarettes_smoked changed
     if (data.cigarettes_smoked !== undefined) {
       await this.processStreakAndBadges(user.id, updatedRecord.plan_id, data.cigarettes_smoked);
     }
 
-    await this.invalidateRecordCaches(updatedRecord.plan_id, user.id, id);
+    await this.invalidateAllRelatedCaches(updatedRecord.plan_id, user.id, id);
 
     return updatedRecord as ProgressRecord;
   }
@@ -138,13 +173,11 @@ export class ProgressRecordService {
     }
 
     this.logger.log(`Progress record removed: ${removedRecord.id}`);
-
-    await this.invalidateRecordCaches(removedRecord.plan_id, user.id, id);
+    await this.invalidateAllRelatedCaches(removedRecord.plan_id, user.id, id);
 
     return removedRecord as ProgressRecord;
   }
 
-  // Private helper methods
   private async validatePlanOwnership(planId: string, userId: string): Promise<void> {
     const plan = await this.cessationPlanRepository.findOne(planId);
     if (!plan) {
@@ -168,13 +201,6 @@ export class ProgressRecordService {
   private validateRecordDate(recordDate: Date): void {
     if (recordDate > new Date()) {
       throw new BadRequestException('Record date cannot be in the future.');
-    }
-  }
-
-  private async validateUniqueRecord(planId: string, recordDate: Date): Promise<void> {
-    const existingRecord = await this.progressRecordRepository.findByPlanIdAndDate(planId, recordDate);
-    if (existingRecord) {
-      throw new ConflictException('A progress record for this date already exists for this plan.');
     }
   }
 
@@ -225,22 +251,74 @@ export class ProgressRecordService {
     return streak;
   }
 
-  private async invalidateRecordCaches(planId: string, userId: string, recordId?: string): Promise<void> {
+  private async invalidateAllRelatedCaches(planId: string, userId: string, recordId?: string): Promise<void> {
     try {
-      const cacheKeys: string[] = [];
+      const client = this.redisServices.getClient();
 
+      // Step 1: Clear specific record cache
       if (recordId) {
-        cacheKeys.push(buildOneCacheKey(CACHE_PREFIX, recordId));
+        const specificRecordKey = buildOneCacheKey(CACHE_PREFIX, recordId);
+        await client.del(specificRecordKey);
+        this.logger.debug(`Cleared specific record cache: ${specificRecordKey}`);
       }
 
-      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, planId);
-      await invalidateCacheForId(this.redisServices.getClient(), CACHE_PREFIX, userId);
+      // Step 2: Clear all list caches with wildcard patterns
+      const cachePatterns = [
+        `${CACHE_PREFIX}:all:*`,
+        `${CACHE_PREFIX}:*:${planId}:*`,
+        `${CACHE_PREFIX}:*:${userId}:*`,
+      ];
 
-      if (cacheKeys.length > 0) {
-        await this.redisServices.getClient().del(cacheKeys);
+      for (const pattern of cachePatterns) {
+        try {
+          const keys = await client.keys(pattern);
+          if (keys.length > 0) {
+            await client.del(keys);
+            this.logger.debug(`Cleared ${keys.length} cache keys with pattern: ${pattern}`);
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to clear cache pattern ${pattern}: ${error.message}`);
+        }
       }
 
-      this.logger.log(`Invalidated progress record caches for plan: ${planId}`);
+      // Step 3: Clear related cessation plan caches
+      const planCachePatterns = [
+        `cessation-plan:*:${planId}:*`,
+        `cessation-plan:*:${userId}:*`,
+        `cessation-plan:all:*`,
+      ];
+
+      for (const pattern of planCachePatterns) {
+        try {
+          const keys = await client.keys(pattern);
+          if (keys.length > 0) {
+            await client.del(keys);
+            this.logger.debug(`Cleared ${keys.length} plan cache keys with pattern: ${pattern}`);
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to clear plan cache pattern ${pattern}: ${error.message}`);
+        }
+      }
+
+      // Step 4: Clear leaderboard related caches (if any)
+      const leaderboardPatterns = [
+        `leaderboard:*:${userId}:*`,
+        `streak:*`,
+      ];
+
+      for (const pattern of leaderboardPatterns) {
+        try {
+          const keys = await client.keys(pattern);
+          if (keys.length > 0) {
+            await client.del(keys);
+            this.logger.debug(`Cleared ${keys.length} leaderboard cache keys with pattern: ${pattern}`);
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to clear leaderboard cache pattern ${pattern}: ${error.message}`);
+        }
+      }
+
+      this.logger.log(`Invalidated all progress record caches for plan: ${planId}, user: ${userId}`);
     } catch (cacheError) {
       this.logger.error('Error invalidating progress record cache:', cacheError);
     }

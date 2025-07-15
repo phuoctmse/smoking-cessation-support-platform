@@ -44,6 +44,8 @@ import { ProfileQuizModule } from './routes/profile-quiz/profile-quiz.module'
 import { QuizQuestionModule } from './routes/quiz-question/quiz-question.module'
 import { QuizResponseModule } from './routes/quiz-response/quiz-reponse.module'
 import { HealthScoreCriteriaModule } from './routes/health-score-criteria/health-score-criteria.module'
+import { NotificationTemplateModule } from './routes/notification-template/notification-template.module';
+import { NotificationModule } from './routes/notification/notification.module';
 
 @Module({
   imports: [
@@ -120,7 +122,9 @@ import { HealthScoreCriteriaModule } from './routes/health-score-criteria/health
     QuizQuestionModule,
     QuizResponseModule,
     ScheduleModule.forRoot(),
-    HealthScoreCriteriaModule
+    HealthScoreCriteriaModule,
+    NotificationTemplateModule,
+    NotificationModule
   ],
   controllers: [AppController],
   providers: [
