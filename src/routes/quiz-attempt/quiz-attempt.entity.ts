@@ -19,19 +19,19 @@ export class QuizAttempt {
     @Field(() => QuizStatus)
     status: QuizStatus;
 
-    @Field(() => Date)
+    @Field(() => Date, { nullable: true })
     started_at: Date;
 
-    @Field(() => Date)
+    @Field(() => Date, { nullable: true })
     completed_at: Date;
 
     @Field(() => [QuizResponse])
     responses: QuizResponse[];
 
-    @Field(() => Date)
+    @Field(() => Date, { nullable: true })
     created_at: Date;
 
-    @Field(() => Date)
+    @Field(() => Date, { nullable: true })
     updated_at: Date;
 
 }

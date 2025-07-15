@@ -11,12 +11,6 @@ export class CreateQuizResponseInput extends createZodDto(QuizResponseSchema) {
     @Field(() => ID, { nullable: true })
     attempt_id?: string;
 
-    @Field(() => ID)
-    user_id: string;
-
-    @Field(() => ID)
-    member_profile_id: string;
-
     @Field(() => GraphQLJSON)
     answer: any;
 }

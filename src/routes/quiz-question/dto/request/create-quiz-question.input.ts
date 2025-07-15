@@ -1,5 +1,5 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { QuestionType } from '@prisma/client';
+import { QuestionType } from 'src/shared/constants/question-type.constant';
 import { IsNotEmpty, IsString, IsEnum, IsOptional, IsBoolean, IsNumber } from 'class-validator';
 import { GraphQLJSON } from 'graphql-type-json';
 
