@@ -9,6 +9,19 @@ import {
     AITrainingExample
 } from '../../ai/recommendation/model';
 
+// Temporary interface for raw AI response before template mapping
+interface RawAIResponse {
+    recommendedTemplate: string;
+    confidence: number;
+    reasoning: {
+        matchingFactors: string[];
+        considerations: string[];
+        risks: string[];
+        suggestions: string[];
+    };
+    alternativeTemplates: string[];
+}
+
 @Injectable()
 export class CustomAIRecommendationService {
     private readonly logger = new Logger(CustomAIRecommendationService.name);
@@ -111,14 +124,23 @@ Vui lòng trả lời bằng tiếng Việt.`;
             .replace('{socialSupport}', input.psychologicalInfo.socialSupport ? 'Yes' : 'No');
     }
 
-    private parseAIResponse(response: string): Promise<AIRecommendationOutput> {
+    private parseAIResponse(response: string): RawAIResponse {
         try {
+            let cleanResponse = response.trim();
+            
+            // Remove markdown code blocks if present
+            if (cleanResponse.startsWith('```json')) {
+                cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleanResponse.startsWith('```')) {
+                cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            }
+
             let parsed;
             try {
-                parsed = JSON.parse(response);
+                parsed = JSON.parse(cleanResponse);
             } catch (jsonError) {
                 this.logger.warn('AI response is not valid JSON, attempting to process as text');
-                parsed = this.parseTextResponse(response);
+                parsed = this.parseTextResponse(cleanResponse);
             }
 
             if (!parsed.recommendedTemplate || !parsed.confidence || !parsed.reasoning) {
@@ -160,8 +182,7 @@ Vui lòng trả lời bằng tiếng Việt.`;
 
             // Fetch available templates
             const availableTemplates = await this.prisma.cessationPlanTemplate.findMany({
-                where: { is_active: true },
-                select: { name: true, description: true }
+                where: { is_active: true }
             });
 
             if (!availableTemplates.length) {
@@ -196,20 +217,27 @@ Vui lòng trả lời bằng tiếng Việt.`;
             this.logger.debug('AI response received:', responseText);
 
             // Parse and validate response
-            const recommendation = await this.parseAIResponse(responseText);
+            const recommendation = this.parseAIResponse(responseText);
 
-            // Verify recommended template exists
-            if (!availableTemplates.some(t => t.name === recommendation.recommendedTemplate.name)) {
-                this.logger.warn(`Recommended template "${recommendation.recommendedTemplate.name}" not found in available templates`);
+            // Find the recommended template object
+            const recommendedTemplate = availableTemplates.find(t => t.name === recommendation.recommendedTemplate);
+            if (!recommendedTemplate) {
+                this.logger.warn(`Recommended template "${recommendation.recommendedTemplate}" not found in available templates`);
                 throw new Error('Invalid recommended template');
             }
 
-            // Verify alternative templates exist
-            recommendation.alternativeTemplates = recommendation.alternativeTemplates.filter(alt =>
-                availableTemplates.some(t => t.name === alt.name)
-            );
+            // Find alternative template objects
+            const alternativeTemplates = recommendation.alternativeTemplates
+                .map(altName => availableTemplates.find(t => t.name === altName))
+                .filter((template): template is CessationPlanTemplate => template !== undefined);
 
-            return recommendation;
+            // Return the properly structured response
+            return {
+                recommendedTemplate,
+                confidence: recommendation.confidence,
+                reasoning: recommendation.reasoning,
+                alternativeTemplates
+            };
         } catch (error) {
             this.logger.error('Error getting AI recommendation:', error);
             throw new Error(`Failed to get cessation plan recommendation: ${error.message}`);
