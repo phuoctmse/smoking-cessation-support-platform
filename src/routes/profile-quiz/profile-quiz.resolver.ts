@@ -7,7 +7,6 @@ import { UpdateProfileQuizInput } from './dto/request/update-profile-quiz.input'
 import { ProfileQuizResponse, DeleteProfileQuizResponse } from './dto/response/profile-quiz-response.dto';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
-import { Role } from 'generated';
 import { Roles } from 'src/shared/decorators/roles.decorator';
 import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
 import { RolesGuard } from 'src/shared/guards/roles.guard';
