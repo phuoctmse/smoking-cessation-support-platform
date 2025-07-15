@@ -30,19 +30,25 @@ export class CustomAIRecommendationService {
     private readonly SYSTEM_PROMPT = `Bạn là một hệ thống AI chuyên gia về việc đề xuất kế hoạch cai thuốc lá. 
 Nhiệm vụ của bạn là phân tích hồ sơ người hút thuốc và đề xuất kế hoạch cai thuốc phù hợp nhất từ danh sách các mẫu có sẵn.
 Hãy xem xét tất cả các khía cạnh bao gồm nghiện nicotine, yếu tố tâm lý, tình trạng sức khỏe và lối sống.
-Trả về phản hồi dưới dạng JSON với cấu trúc sau:
+
+QUAN TRỌNG: Bạn phải trả về CHÍNH XÁC định dạng JSON sau, không có văn bản bổ sung:
 {
-    "recommendedTemplate": string,
-    "confidence": number,
+    "recommendedTemplate": "tên template từ danh sách có sẵn",
+    "confidence": 0.85,
     "reasoning": {
-        "matchingFactors": string[],
-        "considerations": string[],
-        "risks": string[],
-        "suggestions": string[]
+        "matchingFactors": ["yếu tố 1", "yếu tố 2"],
+        "considerations": ["cân nhắc 1", "cân nhắc 2"],
+        "risks": ["rủi ro 1", "rủi ro 2"],
+        "suggestions": ["gợi ý 1", "gợi ý 2"]
     },
-    "alternativeTemplates": string[]
+    "alternativeTemplates": ["template khác 1", "template khác 2"]
 }
-Đảm bảo recommendedTemplate và alternativeTemplates được chọn từ danh sách các mẫu có sẵn được cung cấp.`;
+
+Đảm bảo:
+- recommendedTemplate phải được chọn từ danh sách Available Templates
+- confidence là số từ 0.0 đến 1.0
+- Tất cả các trường đều bắt buộc
+- Trả về JSON hợp lệ, không có markdown hay văn bản giải thích bổ sung`;
 
     private readonly USER_PROMPT_TEMPLATE = `Vui lòng phân tích hồ sơ người hút thuốc này và đề xuất kế hoạch cai thuốc phù hợp nhất:
 
@@ -64,14 +70,7 @@ YẾU TỐ TÂM LÝ:
 - Yếu tố gây kích thích: {triggerFactors}
 - Hỗ trợ xã hội: {socialSupport}
 
-Dựa trên hồ sơ này, vui lòng:
-1. Đề xuất kế hoạch cai thuốc phù hợp nhất
-2. Giải thích lý do lựa chọn
-3. Xác định các rủi ro và thách thức tiềm ẩn
-4. Đề xuất các kế hoạch thay thế nếu có
-5. Đưa ra các khuyến nghị cụ thể để tùy chỉnh kế hoạch
-
-Vui lòng trả lời bằng tiếng Việt.`;
+Trả về JSON theo định dạng yêu cầu.`;
 
     constructor(private prisma: PrismaService) {
         const apiKey = process.env.GEMINI_API_KEY;
@@ -128,6 +127,8 @@ Vui lòng trả lời bằng tiếng Việt.`;
         try {
             let cleanResponse = response.trim();
             
+            this.logger.debug('Raw AI response:', response);
+            
             // Remove markdown code blocks if present
             if (cleanResponse.startsWith('```json')) {
                 cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
@@ -135,15 +136,26 @@ Vui lòng trả lời bằng tiếng Việt.`;
                 cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
             }
 
+            this.logger.debug('Cleaned AI response:', cleanResponse);
+
             let parsed;
             try {
                 parsed = JSON.parse(cleanResponse);
+                this.logger.debug('Successfully parsed JSON:', parsed);
             } catch (jsonError) {
                 this.logger.warn('AI response is not valid JSON, attempting to process as text');
+                this.logger.error('JSON parse error:', jsonError);
+                this.logger.error('Failed to parse:', cleanResponse);
                 parsed = this.parseTextResponse(cleanResponse);
             }
 
             if (!parsed.recommendedTemplate || !parsed.confidence || !parsed.reasoning) {
+                this.logger.error('Invalid AI response structure. Missing fields:', {
+                    hasRecommendedTemplate: !!parsed.recommendedTemplate,
+                    hasConfidence: !!parsed.confidence,
+                    hasReasoning: !!parsed.reasoning,
+                    actualStructure: Object.keys(parsed)
+                });
                 throw new Error('Invalid AI response structure');
             }
 
@@ -160,13 +172,50 @@ Vui lòng trả lời bằng tiếng Việt.`;
             };
         } catch (error) {
             this.logger.error('Error parsing AI response:', error);
+            this.logger.error('Original response was:', response);
             throw new Error('Failed to parse AI recommendation');
         }
     }
 
     private parseTextResponse(response: string): any {
-        this.logger.warn('Text parsing not fully implemented');
-        throw new Error('Text response parsing not supported');
+        this.logger.warn('Attempting to parse text response as fallback');
+        
+        try {
+            // Try to extract JSON from text response
+            const jsonMatch = response.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const jsonStr = jsonMatch[0];
+                return JSON.parse(jsonStr);
+            }
+            
+            // If no JSON found, create a basic structure
+            this.logger.warn('No JSON found in text response, creating fallback structure');
+            return {
+                recommendedTemplate: "Cai thuốc từ từ",
+                confidence: 0.5,
+                reasoning: {
+                    matchingFactors: ["Fallback recommendation"],
+                    considerations: ["AI response could not be parsed properly"],
+                    risks: [],
+                    suggestions: ["Please try again or contact support"]
+                },
+                alternativeTemplates: []
+            };
+        } catch (error) {
+            this.logger.error('Failed to parse text response:', error);
+            // Return absolute fallback
+            return {
+                recommendedTemplate: "Cai thuốc từ từ",
+                confidence: 0.3,
+                reasoning: {
+                    matchingFactors: ["Default fallback"],
+                    considerations: ["System error - using default recommendation"],
+                    risks: [],
+                    suggestions: ["Please contact support for better recommendations"]
+                },
+                alternativeTemplates: []
+            };
+        }
     }
 
     async getRecommendation(memberProfile: MemberProfile): Promise<AIRecommendationOutput> {
@@ -223,7 +272,21 @@ Vui lòng trả lời bằng tiếng Việt.`;
             const recommendedTemplate = availableTemplates.find(t => t.name === recommendation.recommendedTemplate);
             if (!recommendedTemplate) {
                 this.logger.warn(`Recommended template "${recommendation.recommendedTemplate}" not found in available templates`);
-                throw new Error('Invalid recommended template');
+                // Use first available template as fallback
+                const fallbackTemplate = availableTemplates[0];
+                this.logger.warn(`Using fallback template: ${fallbackTemplate.name}`);
+                
+                return {
+                    recommendedTemplate: fallbackTemplate,
+                    confidence: 0.3,
+                    reasoning: {
+                        matchingFactors: ['Fallback recommendation due to AI parsing error'],
+                        considerations: ['AI recommendation system encountered an error'],
+                        risks: ['May not be optimally suited for user profile'],
+                        suggestions: ['Consider consulting with a healthcare professional']
+                    },
+                    alternativeTemplates: availableTemplates.slice(1, 3) // Get up to 2 alternatives
+                };
             }
 
             // Find alternative template objects
@@ -240,6 +303,32 @@ Vui lòng trả lời bằng tiếng Việt.`;
             };
         } catch (error) {
             this.logger.error('Error getting AI recommendation:', error);
+            
+            // Final fallback - return the first available template
+            try {
+                const availableTemplates = await this.prisma.cessationPlanTemplate.findMany({
+                    where: { is_active: true },
+                    take: 3
+                });
+                
+                if (availableTemplates.length > 0) {
+                    this.logger.warn('Using emergency fallback recommendation');
+                    return {
+                        recommendedTemplate: availableTemplates[0],
+                        confidence: 0.2,
+                        reasoning: {
+                            matchingFactors: ['Emergency fallback due to system error'],
+                            considerations: ['System error prevented AI analysis'],
+                            risks: ['Recommendation may not be suitable'],
+                            suggestions: ['Please try again later or consult a healthcare professional']
+                        },
+                        alternativeTemplates: availableTemplates.slice(1)
+                    };
+                }
+            } catch (fallbackError) {
+                this.logger.error('Emergency fallback also failed:', fallbackError);
+            }
+            
             throw new Error(`Failed to get cessation plan recommendation: ${error.message}`);
         }
     }

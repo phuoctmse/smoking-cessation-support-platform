@@ -7,10 +7,14 @@ import { SubmitQuizResponse } from './dto/response/submit-quiz.response';
 import { QuizResponse } from './entities/quiz-response.entity';
 import { UserType } from '../user/schema/user.schema';
 import { QuizAttempt } from '../quiz-attempt/quiz-attempt.entity';
+import { QuizToProfileAIService } from '../../shared/services/quiz-to-profile-ai.service';
 
 @Injectable()
 export class QuizResponseService {
-  constructor(private readonly quizResponseRepo: QuizResponseRepository) {}
+  constructor(
+    private readonly quizResponseRepo: QuizResponseRepository,
+    private readonly quizToProfileAI: QuizToProfileAIService
+  ) {}
 
   async startQuiz(input: StartQuizInput, currentUser: UserType): Promise<QuizAttempt> {
     // 1. Validate input
@@ -71,8 +75,13 @@ export class QuizResponseService {
     // 3. Validate business rules
     this.validateQuizCompletion(input.responses, attempt.quiz.questions);
 
-    // 4. Transform responses to member profile data
-    const memberProfileData = this.mapResponsesToMemberProfile(input.responses);
+    console.log("1232321321")
+
+    // 4. Use AI to map responses to member profile data
+    const memberProfileData = await this.quizToProfileAI.mapQuizToProfile(
+      input.responses, 
+      attempt.quiz.questions
+    );
 
     // 5. Execute database transaction
     const result = await this.quizResponseRepo.submitQuizTransaction(
@@ -151,65 +160,5 @@ export class QuizResponseService {
   private isEmptyAnswer(answer: any): boolean {
     return answer === null || answer === undefined || answer === '' || 
            (Array.isArray(answer) && answer.length === 0);
-  }
-
-  private mapResponsesToMemberProfile(responses: any[]): any {
-    const responseMap = new Map(responses.map(r => [r.question_id, r.answer]));
-    
-    return {
-      cigarettes_per_day: this.parseIntOrNull(responseMap.get('q-001')),
-      sessions_per_day: this.parseIntOrNull(responseMap.get('q-002')),
-      price_per_pack: this.parseIntOrNull(responseMap.get('q-003')),
-      smoking_years: this.parseIntOrNull(responseMap.get('q-004')),
-      brand_preference: responseMap.get('q-005') || null,
-      nicotine_level: this.parseFloatOrNull(responseMap.get('q-006')),
-      health_conditions: this.ensureArray(responseMap.get('q-007')),
-      allergies: this.ensureArray(responseMap.get('q-008')),
-      medications: this.ensureArray(responseMap.get('q-009')),
-      quit_motivation: this.mapQuitMotivation(responseMap.get('q-010')),
-      previous_attempts: this.parseIntOrNull(responseMap.get('q-011')),
-      preferred_support: this.ensureArray(responseMap.get('q-012')),
-      stress_level: this.parseIntOrNull(responseMap.get('q-013')),
-      social_support: this.parseBooleanOrNull(responseMap.get('q-014')),
-      trigger_factors: this.ensureArray(responseMap.get('q-015')),
-      daily_routine: {
-        wake_time: responseMap.get('q-016'),
-        sleep_time: responseMap.get('q-017'),
-        work_type: responseMap.get('q-018')
-      }
-    };
-  }
-
-  private parseIntOrNull(value: any): number | null {
-    const parsed = parseInt(value);
-    return isNaN(parsed) ? null : parsed;
-  }
-
-  private parseFloatOrNull(value: any): number | null {
-    const parsed = parseFloat(value);
-    return isNaN(parsed) ? null : parsed;
-  }
-
-  private parseBooleanOrNull(value: any): boolean | null {
-    if (value === true || value === 'true') return true;
-    if (value === false || value === 'false') return false;
-    return null;
-  }
-
-  private ensureArray(value: any): string[] {
-    if (Array.isArray(value)) return value;
-    if (typeof value === 'string') return [value];
-    return [];
-  }
-
-  private mapQuitMotivation(answer: string): string | null {
-    if (!answer) return null;
-    
-    const answerLower = answer.toLowerCase();
-    if (answerLower.includes('cao') || answerLower.includes('quyết tâm')) return 'HIGH';
-    if (answerLower.includes('trung bình') || answerLower.includes('do dự')) return 'MEDIUM';
-    if (answerLower.includes('thấp') || answerLower.includes('thử xem')) return 'LOW';
-    
-    return null;
   }
 }
