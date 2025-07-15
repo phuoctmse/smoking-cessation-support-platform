@@ -77,7 +77,15 @@ export class AuthRepository {
               id: data.user.id,
               user_id: data.user.id,
               experience_years: 0,
-              bio: '',
+              approach_description: body.coachProfile.approach_description,
+              success_rate: body.coachProfile.success_rate,
+              total_clients: body.coachProfile.total_clients,
+              average_rating: body.coachProfile.average_rating,
+              total_sessions: body.coachProfile.total_sessions,
+              specializations: body.coachProfile.specializations,
+              certifications: body.coachProfile.certifications,
+              education: body.coachProfile.education,
+              professional_bio: body.coachProfile.professional_bio,
             }
           })
         })

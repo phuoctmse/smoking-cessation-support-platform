@@ -29,7 +29,7 @@ export class UserResolver {
 
   @Query(() => User, { name: 'findOneUser' })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('MEMBER', 'COACH')
+  @Roles('MEMBER', 'COACH', 'ADMIN')
   async findOneUser(@CurrentUser() user: UserType) {
     return await this.userService.findOne(user.id)
   }

@@ -8,6 +8,8 @@ export const UserSchema = z.object({
   avatar_url: z.string().optional(),
   role: z.nativeEnum(RoleNameEnum).default(RoleNameEnum.MEMBER),
   status: z.nativeEnum(StatusEnum).default(StatusEnum.ACTIVE),
+  member_profile_id: z.string().uuid().nullable(),
+  coach_profile_id: z.string().uuid().nullable(),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
 })

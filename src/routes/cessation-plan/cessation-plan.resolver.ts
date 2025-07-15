@@ -1,24 +1,59 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
+import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { SubscriptionGuard } from '../../shared/guards/subscription.guard';
 import { CessationPlanService } from './cessation-plan.service';
-import { CessationPlan } from './entities/cessation-plan.entity';
 import { CreateCessationPlanInput } from './dto/request/create-cessation-plan.input';
-import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
-import { CurrentUser } from '../../shared/decorators/current-user.decorator';
+import { UpdateCessationPlanInput } from './dto/request/update-cessation-plan.input';
+import { CessationPlan } from './entities/cessation-plan.entity';
+import { CustomAIRecommendationService } from '../../shared/services/custom-ai-recommendation.service';
+import { PrismaService } from '../../shared/services/prisma.service';
+import { PaginatedCessationPlansResponse } from './dto/response/paginated-cessation-plans.response';
+import { PaginationParamsInput } from '../../shared/models/dto/request/pagination-params.input';
+import { CessationPlanFiltersInput } from './dto/request/cessation-plan-filters.input';
+import { CessationPlanStatisticsResponse } from './dto/response/cessation-plan-statistics.response';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RoleName } from '../../shared/constants/role.constant';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { UserType } from '../user/schema/user.schema';
-import {PaginatedCessationPlansResponse} from "./dto/response/paginated-cessation-plans.response";
-import {PaginationParamsInput} from "../../shared/models/dto/request/pagination-params.input";
-import {CessationPlanFiltersInput} from "./dto/request/cessation-plan-filters.input";
-import {CessationPlanStatisticsResponse} from "./dto/response/cessation-plan-statistics.response";
-import {RolesGuard} from "../../shared/guards/roles.guard";
-import {Roles} from "../../shared/decorators/roles.decorator";
-import {RoleName} from "../../shared/constants/role.constant";
-import {UpdateCessationPlanInput} from "./dto/request/update-cessation-plan.input";
-import { SubscriptionGuard } from 'src/shared/guards/subscription.guard';
+import { AIRecommendationOutput } from './schema/ai-recommendation.schema';
+import { CurrentUser } from 'src/shared/decorators/current-user.decorator';
 
 @Resolver(() => CessationPlan)
+@UseGuards(JwtAuthGuard)
 export class CessationPlanResolver {
-  constructor(private readonly cessationPlanService: CessationPlanService) {}
+  constructor(
+    private readonly cessationPlanService: CessationPlanService,
+    private readonly aiRecommendationService: CustomAIRecommendationService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  @Query(() => AIRecommendationOutput)
+  async getAIRecommendation(@CurrentUser() user: UserType): Promise<AIRecommendationOutput> {
+    // Get user's member profile
+    const memberProfile = await this.prisma.memberProfile.findFirst({
+      where: {
+        user: {
+          id: user.id
+        }
+      }
+    });
+
+    if (!memberProfile) {
+      throw new Error('Member profile not found');
+    }
+
+    // Get AI recommendation
+    const recommendation = await this.aiRecommendationService.getRecommendation(memberProfile);
+    
+    // Map the output to match the schema
+    return {
+      recommendedTemplate: recommendation.recommendedTemplate.id,
+      confidence: recommendation.confidence,
+      reasoning: recommendation.reasoning,
+      alternativeTemplates: recommendation.alternativeTemplates.map(t => t.id)
+    };
+  }
 
   @Mutation(() => CessationPlan)
   @UseGuards(JwtAuthGuard, RolesGuard)

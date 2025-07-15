@@ -16,8 +16,8 @@ export class SubscriptionService {
 
     //start date will start when transaction is successful
     //then set end date based on package
-    async updateSubscription(id: string, input: UpdateSubscriptionSchemaType) {
-        const subscription = await this.subscriptionRepo.update(id, input)
+    async updateSubscription(input: UpdateSubscriptionSchemaType) {
+        const subscription = await this.subscriptionRepo.update(input)
         return subscription
     }
 

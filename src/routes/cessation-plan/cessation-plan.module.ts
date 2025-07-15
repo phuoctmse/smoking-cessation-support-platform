@@ -7,6 +7,7 @@ import { CessationPlanRepository } from './cessation-plan.repository'
 import { PlanStageModule } from '../plan-stage/plan-stage.module'
 import { BadgeAwardModule } from '../badge-award/badge-award.module'
 import { SubscriptionGuard } from 'src/shared/guards/subscription.guard'
+import { CustomAIRecommendationService } from '../../shared/services/custom-ai-recommendation.service';
 import { CessationPlanTemplateModule } from '../cessation-plan-template/cessation-plan-template.module'
 import { CessationPlanCronService } from './cessation-plan.cron'
 import { RedisServices } from 'src/shared/services/redis.service'
@@ -26,12 +27,9 @@ import { NotificationModule } from '../notification/notification.module'
     CessationPlanService,
     CessationPlanRepository,
     SubscriptionGuard,
-    CessationPlanCronService,
-    RedisServices,
+    CustomAIRecommendationService
   ],
-  exports: [
-    CessationPlanService,
-    CessationPlanRepository
-  ],
+  exports: [CessationPlanService, CessationPlanRepository],
+
 })
 export class CessationPlanModule { }
