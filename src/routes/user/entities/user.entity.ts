@@ -32,9 +32,9 @@ export class User extends createZodDto(UserSchema) {
   @Field(() => Date)
   updated_at: Date
 
-  @Field(() => MemberProfile, { nullable: true })
-  member_profile?: MemberProfile
+  @Field(() => [MemberProfile], { nullable: true, name: 'member_profile' })
+  MemberProfile?: MemberProfile[]
 
-  @Field(() => CoachProfile, { nullable: true })
-  coach_profile?: CoachProfile
+  @Field(() => [CoachProfile], { nullable: true, name: 'coach_profile' })
+  CoachProfile?: CoachProfile[]
 }

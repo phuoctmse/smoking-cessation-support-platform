@@ -34,6 +34,13 @@ export class UserResolver {
     return await this.userService.findOne(user.id)
   }
 
+  @Query(() => User, { name: 'findUserById' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MEMBER', 'COACH', 'ADMIN')
+  async findUserById(@Args('userId') userId: string) {
+    return await this.userService.findOne(userId)
+  }
+
   //Admin
   @Mutation(() => AuthResponse)
   @UseGuards(JwtAuthGuard, RolesGuard)
