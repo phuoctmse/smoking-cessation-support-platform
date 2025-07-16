@@ -28,6 +28,7 @@ import {
   trackCacheKey,
 } from '../../shared/utils/cache-key.util'
 import { NotificationEventService } from '../notification/notification.event'
+import { UserService } from '../user/user.service'
 
 const CACHE_TTL = 60 * 5;
 const CACHE_PREFIX = 'cessation-plan';
@@ -44,6 +45,7 @@ export class CessationPlanService {
     private readonly badgeAwardService: BadgeAwardService,
     private readonly redisServices: RedisServices,
     private readonly notificationEventService: NotificationEventService,
+    private readonly userService: UserService,
   ) {}
 
   async create(data: CreateCessationPlanType, requestUserId: string) {
@@ -61,6 +63,8 @@ export class CessationPlanService {
     if (plan.template_id) {
       try {
         await this.planStageRepository.createStagesFromTemplate(plan.id, plan.template_id, plan.start_date);
+        // Cập nhật thống kê coach khi có client mới
+        await this.userService.onNewClientStarted(plan.template_id);
       } catch (stageError) {
         this.logger.error(
           `Failed to create stages from template for plan ${plan.id}: ${stageError.message}. Plan created without stages.`,
@@ -249,6 +253,8 @@ export class CessationPlanService {
         (updatedPlan.status === CessationPlanStatus.COMPLETED || updatedPlan.status === CessationPlanStatus.ABANDONED)
     ) {
       await this.updateTemplateSuccessRate(updatedPlan.template_id);
+      // Cập nhật thống kê coach khi plan hoàn thành hoặc bị hủy
+      await this.userService.onPlanCompleted(updatedPlan.template_id);
     }
 
     await this.invalidatePlanCaches(id, updatedPlan.user_id);

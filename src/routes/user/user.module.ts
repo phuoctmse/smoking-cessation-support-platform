@@ -9,6 +9,13 @@ import { AuthRepository } from '../auth/auth.repository'
 
 @Module({
   imports: [GuardModule, SupabaseModule],
-  providers: [UserResolver, UserService, UserRepository, PrismaService, AuthRepository],
+  providers: [
+    UserResolver, 
+    UserService, 
+    UserRepository, 
+    PrismaService, 
+    AuthRepository, 
+  ],
+  exports: [UserService],
 })
 export class UserModule {}

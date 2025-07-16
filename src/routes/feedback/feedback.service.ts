@@ -18,6 +18,7 @@ import { UpdateFeedbackType } from './schema/update-feedback.schema'
 import { Feedback } from './entities/feedback.entity'
 import {CessationPlanRepository} from "../cessation-plan/cessation-plan.repository";
 import {PlanStageRepository} from "../plan-stage/plan-stage.repository";
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class FeedbackService {
@@ -28,6 +29,7 @@ export class FeedbackService {
     private readonly cessationPlanTemplateRepository: CessationPlanTemplateRepository,
     private readonly cessationPlanRepository: CessationPlanRepository,
     private readonly planStageRepository: PlanStageRepository,
+    private readonly userService: UserService,
   ) {}
 
   async create(data: CreateFeedbackType, user: UserType): Promise<Feedback> {
@@ -280,6 +282,9 @@ export class FeedbackService {
 
     await this.cessationPlanTemplateRepository.setAverageRating(templateId, averageRating, totalReviews);
     this.logger.log(`Recalculated average rating for template ${templateId}: ${averageRating.toFixed(2)} from ${totalReviews} reviews.`);
+    
+    // Cập nhật thống kê coach khi có feedback mới
+    await this.userService.onFeedbackSubmitted(templateId);
   }
 
   private transformToEntity(dbFeedback: any): Feedback {

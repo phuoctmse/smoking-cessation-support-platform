@@ -13,6 +13,7 @@ import { SignupBodySchema, SignupBodyType } from '../auth/schema/signup.schema'
 import { AuthResponse } from '../auth/dto/response/auth.response'
 import { CurrentUser } from 'src/shared/decorators/current-user.decorator'
 import { UserType } from './schema/user.schema'
+import { CoachProfile } from './entities/coach-profile.entity'
 
 @Resolver(() => User)
 export class UserResolver {
