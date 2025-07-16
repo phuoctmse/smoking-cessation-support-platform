@@ -13,6 +13,8 @@ import { PaginatedCessationPlanTemplatesResponse } from './dto/response/paginate
 import { CreateCessationPlanTemplateInput } from './dto/request/create-cessation-plan-template.input'
 import { UpdateCessationPlanTemplateInput } from './dto/request/update-cessation-plan-template.input'
 import { CessationPlanTemplateFiltersInput } from './dto/request/cessation-plan-template-filters.input'
+import { TemplateUsageStatsResponse } from './dto/response/template-usage-stats.response'
+import { TemplateUsageFiltersInput } from './dto/request/template-usage-filters.input'
 
 @Resolver(() => CessationPlanTemplate)
 export class CessationPlanTemplateResolver {
@@ -22,7 +24,8 @@ export class CessationPlanTemplateResolver {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Coach)
   @Mutation(() => CessationPlanTemplate)
-  async createCessationPlanTemplate(@Args('input') input: CreateCessationPlanTemplateInput, @CurrentUser() user: UserType) {
+  async createCessationPlanTemplate(@Args('input') input: CreateCessationPlanTemplateInput,
+                                    @CurrentUser() user: UserType) {
     return this.cessationPlanTemplateService.create(input, user)
   }
 
@@ -48,6 +51,28 @@ export class CessationPlanTemplateResolver {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.Coach, RoleName.Admin)
+  @Query(() => TemplateUsageStatsResponse)
+  async templateUsageStats(
+    @Args('templateId') templateId: string,
+    @Args('params', { nullable: true }) params?: PaginationParamsInput,
+    @Args('filters', { nullable: true }) filters?: TemplateUsageFiltersInput,
+    @CurrentUser() user?: UserType,
+  ): Promise<TemplateUsageStatsResponse> {
+    return this.cessationPlanTemplateService.getTemplateUsageStats(
+      templateId,
+      params || {
+        page: 1,
+        limit: 10,
+        orderBy: 'created_at',
+        sortOrder: 'desc',
+      },
+      filters,
+      user,
+    )
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Coach)
   @Mutation(() => CessationPlanTemplate)
   async updateCessationPlanTemplate(@Args('input') input: UpdateCessationPlanTemplateInput) {
@@ -58,7 +83,7 @@ export class CessationPlanTemplateResolver {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Coach)
   @Mutation(() => CessationPlanTemplate)
-  async removeCessationPlanTemplate(@Args('id') id: string, @CurrentUser() user: UserType) {
-    return this.cessationPlanTemplateService.remove(id, user.role)
+  async removeCessationPlanTemplate(@Args('id') id: string) {
+    return this.cessationPlanTemplateService.remove(id)
   }
 }

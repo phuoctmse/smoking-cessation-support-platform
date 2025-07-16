@@ -5,6 +5,7 @@ import { CessationPlanTemplateRepository } from './cessation-plan-template.repos
 import {GuardModule} from "../../shared/guards/guard.module";
 import { SupabaseModule } from '../../shared/modules/supabase.module'
 import { PlanStageTemplateModule } from '../plan-stage-template/plan-stage-template.module';
+import { RedisServices } from '../../shared/services/redis.service'
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PlanStageTemplateModule } from '../plan-stage-template/plan-stage-templ
     CessationPlanTemplateResolver,
     CessationPlanTemplateService,
     CessationPlanTemplateRepository,
+    RedisServices,
   ],
   exports: [CessationPlanTemplateService, CessationPlanTemplateRepository],
 })

@@ -61,6 +61,7 @@ export class CessationPlanService {
     if (plan.template_id) {
       try {
         await this.planStageRepository.createStagesFromTemplate(plan.id, plan.template_id, plan.start_date);
+        await this.invalidateTemplateUsageStatsCache(plan.template_id)
       } catch (stageError) {
         this.logger.error(
           `Failed to create stages from template for plan ${plan.id}: ${stageError.message}. Plan created without stages.`,
@@ -223,7 +224,6 @@ export class CessationPlanService {
     const updatedPlan = await this.cessationPlanRepository.update(id, data)
     this.logger.log(`Cessation plan updated: ${updatedPlan.id}`)
 
-    // Send notifications for status changes
     if (data.status && data.status !== existingPlan.status) {
       const planDisplayName = this.getPlanDisplayName(updatedPlan);
 
@@ -245,10 +245,16 @@ export class CessationPlanService {
     }
 
     if (
-        updatedPlan.template_id &&
-        (updatedPlan.status === CessationPlanStatus.COMPLETED || updatedPlan.status === CessationPlanStatus.ABANDONED)
+        updatedPlan.template_id && (
+            updatedPlan.status === CessationPlanStatus.COMPLETED ||
+            updatedPlan.status === CessationPlanStatus.ABANDONED
+        )
     ) {
       await this.updateTemplateSuccessRate(updatedPlan.template_id);
+    }
+
+    if (updatedPlan.template_id) {
+      await this.invalidateTemplateUsageStatsCache(updatedPlan.template_id)
     }
 
     await this.invalidatePlanCaches(id, updatedPlan.user_id);
@@ -341,6 +347,24 @@ export class CessationPlanService {
   private validateUpdatePermission(plan: any, userId: string, userRole: string): void {
     if (userRole === RoleName.Member && plan.user_id !== userId) {
       throw new ForbiddenException('You can only update your own cessation plans')
+    }
+  }
+
+  private async invalidateTemplateUsageStatsCache(templateId: string): Promise<void> {
+    const patterns = [
+      `${CACHE_PREFIX}:usage-stats:${templateId}:*`,
+      `cessation-plan-template:usage-stats:${templateId}:*`,
+    ]
+
+    for (const pattern of patterns) {
+      try {
+        const keys = await this.redisServices.getClient().keys(pattern)
+        if (keys.length > 0) {
+          await this.redisServices.getClient().del(keys)
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to clear template usage stats cache: ${error.message}`)
+      }
     }
   }
 
