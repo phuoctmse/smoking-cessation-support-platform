@@ -5,6 +5,7 @@ import { UpdateCessationPlanTemplateType } from './schema/update-cessation-plan-
 import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { DifficultyLevel, Prisma } from '@prisma/client'
 import { CessationPlanTemplateFiltersInput } from './dto/request/cessation-plan-template-filters.input'
+import { TemplateUsageFiltersInput } from './dto/request/template-usage-filters.input'
 
 @Injectable()
 export class CessationPlanTemplateRepository {
@@ -152,6 +153,132 @@ export class CessationPlanTemplateRepository {
         is_active: true,
       },
     });
+  }
+
+  async getTemplateUsageStats(
+    templateId: string,
+    params: PaginationParamsType,
+    filters?: TemplateUsageFiltersInput
+  ) {
+    const { page, limit, search } = params
+    const skip = (page - 1) * limit
+
+    const where: Prisma.CessationPlanWhereInput = {
+      template_id: templateId,
+      is_deleted: false,
+    }
+
+    if (filters?.status) {
+      where.status = filters.status
+    }
+
+    if (search || filters?.search) {
+      const searchTerm = search || filters?.search
+      where.user = {
+        OR: [
+          { name: { contains: searchTerm, mode: 'insensitive' } },
+          { user_name: { contains: searchTerm, mode: 'insensitive' } },
+        ],
+      }
+    }
+
+    const template = await this.prisma.cessationPlanTemplate.findUnique({
+      where: { id: templateId },
+      select: { id: true, name: true }
+    })
+
+    if (!template) {
+      throw new Error('Template not found')
+    }
+
+    const statusStats = await this.prisma.cessationPlan.groupBy({
+      by: ['status'],
+      where: {
+        template_id: templateId,
+        is_deleted: false,
+      },
+      _count: {
+        id: true,
+      },
+    })
+
+    const statusOrder = ['PLANNING', 'ACTIVE', 'PAUSED', 'ABANDONED', 'COMPLETED']
+    const orderedStats = statusStats
+      .map(stat => ({
+        status: stat.status,
+        count: stat._count.id,
+      }))
+      .sort((a, b) => {
+        const indexA = statusOrder.indexOf(a.status)
+        const indexB = statusOrder.indexOf(b.status)
+        return indexA - indexB
+      })
+
+    const totalUsers = await this.prisma.cessationPlan.count({
+      where: {
+        template_id: templateId,
+        is_deleted: false,
+      },
+    })
+
+    const [users, totalUsersFiltered] = await Promise.all([
+      this.prisma.cessationPlan.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [
+          {
+            status: 'asc'
+          },
+          { created_at: 'desc' },
+        ],
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              user_name: true,
+              avatar_url: true,
+            },
+          },
+          stages: {
+            where: { is_deleted: false },
+            select: {
+              id: true,
+              status: true,
+              stage_order: true,
+            },
+            orderBy: { stage_order: 'asc' },
+          },
+        },
+      }),
+      this.prisma.cessationPlan.count({ where }),
+    ])
+
+    const sortedUsers = users.sort((a, b) => {
+      const indexA = statusOrder.indexOf(a.status)
+      const indexB = statusOrder.indexOf(b.status)
+      if (indexA !== indexB) {
+        return indexA - indexB
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+
+    const totalPages = Math.ceil(totalUsersFiltered / limit)
+
+    return {
+      template_id: template.id,
+      template_name: template.name,
+      total_users: totalUsers,
+      stats_by_status: orderedStats,
+      users: {
+        data: sortedUsers,
+        total: totalUsersFiltered,
+        page,
+        limit,
+        hasNext: page < totalPages,
+      },
+    }
   }
 
   async update(id: string, data: Omit<UpdateCessationPlanTemplateType, 'id'>) {
