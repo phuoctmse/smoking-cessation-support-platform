@@ -371,8 +371,8 @@ export class CessationPlanService {
   private validateStatusTransition(currentStatus: CessationPlanStatus, newStatus: CessationPlanStatus): void {
     const validTransitions: Record<CessationPlanStatus, CessationPlanStatus[]> = {
       PLANNING: ['ACTIVE', 'CANCELLED'],
-      ACTIVE: ['PAUSED', 'COMPLETED', 'CANCELLED'],
-      PAUSED: ['ACTIVE', 'CANCELLED'],
+      ACTIVE: ['PAUSED', 'COMPLETED', 'CANCELLED', 'ABANDONED'],
+      PAUSED: ['ACTIVE', 'CANCELLED', 'ABANDONED'],
       COMPLETED: [],
       ABANDONED: ['CANCELLED'],
       CANCELLED: ['PLANNING'],
@@ -384,9 +384,15 @@ export class CessationPlanService {
   }
 
   private async validateCreateRules(data: CreateCessationPlanType, userId: string): Promise<void> {
-    const existingActivePlans = await this.cessationPlanRepository.findActiveByUserId(userId)
-    if (existingActivePlans.length > 0) {
-      throw new ConflictException('User already has an active cessation plan')
+    const activeStatuses = ['PLANNING', 'ACTIVE', 'PAUSED']
+    const existingActivePlans = await this.cessationPlanRepository.findByUserId(userId)
+
+    const activePlans = existingActivePlans.filter(plan =>
+      activeStatuses.includes(plan.status)
+    )
+
+    if (activePlans.length > 0) {
+      throw new ConflictException('You already have an active cessation plan. Please complete or cancel it before creating a new one.')
     }
 
     if (data.target_date <= data.start_date) {
@@ -446,11 +452,9 @@ export class CessationPlanService {
   }
 
   private async invalidateTemplateCaches(templateId: string): Promise<void> {
-    // Invalidate specific template cache
     const templateCacheKey = buildOneCacheKey('cessation-plan-template', templateId);
     await this.redisServices.getClient().del(templateCacheKey);
 
-    // Invalidate template lists cache
     await invalidateCacheForId(this.redisServices.getClient(), 'cessation-plan-template', 'all-lists');
     await invalidateCacheForId(this.redisServices.getClient(), 'cessation-plan-template', 'items');
   }

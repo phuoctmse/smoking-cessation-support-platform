@@ -65,12 +65,50 @@ export class CessationPlanTemplateRepository {
       ]
     }
 
+    let orderByClause: Prisma.CessationPlanTemplateOrderByWithRelationInput[]
+
+    if (orderBy === 'average_rating') {
+      orderByClause = [
+        { average_rating: 'desc' },
+        { success_rate: 'desc' },
+        { created_at: 'desc' },
+      ]
+    } else if (orderBy === 'success_rate') {
+      orderByClause = [
+        { success_rate: 'desc' },
+        { average_rating: 'desc' },
+        { created_at: 'desc' },
+      ]
+    } else if (orderBy === 'total_reviews') {
+      orderByClause = [
+        { total_reviews: 'desc' },
+        { average_rating: 'desc' },
+        { success_rate: 'desc' },
+        { created_at: 'desc' },
+      ]
+    } else {
+      if (!orderBy || orderBy === 'created_at') {
+        orderByClause = [
+          { average_rating: 'desc' },
+          { success_rate: 'desc' },
+          { created_at: sortOrder || 'desc' },
+        ]
+      } else {
+        orderByClause = [
+          { [orderBy]: sortOrder },
+          { average_rating: 'desc' },
+          { success_rate: 'desc' },
+          { created_at: 'desc' },
+        ]
+      }
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.cessationPlanTemplate.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { [orderBy]: sortOrder },
+        orderBy: orderByClause,
         include: {
           stages: {
             where: {is_active: true},

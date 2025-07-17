@@ -95,24 +95,29 @@ export class CessationPlanRepository {
     });
   }
 
-  async findByUserId(userId: string) {
-    return this.prisma.cessationPlan.findMany({
-      where: { user_id: userId, is_deleted: false },
-      include: this.getDefaultIncludes(),
-      orderBy: { created_at: 'desc' },
-    });
-  }
-
   async findActiveByUserId(userId: string) {
     return this.prisma.cessationPlan.findMany({
       where: {
         user_id: userId,
+        status: {
+          in: ['PLANNING', 'ACTIVE', 'PAUSED'],
+        },
         is_deleted: false,
-        status: { in: ['PLANNING', 'ACTIVE', 'PAUSED'] },
       },
       include: this.getDefaultIncludes(),
       orderBy: { created_at: 'desc' },
-    });
+    })
+  }
+
+  async findByUserId(userId: string) {
+    return this.prisma.cessationPlan.findMany({
+      where: {
+        user_id: userId,
+        is_deleted: false,
+      },
+      include: this.getDefaultIncludes(),
+      orderBy: { created_at: 'desc' },
+    })
   }
 
   async findByUserAndTemplate(userId: string, templateId: string) {
