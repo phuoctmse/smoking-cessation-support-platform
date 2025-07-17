@@ -18,6 +18,24 @@ import { PlanStageOrderInput } from './dto/request/plan-stage-order.input'
 export class PlanStageResolver {
   constructor(private readonly planStageService: PlanStageService) {}
 
+  @Mutation(() => PlanStage)
+  @UseGuards(JwtAuthGuard)
+  async createPlanStage(
+    @Args('input') input: CreatePlanStageInput,
+    @CurrentUser() user: UserType,
+  ): Promise<PlanStage> {
+    return this.planStageService.create(input, user.role, user.id);
+  }
+
+  @Mutation(() => [PlanStage])
+  @UseGuards(JwtAuthGuard)
+  async createStagesFromTemplate(
+    @Args('planId') planId: string,
+    @CurrentUser() user: UserType,
+  ): Promise<PlanStage[]> {
+    return this.planStageService.createStagesFromTemplate(planId, user.role, user.id);
+  }
+
   @Query(() => [PlanStage])
   @UseGuards(JwtAuthGuard)
   async planStagesByPlan(
@@ -57,30 +75,12 @@ export class PlanStageResolver {
 
   @Mutation(() => PlanStage)
   @UseGuards(JwtAuthGuard)
-  async createPlanStage(
-    @Args('input') input: CreatePlanStageInput,
-    @CurrentUser() user: UserType,
-  ): Promise<PlanStage> {
-    return this.planStageService.create(input, user.role, user.id);
-  }
-
-  @Mutation(() => PlanStage)
-  @UseGuards(JwtAuthGuard)
   async updatePlanStage(
     @Args('input') input: UpdatePlanStageInput,
     @CurrentUser() user: UserType,
   ): Promise<PlanStage> {
     const { id, ...updateData } = input;
     return this.planStageService.update(id, updateData, user.role, user.id);
-  }
-
-  @Mutation(() => [PlanStage])
-  @UseGuards(JwtAuthGuard)
-  async createStagesFromTemplate(
-    @Args('planId') planId: string,
-    @CurrentUser() user: UserType,
-  ): Promise<PlanStage[]> {
-    return this.planStageService.createStagesFromTemplate(planId, user.role, user.id);
   }
 
   @Mutation(() => [PlanStage])

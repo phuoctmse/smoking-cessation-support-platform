@@ -44,6 +44,11 @@ export class PlanStageService {
   async create(data: CreatePlanStageType, userRole: string, userId: string) {
     const plan = await this.validateAccessAndGetPlan(data.plan_id, userId, userRole)
     this.validatePlanIsCustomizable(plan)
+
+    if (!['PLANNING', 'ACTIVE', 'PAUSED'].includes(plan.status)) {
+      throw new ForbiddenException(`Cannot create stages when plan status is ${plan.status}`)
+    }
+
     await this.validateCreateRules(data)
 
     try {
@@ -202,6 +207,18 @@ export class PlanStageService {
 
     const plan = await this.validateAccessAndGetPlan(existingStage.plan_id, userId, userRole)
 
+    if (plan.status === 'CANCELLED') {
+      throw new ForbiddenException('Cannot update stages of a cancelled plan')
+    }
+
+    if (plan.status === 'COMPLETED') {
+      throw new ForbiddenException('Cannot update stages of a completed plan')
+    }
+
+    if (!['ACTIVE', 'PAUSED'].includes(plan.status)) {
+      throw new ForbiddenException(`Cannot update stages when plan status is ${plan.status}`)
+    }
+
     if (data.status !== undefined) {
       this.validateStatusTransition(existingStage.status, data.status, existingStage)
     }
@@ -234,6 +251,11 @@ export class PlanStageService {
   async reorderStages(planId: string, stageOrders: { id: string; order: number }[], userRole: string, userId: string) {
     const plan = await this.validateAccessAndGetPlan(planId, userId, userRole)
     this.validatePlanIsCustomizable(plan)
+
+    if (!['PLANNING', 'ACTIVE', 'PAUSED'].includes(plan.status)) {
+      throw new ForbiddenException(`Cannot reorder stages when plan status is ${plan.status}`)
+    }
+
     await this.validateStagesBelongToPlan(
       planId,
       stageOrders.map((s) => s.id),
@@ -242,10 +264,7 @@ export class PlanStageService {
 
     try {
       const reorderedStages = await this.planStageRepository.reorderStages(planId, stageOrders)
-      this.logger.log(`Reordered ${stageOrders.length} stages for plan: ${planId}`)
-
       await this.invalidateAllStageCaches('reorder', planId, plan.user_id, plan.template_id)
-
       return reorderedStages.map((stage) => this.enrichWithComputedFields(stage))
     } catch (error) {
       this.logger.error(`Failed to reorder stages: ${error.message}`)
@@ -261,6 +280,10 @@ export class PlanStageService {
 
     const plan = await this.validateAccessAndGetPlan(existingStage.plan_id, userId, userRole)
     this.validatePlanIsCustomizable(plan)
+
+    if (!['PLANNING', 'ACTIVE', 'PAUSED'].includes(plan.status)) {
+      throw new ForbiddenException(`Cannot delete stages when plan status is ${plan.status}`)
+    }
 
     try {
       const removedStage = await this.planStageRepository.remove(id)
@@ -280,13 +303,11 @@ export class PlanStageService {
     try {
       const client = this.redisServices.getClient()
 
-      // Clear specific stage cache (except for operation types)
       if (operationType && !['create', 'template-generation', 'reorder'].includes(operationType)) {
         const specificStageKey = buildOneCacheKey(CACHE_PREFIX, operationType)
         await client.del(specificStageKey)
       }
 
-      // Clear all stage-related caches with pattern-based approach
       const cachePatterns = [
         `${CACHE_PREFIX}:byPlan:${planId}*`,
         `${CACHE_PREFIX}:activeByPlan:${planId}*`,
@@ -326,7 +347,6 @@ export class PlanStageService {
         await client.del(specificCacheKeys)
       }
 
-      // Clear using invalidateCacheForId utility
       await invalidateCacheForId(client, CACHE_PREFIX, planId)
       await invalidateCacheForId(client, 'cessation-plan', userId)
       await invalidateCacheForId(client, 'cessation-plan', 'all-lists')
@@ -451,6 +471,16 @@ export class PlanStageService {
 
     if (currentStatus === PlanStageStatus.PENDING && newStatus === PlanStageStatus.ACTIVE) {
       this.validateCanActivateStage(stage)
+    }
+  }
+
+  private validatePlanAllowsStageModification(plan: CessationPlan, operation: string): void {
+    const allowedStatuses = ['PLANNING', 'ACTIVE', 'PAUSED']
+
+    if (!allowedStatuses.includes(plan.status)) {
+      throw new ForbiddenException(
+        `Cannot ${operation} stages when plan status is ${plan.status}. Plan must be in PLANNING, ACTIVE, or PAUSED status.`
+      )
     }
   }
 
