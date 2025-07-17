@@ -12,10 +12,21 @@ export class UserRepository {
   constructor(
     private readonly prismaService: PrismaService,
     @Inject('SUPABASE') private readonly supabase: SupabaseClient,
-  ) {}
+  ) { }
 
   async findAll() {
     return await this.prismaService.user.findMany()
+  }
+
+  async findAllCoaches() {
+    return await this.prismaService.user.findMany({
+      where: {
+        role: RoleNameEnum.COACH,
+      },
+      include: {
+        CoachProfile: true
+      }
+    })
   }
 
   async findOne(id: string) {
@@ -28,11 +39,11 @@ export class UserRepository {
         CoachProfile: true,
       }
     })
-    
+
     if (!user) {
       throw new Error(`User with id ${id} not found`)
     }
-    
+
     console.log(user)
     return user
   }

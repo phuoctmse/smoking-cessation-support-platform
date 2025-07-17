@@ -37,6 +37,8 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
       'prettier/prettier': 'off',
+      '@typescript-eslint/no-unsafe-enum-comparison': 'off',
+      'no-useless-catch': 'off',
     },
   },
 )

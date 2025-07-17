@@ -12,6 +12,7 @@ import { CessationPlanTemplateModule } from '../cessation-plan-template/cessatio
 import { CessationPlanCronService } from './cessation-plan.cron'
 import { RedisServices } from 'src/shared/services/redis.service'
 import { NotificationModule } from '../notification/notification.module'
+import { UserModule } from '../user/user.module'
 
 @Module({
   imports: [
@@ -21,15 +22,17 @@ import { NotificationModule } from '../notification/notification.module'
     BadgeAwardModule,
     CessationPlanTemplateModule,
     NotificationModule,
+    UserModule,
   ],
   providers: [
     CessationPlanResolver,
     CessationPlanService,
     CessationPlanRepository,
     SubscriptionGuard,
-    CustomAIRecommendationService
+    CustomAIRecommendationService,
+    CessationPlanCronService,
+    RedisServices,
   ],
   exports: [CessationPlanService, CessationPlanRepository],
-
 })
 export class CessationPlanModule { }
