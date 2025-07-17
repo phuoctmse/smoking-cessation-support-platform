@@ -26,6 +26,10 @@ export class UserService {
     return await this.userRepo.findAll()
   }
 
+  async findAllCoaches() {
+    return await this.userRepo.findAllCoaches()
+  }
+
   async findOne(id: string) {
     return await this.userRepo.findOne(id)
   }
