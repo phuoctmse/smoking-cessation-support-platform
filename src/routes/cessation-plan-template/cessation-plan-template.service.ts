@@ -69,7 +69,6 @@ export class CessationPlanTemplateService {
             reviveDates(template, ['created_at', 'updated_at'])
           })
         }
-        this.logger.debug(`Cache hit for templates: ${cacheKey}`)
         return parsed
       }
     } catch (error) {
@@ -198,8 +197,6 @@ export class CessationPlanTemplateService {
             reviveDates(plan, ['start_date', 'target_date', 'created_at', 'updated_at'])
           })
         }
-
-        this.logger.debug(`Cache hit for template usage stats: ${templateId}`)
         return this.transformToUsageStatsResponse(parsed)
       }
     } catch (error) {
@@ -214,7 +211,6 @@ export class CessationPlanTemplateService {
 
     try {
       await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(result))
-      this.logger.debug(`Cache set for template usage stats: ${templateId}`)
     } catch (error) {
       this.logger.warn(`Cache set failed for template usage stats ${templateId}: ${error.message}`)
     }
@@ -246,7 +242,6 @@ export class CessationPlanTemplateService {
       if (templateId) {
         const specificTemplateKey = buildOneCacheKey(CACHE_PREFIX, templateId)
         await client.del(specificTemplateKey)
-        this.logger.debug(`Cleared specific template cache: ${specificTemplateKey}`)
       }
 
       // Step 2: Clear all template list caches
@@ -260,7 +255,6 @@ export class CessationPlanTemplateService {
           const keys = await client.keys(pattern)
           if (keys.length > 0) {
             await client.del(keys)
-            this.logger.debug(`Cleared ${keys.length} template cache keys with pattern: ${pattern}`)
           }
         } catch (error) {
           this.logger.warn(`Failed to clear template cache pattern ${pattern}: ${error.message}`)
