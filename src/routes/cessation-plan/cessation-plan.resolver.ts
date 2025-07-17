@@ -1,6 +1,5 @@
 import { UseGuards } from '@nestjs/common';
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { SubscriptionGuard } from '../../shared/guards/subscription.guard';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { CessationPlanService } from './cessation-plan.service';
 import { CreateCessationPlanInput } from './dto/request/create-cessation-plan.input';
 import { UpdateCessationPlanInput } from './dto/request/update-cessation-plan.input';
