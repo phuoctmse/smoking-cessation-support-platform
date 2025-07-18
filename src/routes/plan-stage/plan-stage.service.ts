@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common'
-import { PlanStageStatus, Prisma } from '@prisma/client'
+import { CessationPlanStatus, PlanStageStatus, Prisma } from '@prisma/client'
 import { PlanStageFilters, PlanStageRepository } from './plan-stage.repository'
 import { CessationPlanRepository } from '../cessation-plan/cessation-plan.repository'
 import { RoleName } from '../../shared/constants/role.constant'
@@ -25,6 +25,7 @@ import {
   trackCacheKey,
 } from '../../shared/utils/cache-key.util'
 import { NotificationEventService } from '../notification/notification.event'
+import { CessationPlanTemplateRepository } from '../cessation-plan-template/cessation-plan-template.repository'
 
 const CACHE_TTL = 60 * 5
 const CACHE_PREFIX = 'plan-stage'
@@ -39,6 +40,7 @@ export class PlanStageService {
     private readonly badgeAwardService: BadgeAwardService,
     private readonly redisServices: RedisServices,
     private readonly notificationEventService: NotificationEventService,
+    private readonly cessationPlanTemplateRepository: CessationPlanTemplateRepository,
   ) {}
 
   async create(data: CreatePlanStageType, userRole: string, userId: string) {
@@ -233,11 +235,10 @@ export class PlanStageService {
       if (updatedStage.status === PlanStageStatus.COMPLETED) {
         const planStages = await this.planStageRepository.findByPlanId(updatedStage.plan_id)
         const completedStagesInPlan = planStages.filter((s) => s.status === PlanStageStatus.COMPLETED).length
-
         await this.badgeAwardService.processStageCompletion(userId, updatedStage.plan_id, completedStagesInPlan)
         const planDisplayName = this.getPlanDisplayName(plan)
-
         await this.notificationEventService.sendStageCompletionNotification(userId, updatedStage.title, planDisplayName)
+        await this.checkAndCompletePlanIfAllStagesCompleted(updatedStage.plan_id, planStages, userId, planDisplayName)
       }
 
       await this.invalidateAllStageCaches(id, existingStage.plan_id, plan.user_id, plan.template_id)
@@ -474,16 +475,6 @@ export class PlanStageService {
     }
   }
 
-  private validatePlanAllowsStageModification(plan: CessationPlan, operation: string): void {
-    const allowedStatuses = ['PLANNING', 'ACTIVE', 'PAUSED']
-
-    if (!allowedStatuses.includes(plan.status)) {
-      throw new ForbiddenException(
-        `Cannot ${operation} stages when plan status is ${plan.status}. Plan must be in PLANNING, ACTIVE, or PAUSED status.`
-      )
-    }
-  }
-
   private validateCanActivateStage(stage: any): void {
     if (!stage?.start_date) {
       return
@@ -560,6 +551,76 @@ export class PlanStageService {
       if (sortedOrders[i] !== i + 1) {
         throw new BadRequestException('Stage orders must be sequential starting from 1')
       }
+    }
+  }
+
+  private async checkAndCompletePlanIfAllStagesCompleted(
+    planId: string,
+    allStages: any[],
+    userId: string,
+    planDisplayName: string
+  ): Promise<void> {
+    try {
+      const activeStages = allStages.filter(stage => !stage.is_deleted)
+      const completedStages = activeStages.filter(stage => stage.status === PlanStageStatus.COMPLETED)
+
+      if (activeStages.length > 0 && completedStages.length === activeStages.length) {
+        this.logger.log(`All stages completed for plan ${planId}. Auto-completing plan...`)
+
+        const currentPlan = await this.cessationPlanRepository.findOne(planId)
+        if (!currentPlan) {
+          this.logger.error(`Plan ${planId} not found during auto-completion check`)
+          return
+        }
+
+        if (['ACTIVE', 'PAUSED'].includes(currentPlan.status)) {
+          await this.cessationPlanRepository.update(planId, {
+            status: CessationPlanStatus.COMPLETED
+          })
+
+          const daysDuration = Math.floor(
+            (new Date().getTime() - currentPlan.start_date.getTime()) / (1000 * 60 * 60 * 24)
+          )
+
+          await this.notificationEventService.sendPlanCompletedNotification(
+            userId,
+            planDisplayName,
+            daysDuration
+          )
+
+          await this.badgeAwardService.processPlanCompletion(userId, planId)
+
+          if (currentPlan.template_id) {
+            await this.updateTemplateSuccessRate(currentPlan.template_id)
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error during auto plan completion for plan ${planId}: ${error.message}`, error)
+    }
+  }
+
+  private async updateTemplateSuccessRate(templateId: string): Promise<void> {
+    try {
+      const stats = await this.cessationPlanRepository.countByStatusForTemplate(templateId)
+
+      const completedCount = stats.find(
+        s => s.status === CessationPlanStatus.COMPLETED
+      )?._count.id || 0
+
+      const abandonedCount = stats.find(
+        s => s.status === CessationPlanStatus.ABANDONED
+      )?._count.id || 0
+
+      const totalFinished = completedCount + abandonedCount
+      const successRate = totalFinished > 0 ? (completedCount / totalFinished) * 100 : 0
+
+      await this.cessationPlanTemplateRepository.update(templateId, {
+        success_rate: parseFloat(successRate.toFixed(2)),
+      })
+      this.logger.log(`Updated template ${templateId} success rate to ${successRate.toFixed(2)}%`)
+    } catch (error) {
+      this.logger.error(`Error updating template success rate: ${error.message}`, error)
     }
   }
 

@@ -58,8 +58,6 @@ export class BadgeAwardService {
         if (existingUserBadge.total === 0) {
           await this.userBadgeRepository.awardBadge(context.userId, badgeForEngine.id);
           this.logger.log(`Awarded badge "${badgeForEngine.name}" to user ${context.userId}.`);
-
-          // Send notification after awarding badge
           await this.notificationEventService.sendBadgeEarnedNotification(
             context.userId,
             badgeForEngine.name,
@@ -87,7 +85,6 @@ export class BadgeAwardService {
     };
     await this.evaluateAndAwardBadges(context);
 
-    // Send streak milestone notification for significant milestones
     if (this.isSignificantStreakMilestone(currentStreak)) {
       await this.notificationEventService.sendStreakMilestoneNotification(userId, currentStreak);
     }
@@ -101,6 +98,15 @@ export class BadgeAwardService {
       completedStagesInPlan,
     };
     await this.evaluateAndAwardBadges(context);
+  }
+
+  async processPlanCompletion(userId: string, planId: string): Promise<void> {
+    const context: BadgeEvaluationContext = {
+      userId,
+      eventType: 'plan_completed',
+      planId,
+    }
+    await this.evaluateAndAwardBadges(context)
   }
 
   private isSignificantStreakMilestone(streakDays: number): boolean {
