@@ -75,8 +75,6 @@ export class QuizResponseService {
     // 3. Validate business rules
     this.validateQuizCompletion(input.responses, attempt.quiz.questions);
 
-    console.log("1232321321")
-
     // 4. Use AI to map responses to member profile data
     const memberProfileData = await this.quizToProfileAI.mapQuizToProfile(
       input.responses, 
@@ -100,11 +98,16 @@ export class QuizResponseService {
         question_id: r.question_id,
         attempt_id: r.attempt_id,
         answer: JSON.parse(r.answer as string),
+        order: r.order,
         created_at: r.created_at,
         updated_at: r.updated_at
       })) as QuizResponse[],
       member_profile_updated: true
     };
+  }
+
+  async getQuizAttempts(currentUserId: string): Promise<QuizAttempt[]> {
+    return this.quizResponseRepo.getQuizAttempts(currentUserId);
   }
 
   // Legacy method

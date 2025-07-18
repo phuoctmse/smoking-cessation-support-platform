@@ -17,14 +17,16 @@ import { CoachProfile } from './entities/coach-profile.entity'
 
 @Resolver(() => User)
 export class UserResolver {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   //Member & Coach
   @Mutation(() => User)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('MEMBER', 'COACH')
-  async updateUserProfile(@Args('updateUserInput') updateUserInput: UpdateUserProfileInput,
-    @CurrentUser() user: UserType) {
+  async updateUserProfile(
+    @Args('updateUserInput') updateUserInput: UpdateUserProfileInput,
+    @CurrentUser() user: UserType,
+  ) {
     return await this.userService.updateProfile(user.id, updateUserInput)
   }
 
@@ -55,7 +57,7 @@ export class UserResolver {
   @Roles('ADMIN')
   async createUserByAdmin(
     @Args('createUserInput', { type: () => CreateUserInput })
-    createUserInput: CreateUserInput
+    createUserInput: CreateUserInput,
   ) {
     return await this.userService.createUser(createUserInput)
   }
@@ -79,5 +81,6 @@ export class UserResolver {
   @Query(() => [User], { name: 'GetAllUsers' })
   async findAllUsers() {
     return await this.userService.findAll()
-  }
+  } 
+
 }
