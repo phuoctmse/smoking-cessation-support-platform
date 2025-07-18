@@ -86,4 +86,21 @@ export class CessationPlanTemplateResolver {
   async removeCessationPlanTemplate(@Args('id') id: string) {
     return this.cessationPlanTemplateService.remove(id)
   }
+  @Query(() => PaginatedCessationPlanTemplatesResponse, { name: 'searchCessationPlanTemplates' })
+  async searchCessationPlanTemplates(
+    @Args('keyword', { nullable: true }) keyword?: string,
+    @Args('params', { nullable: true }) params?: PaginationParamsInput,
+    @Args('filters', { nullable: true, type: () => CessationPlanTemplateFiltersInput }) filters?: CessationPlanTemplateFiltersInput,
+  ) {
+    const searchKeyword = keyword || '';
+    const { page = 1, limit = 20 } = params || {};
+    
+    const searchFilters = {
+      coach_id: filters?.coachId,
+      difficulty_level: filters?.difficultyLevel,
+      page,
+      limit,
+    };
+    return this.cessationPlanTemplateService.searchTemplatesOptimized(searchKeyword, searchFilters);
+  }
 }

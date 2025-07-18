@@ -46,6 +46,7 @@ import { QuizResponseModule } from './routes/quiz-response/quiz-reponse.module'
 import { HealthScoreCriteriaModule } from './routes/health-score-criteria/health-score-criteria.module'
 import { NotificationTemplateModule } from './routes/notification-template/notification-template.module';
 import { NotificationModule } from './routes/notification/notification.module';
+import { CustomElasticsearchModule } from './shared/modules/elasticsearch.module';
 
 @Module({
   imports: [
@@ -124,7 +125,8 @@ import { NotificationModule } from './routes/notification/notification.module';
     ScheduleModule.forRoot(),
     HealthScoreCriteriaModule,
     NotificationTemplateModule,
-    NotificationModule
+    NotificationModule,
+    CustomElasticsearchModule
   ],
   controllers: [AppController],
   providers: [

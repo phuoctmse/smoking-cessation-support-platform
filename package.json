@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@apollo/server": "^4.12.0",
+    "@elastic/elasticsearch": "^9.0.3",
     "@google/genai": "^1.8.0",
     "@keyv/redis": "^4.4.0",
     "@nestjs/apollo": "^13.1.0",
@@ -30,6 +31,7 @@
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
+    "@nestjs/elasticsearch": "^11.1.0",
     "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/graphql": "^13.1.0",
     "@nestjs/jwt": "^11.0.0",

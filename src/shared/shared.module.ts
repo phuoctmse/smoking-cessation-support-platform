@@ -8,6 +8,13 @@ import { GuardModule } from './guards/guard.module'
 import { SupabaseModule } from './modules/supabase.module'
 import { SupabaseStorageService } from './services/supabase-storage.service'
 import { UploadService } from './services/upload-file.service'
+import { CustomElasticsearchModule } from './modules/elasticsearch.module'
+import { CustomElasticsearchService } from './services/elasticsearch.service'
+import { HealthController } from './controllers/health.controller'
+import { DataSyncService } from './services/data-sync.service'
+import { CronJobService } from './services/cronjob.service'
+import { CronJobManagementService } from './services/cronjob-management.service'
+import { ScheduleModule } from '@nestjs/schedule'
 
 const sharedService = [
   PrismaService,
@@ -15,13 +22,18 @@ const sharedService = [
   TokenService,
   RedisServices,
   SupabaseStorageService,
-  UploadService
+  UploadService,
+  CustomElasticsearchService,
+  DataSyncService,
+  CronJobService,
+  CronJobManagementService
 ]
 
 @Global()
 @Module({
   providers: [...sharedService],
-  exports: [...sharedService, SupabaseModule],
-  imports: [JwtModule, GuardModule, SupabaseModule],
+  controllers: [HealthController],
+  exports: [...sharedService, SupabaseModule, CustomElasticsearchModule],
+  imports: [JwtModule, GuardModule, SupabaseModule, CustomElasticsearchModule, ScheduleModule.forRoot()],
 })
 export class SharedModule {}
