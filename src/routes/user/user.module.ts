@@ -14,7 +14,7 @@ import { AuthRepository } from '../auth/auth.repository'
     UserService, 
     UserRepository, 
     PrismaService, 
-    AuthRepository, 
+    AuthRepository,
   ],
   exports: [UserService],
 })
