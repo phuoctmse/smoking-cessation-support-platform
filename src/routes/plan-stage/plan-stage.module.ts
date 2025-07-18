@@ -9,6 +9,7 @@ import { BadgeAwardModule } from '../badge-award/badge-award.module'
 import { PlanStageCronService } from './plan-stage.cron'
 import { RedisServices } from '../../shared/services/redis.service'
 import { NotificationModule } from '../notification/notification.module'
+import { CessationPlanTemplateModule } from '../cessation-plan-template/cessation-plan-template.module'
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { NotificationModule } from '../notification/notification.module'
     forwardRef(() => CessationPlanModule),
     BadgeAwardModule,
     NotificationModule,
+    CessationPlanTemplateModule,
   ],
   providers: [
     PlanStageResolver,
