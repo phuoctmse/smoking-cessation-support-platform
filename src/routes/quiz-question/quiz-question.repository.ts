@@ -65,11 +65,15 @@ export class QuizQuestionRepository {
   }
 
   async update(id: string, input: UpdateQuizQuestionInput) {
-
-    const questions = await this.findAll(input.quiz_id);
-    if (questions.some(question => question.order === input.order)) {
-      throw new BadRequestException('Order already exists');
+    const currentQuestion = await this.findOne(id);
+    
+    if (input.order !== undefined && input.order !== currentQuestion.order) {
+      const questions = await this.findAll(input.quiz_id);
+      if (questions.some(question => question.id !== id && question.order === input.order)) {
+        throw new BadRequestException('Order already exists');
+      }
     }
+    
     const updateData: Prisma.QuizQuestionUpdateInput = {
       question_text: input.question_text,
       description: input.description,
