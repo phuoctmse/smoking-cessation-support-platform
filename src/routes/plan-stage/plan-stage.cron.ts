@@ -20,8 +20,6 @@ export class PlanStageCronService {
 
   @Cron(CronExpression.EVERY_HOUR)
   async activatePendingStages() {
-    this.logger.log('Checking for plan stages ready to activate...');
-
     try {
       const now = new Date();
 
@@ -97,8 +95,6 @@ export class PlanStageCronService {
 
       await invalidateCacheForId(this.redisServices.getClient(), 'cessation-plan', 'all-lists');
       await invalidateCacheForId(this.redisServices.getClient(), 'cessation-plan', 'stats-cache');
-
-      this.logger.log(`Invalidated cache for ${stages.length} activated stages`);
     } catch (cacheError) {
       this.logger.error('Error invalidating cache:', cacheError);
     }
