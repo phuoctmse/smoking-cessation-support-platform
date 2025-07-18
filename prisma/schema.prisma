@@ -31,7 +31,7 @@ model User {
   ChatRoomCreator           ChatRoom[]               @relation("ChatRoomCreator")
   ChatRoomReceiver          ChatRoom[]               @relation("ChatRoomReceiver")
   ChatMessage               ChatMessage[]
-  template_matching_results TemplateMatchingResult[]
+  // template_matching_results TemplateMatchingResult[]
   HealthScoreCriteria       HealthScoreCriteria[]
   quiz_attempts             QuizAttempt[]
   Notification              Notification[]
@@ -131,7 +131,7 @@ model CessationPlanTemplate {
   plans                   CessationPlan[]
   feedbacks               Feedback[]
   stages                  PlanStageTemplate[]
-  matching_results        TemplateMatchingResult[]
+  // matching_results        TemplateMatchingResult[]
 
   @@map("cessation_plan_template")
 }
@@ -546,22 +546,22 @@ enum SubscriptionStatus {
   EXPIRED
 }
 
-// Thêm model để lưu trữ kết quả matching
-model TemplateMatchingResult {
-  id                   String   @id @default(uuid())
-  user_id              String
-  template_id          String
-  matching_score       Float // Điểm số matching từ AI (0-100)
-  matching_factors     Json // Chi tiết các yếu tố matching và giải thích của AI
-  recommendation_level String // HIGH, MEDIUM, LOW
-  created_at           DateTime @default(now())
+// // Thêm model để lưu trữ kết quả matching
+// model TemplateMatchingResult {
+//   id                   String   @id @default(uuid())
+//   user_id              String
+//   template_id          String
+//   matching_score       Float // Điểm số matching từ AI (0-100)
+//   matching_factors     Json // Chi tiết các yếu tố matching và giải thích của AI
+//   recommendation_level String // HIGH, MEDIUM, LOW
+//   created_at           DateTime @default(now())
 
-  user     User                  @relation(fields: [user_id], references: [id])
-  template CessationPlanTemplate @relation(fields: [template_id], references: [id])
+//   user     User                  @relation(fields: [user_id], references: [id])
+//   template CessationPlanTemplate @relation(fields: [template_id], references: [id])
 
-  @@unique([user_id, template_id])
-  @@map("template_matching_result")
-}
+//   @@unique([user_id, template_id])
+//   @@map("template_matching_result")
+// }
 
 model ProfileQuiz {
   id          String         @id @default(uuid())
