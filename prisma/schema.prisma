@@ -133,14 +133,6 @@ model CessationPlanTemplate {
   stages                  PlanStageTemplate[]
   matching_results        TemplateMatchingResult[]
 
-  // Thêm các trường mới để hỗ trợ matching
-  target_addiction_level String? // LOW, MEDIUM, HIGH
-  psychological_approach String[] // Các phương pháp tâm lý được áp dụng
-  physical_approach      String[] // Các phương pháp vật lý được áp dụng
-  support_methods        String[] // Các phương pháp hỗ trợ (thuốc, miếng dán, etc.)
-  intensity_level        String? // LOW, MEDIUM, HIGH - Mức độ cam go của kế hoạch
-  flexibility_level      String? // LOW, MEDIUM, HIGH - Khả năng điều chỉnh theo người dùng
-
   @@map("cessation_plan_template")
 }
 
@@ -608,7 +600,8 @@ model QuizResponse {
   question    QuizQuestion @relation(fields: [question_id], references: [id])
   attempt_id  String
   attempt     QuizAttempt  @relation(fields: [attempt_id], references: [id])
-  answer      Json // Lưu câu trả lời dưới dạng JSON để linh hoạt với các loại câu hỏi
+  answer      Json 
+  order       Int?
   created_at  DateTime     @default(now())
   updated_at  DateTime     @updatedAt
 

@@ -46,6 +46,11 @@ export class QuizResponseResolver {
         return this.quizResponseService.findByAttemptId(attemptId);
     }
 
+    @Query(() => [QuizAttempt])
+    async getQuizAttemptOnCurrentUser(@CurrentUser() currentUser: UserType): Promise<QuizAttempt[]> {
+        return this.quizResponseService.getQuizAttempts(currentUser.id);
+    }
+
     @Mutation(() => Boolean)
     async validateQuizResponse(
         @Args('questionId') questionId: string,

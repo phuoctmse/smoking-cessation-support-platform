@@ -13,5 +13,7 @@ export class CreateQuizResponseInput extends createZodDto(QuizResponseSchema) {
 
     @Field(() => GraphQLJSON)
     answer: any;
+
+    
 }
 
