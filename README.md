@@ -1,101 +1,172 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Smoking Cessation Support System
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A progressive NestJS-based backend application that supports a comprehensive smoking cessation system. This platform provides features for user registration and subscription management, building personalized cessation plans (with stages and progress tracking), real-time notifications, and AI-powered profile recommendations.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Table of Contents
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Installation](#installation)
+- [Running the Project](#running-the-project)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [API Documentation](#api-documentation)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Project setup
+---
+
+## Overview
+
+The platform is designed to support smokers in their journey to quit smoking. It provides personalized cessation plans, progress tracking (days without smoking, money saved, health improvement), real-time notifications, stage-by-stage guidance, and community support. The system leverages GraphQL best practices to deliver a flexible and efficient API.
+
+---
+
+## Features
+
+- **User Management:** Registration, authentication, and profile management for guest, member, coach, and admin roles.
+- **Cessation Plans:** Create, update, and track personalized smoking cessation plans including sequential stages.
+- **Progress Tracking:** Record smoking habits, health metrics, and plan progress.
+- **Notifications:** Scheduled notifications for plan reminders, stage activations, and achievements.
+- **Quiz & AI Mapping:** Capture quiz responses to map onto user profiles and generate personalized recommendations.
+- **Subscription and Payment:** Manage member plans with subscription status and payment processing.
+- **Content & Community:** Blog posts, ratings, feedback, and social sharing of achievements.
+
+---
+
+## Tech Stack
+
+- **Framework:** [NestJS](https://docs.nestjs.com)
+- **API:** GraphQL with Apollo
+- **ORM:** Prisma
+- **Database:** Postgres
+- **Authentication:** JWT-based
+- **Caching:** Redis
+- **AI Services:** GoogleGenAI integrations for profile recommendations
+- **Testing:** Jest for unit and end-to-end tests
+- **Other:** ESLint, Prettier
+
+---
+
+## Installation
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone https://github.com/phuoctmse/smoking-cessation-support-platform.git
+   cd smoking-cessation-support-platform
+   ```
+
+2. **Install dependencies:**
+
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables:**
+
+   Create a `.env` file in the project root based on your configuration needs. Example:
+
+   ```env
+   DATABASE_URL=postgresql://username:password@localhost:5432/dbname
+   JWT_SECRET=your-secret-key
+   PORT=3000
+   ```
+
+4. **Set up Prisma:**
+
+   Generate Prisma client and apply migrations:
+
+   ```bash
+   npx prisma generate
+   npx prisma migrate dev
+   ```
+
+---
+
+## Running the Project
+
+To start the application in development mode:
 
 ```bash
-$ npm install
+npm run start:dev
 ```
 
-## Compile and run the project
+For production build and run:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-
-# SWC builder and watch mode
-$ nest start -b swc -w
+npm run start:prod
 ```
 
-## Run tests
+The GraphQL endpoint is available at: `http://localhost:3000/graphql`
+
+---
+
+## Testing
+
+Run unit tests:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run test
 ```
+
+Run end-to-end tests:
+
+```bash
+npm run test:e2e
+```
+
+Check test coverage:
+
+```bash
+npm run test:cov
+```
+
+---
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+When ready to deploy, refer to the [NestJS Deployment Guide](https://docs.nestjs.com/deployment). Steps typically include building the production bundle, setting environment variables, and configuring your hosting environment (e.g., AWS, Heroku, or other cloud services).
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Example build and run for production:
 
 ```bash
-$ npm install -g mau
-$ mau deploy
+npm run build
+npm run start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## API Documentation
 
-Check out a few resources that may come in handy when working with NestJS:
+This project exposes a GraphQL API. For detailed API documentation:
+- Visit `/graphql` in your browser (with GraphQL Playground enabled during development).
+- Refer to inline schema documentation provided within the GraphQL Playground.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+---
 
-## Support
+## Contributing
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+Contributions are welcome! Please follow these guidelines:
+- Ensure that all new code adheres to [SOLID Principles](https://en.wikipedia.org/wiki/SOLID).
+- Write proper tests for any new feature or bug fix.
+- Maintain consistency in coding style by following ESLint and Prettier rules.
+- Open an issue for any major changes or discussion points.
 
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+## Resources
+
+- [NestJS Documentation](https://docs.nestjs.com)
+- [GraphQL Documentation](https://graphql.org/learn/)
+- [Prisma Documentation](https://www.prisma.io/docs)
+- [Apollo GraphQL](https://www.apollographql.com/)
