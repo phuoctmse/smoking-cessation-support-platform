@@ -50,11 +50,13 @@ export class CessationPlanService {
 
   async create(data: CreateCessationPlanType, requestUserId: string) {
     await this.validateCreateRules(data, requestUserId)
+    const initialStatus = this.determineInitialPlanStatus(data.start_date)
+    const shouldActivateFirstStage = this.shouldActivateFirstStage(data.start_date)
 
     const planData = {
       ...data,
       user_id: requestUserId,
-      status: CessationPlanStatus.PLANNING,
+      status: initialStatus,
     }
 
     const plan = await this.cessationPlanRepository.create(planData)
@@ -63,7 +65,11 @@ export class CessationPlanService {
     if (plan.template_id) {
       try {
         await this.planStageRepository.createStagesFromTemplate(plan.id, plan.template_id, plan.start_date);
-        // Cập nhật thống kê coach khi có client mới
+
+        if (shouldActivateFirstStage) {
+          await this.activateFirstStage(plan.id)
+        }
+
         await this.userService.onNewClientStarted(plan.template_id);
         await this.invalidateTemplateUsageStatsCache(plan.template_id)
       } catch (stageError) {
@@ -80,15 +86,122 @@ export class CessationPlanService {
     }
 
     const planDisplayName = this.getPlanDisplayName(fullPlan);
-    await this.notificationEventService.sendPlanCreatedNotification(
-      requestUserId,
-      planDisplayName
-    );
+
+    if (initialStatus === CessationPlanStatus.ACTIVE) {
+      await this.notificationEventService.sendPlanActivatedNotification(
+        requestUserId,
+        planDisplayName
+      );
+    } else {
+      await this.notificationEventService.sendPlanCreatedNotification(
+        requestUserId,
+        planDisplayName
+      );
+    }
 
     await this.invalidateUserRelatedCaches(requestUserId);
     await this.invalidateListCaches();
 
     return this.enrichWithComputedFields(fullPlan)
+  }
+
+  private determineInitialPlanStatus(startDate: Date): CessationPlanStatus {
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    const planStartDate = new Date(startDate);
+    planStartDate.setHours(0, 0, 0, 0);
+
+    if (planStartDate.getTime() <= today.getTime()) {
+      return CessationPlanStatus.ACTIVE;
+    }
+
+    return CessationPlanStatus.PLANNING;
+  }
+
+  private shouldActivateFirstStage(startDate: Date): boolean {
+    const now = new Date()
+    const today = new Date(now)
+    today.setHours(0, 0, 0, 0)
+
+    const planStartDate = new Date(startDate)
+    planStartDate.setHours(0, 0, 0, 0)
+
+    return planStartDate <= today
+  }
+
+  private isStartDateToday(startDate: Date): boolean {
+    const now = new Date()
+    const today = new Date(now)
+    today.setHours(0, 0, 0, 0)
+
+    const planStartDate = new Date(startDate)
+    planStartDate.setHours(0, 0, 0, 0)
+
+    return planStartDate.getTime() === today.getTime()
+  }
+
+  private async activateFirstStage(planId: string): Promise<void> {
+    try {
+      const firstStage = await this.planStageRepository.findByStageOrder(planId, 1)
+
+      if (firstStage && firstStage.status === 'PENDING') {
+        await this.planStageRepository.update(firstStage.id, {
+          status: 'ACTIVE'
+        })
+
+        this.logger.log(`Activated first stage (${firstStage.id}) for plan ${planId}`)
+      } else if (!firstStage) {
+        this.logger.warn(`No first stage found for plan ${planId}`)
+      } else {
+        this.logger.debug(`First stage for plan ${planId} is already ${firstStage.status}`)
+      }
+    } catch (error) {
+      this.logger.error(`Failed to activate first stage for plan ${planId}: ${error.message}`)
+    }
+  }
+
+  private async validateCreateRules(data: CreateCessationPlanType, userId: string): Promise<void> {
+    const activeStatuses = ['PLANNING', 'ACTIVE', 'PAUSED']
+    const existingActivePlans = await this.cessationPlanRepository.findByUserId(userId)
+
+    const activePlans = existingActivePlans.filter(plan =>
+      activeStatuses.includes(plan.status)
+    )
+
+    if (activePlans.length > 0) {
+      throw new ConflictException('You already have an active cessation plan. Please complete or cancel it before creating a new one.')
+    }
+
+    if (data.target_date <= data.start_date) {
+      throw new BadRequestException('Target date must be after start date')
+    }
+
+    await this.validateStartDate(data.start_date)
+  }
+
+  private async validateStartDate(startDate: Date): Promise<void> {
+    const now = new Date()
+    const today = new Date(now)
+    today.setHours(0, 0, 0, 0)
+
+    const planStartDate = new Date(startDate)
+    planStartDate.setHours(0, 0, 0, 0)
+
+    const daysDifference = Math.floor((planStartDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+    if (daysDifference < -7) {
+      throw new BadRequestException(
+        'Start date cannot be more than 7 days in the past. Please choose a more recent date.'
+      )
+    }
+
+    if (daysDifference > 30) {
+      throw new BadRequestException(
+        'Start date cannot be more than 30 days in the future. Please choose a closer date.'
+      )
+    }
   }
 
   async findAll(params: PaginationParamsType, filters?: CessationPlanFilters, userRole?: string, userId?: string) {
@@ -119,7 +232,7 @@ export class CessationPlanService {
       data: result.data.map((plan) => this.enrichWithComputedFields(plan)),
     };
 
-    await this.redisServices.getClient().set(cacheKey, JSON.stringify(enrichedResult), { EX: CACHE_TTL });
+    await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(enrichedResult));
     const trackerKey = buildTrackerKey(CACHE_PREFIX, 'all-lists');
     await trackCacheKey(this.redisServices.getClient(), trackerKey, cacheKey);
 
@@ -151,7 +264,7 @@ export class CessationPlanService {
 
     const enriched = this.enrichWithComputedFields(plan);
 
-    await this.redisServices.getClient().set(cacheKey, JSON.stringify(plan), { EX: CACHE_TTL });
+    await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(plan));
     const trackerKey = buildTrackerKey(CACHE_PREFIX, plan.user_id);
     await trackCacheKey(this.redisServices.getClient(), trackerKey, cacheKey);
 
@@ -181,7 +294,7 @@ export class CessationPlanService {
       (plan) => this.enrichWithComputedFields(plan)
     );
 
-    await this.redisServices.getClient().set(cacheKey, JSON.stringify(plans), { EX: CACHE_TTL });
+    await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(plans));
     const trackerKey = buildTrackerKey(CACHE_PREFIX, user.id);
     await trackCacheKey(this.redisServices.getClient(), trackerKey, cacheKey);
 
@@ -203,7 +316,7 @@ export class CessationPlanService {
 
     const stats = await this.cessationPlanRepository.getStatistics(effectiveFilters);
 
-    await this.redisServices.getClient().set(cacheKey, JSON.stringify(stats), { EX: 60 * 2 });
+    await this.redisServices.getClient().setEx(cacheKey, 60 * 2, JSON.stringify(stats));
     const trackerKey = buildTrackerKey(CACHE_PREFIX, 'stats-cache');
     await trackCacheKey(this.redisServices.getClient(), trackerKey, cacheKey);
 
@@ -229,43 +342,42 @@ export class CessationPlanService {
     this.logger.log(`Cessation plan updated: ${updatedPlan.id}`)
 
     if (data.status && data.status !== existingPlan.status) {
-      const planDisplayName = this.getPlanDisplayName(updatedPlan);
+      const planDisplayName = this.getPlanDisplayName(updatedPlan)
 
       if (data.status === CessationPlanStatus.ACTIVE && existingPlan.status === CessationPlanStatus.PLANNING) {
         await this.notificationEventService.sendPlanActivatedNotification(
-            updatedPlan.user_id,
-            planDisplayName
-        );
+          updatedPlan.user_id,
+          planDisplayName
+        )
       } else if (data.status === CessationPlanStatus.COMPLETED) {
         const daysDuration = Math.floor(
-            (new Date().getTime() - updatedPlan.start_date.getTime()) / (1000 * 60 * 60 * 24)
-        );
+          (new Date().getTime() - updatedPlan.start_date.getTime()) / (1000 * 60 * 60 * 24)
+        )
         await this.notificationEventService.sendPlanCompletedNotification(
-            updatedPlan.user_id,
-            planDisplayName,
-            daysDuration
-        );
+          updatedPlan.user_id,
+          planDisplayName,
+          daysDuration
+        )
       }
     }
 
     if (
-        updatedPlan.template_id && (
-            updatedPlan.status === CessationPlanStatus.COMPLETED ||
-            updatedPlan.status === CessationPlanStatus.ABANDONED
-        )
+      updatedPlan.template_id && (
+        updatedPlan.status === CessationPlanStatus.COMPLETED ||
+        updatedPlan.status === CessationPlanStatus.ABANDONED
+      )
     ) {
-      await this.updateTemplateSuccessRate(updatedPlan.template_id);
-      // Cập nhật thống kê coach khi plan hoàn thành hoặc bị hủy
-      await this.userService.onPlanCompleted(updatedPlan.template_id);
+      await this.updateTemplateSuccessRate(updatedPlan.template_id)
+      await this.userService.onPlanCompleted(updatedPlan.template_id)
     }
 
     if (updatedPlan.template_id) {
       await this.invalidateTemplateUsageStatsCache(updatedPlan.template_id)
     }
 
-    await this.invalidatePlanCaches(id, updatedPlan.user_id);
-    await this.invalidateListCaches();
-    await this.invalidateStatsCaches();
+    await this.invalidatePlanCaches(id, updatedPlan.user_id)
+    await this.invalidateListCaches()
+    await this.invalidateStatsCaches()
 
     return this.enrichWithComputedFields(updatedPlan)
   }
@@ -386,35 +498,6 @@ export class CessationPlanService {
 
     if (!validTransitions[currentStatus]?.includes(newStatus)) {
       throw new BadRequestException(`Invalid status transition from ${currentStatus} to ${newStatus}`)
-    }
-  }
-
-  private async validateCreateRules(data: CreateCessationPlanType, userId: string): Promise<void> {
-    const activeStatuses = ['PLANNING', 'ACTIVE', 'PAUSED']
-    const existingActivePlans = await this.cessationPlanRepository.findByUserId(userId)
-
-    const activePlans = existingActivePlans.filter(plan =>
-      activeStatuses.includes(plan.status)
-    )
-
-    if (activePlans.length > 0) {
-      throw new ConflictException('You already have an active cessation plan. Please complete or cancel it before creating a new one.')
-    }
-
-    if (data.target_date <= data.start_date) {
-      throw new BadRequestException('Target date must be after start date')
-    }
-
-    const now = new Date()
-    const oneDayInMilliseconds = 24 * 60 * 60 * 1000
-    if (data.start_date.getTime() < now.getTime() - oneDayInMilliseconds * 2) {
-      const yesterday = new Date(now)
-      yesterday.setDate(now.getDate() - 1)
-      yesterday.setHours(0, 0, 0, 0)
-
-      if (data.start_date < yesterday) {
-        throw new BadRequestException('Start date cannot be earlier than yesterday.')
-      }
     }
   }
 
