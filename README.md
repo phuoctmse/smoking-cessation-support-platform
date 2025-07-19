@@ -43,11 +43,16 @@ The platform is designed to support smokers in their journey to quit smoking. It
 - **API:** GraphQL with Apollo
 - **ORM:** Prisma
 - **Database:** Postgres
-- **Authentication:** JWT-based
+- **Authentication:** JWT-based & Supabase Auth
 - **Caching:** Redis
+- **Search Engine:** Elasticsearch for advanced search and data indexing
+- **Queue System:** BullMQ for background job processing
 - **AI Services:** GoogleGenAI integrations for profile recommendations
+- **Monitoring:** Sentry for error tracking and performance monitoring
+- **File Storage:** Supabase Storage
 - **Testing:** Jest for unit and end-to-end tests
-- **Other:** ESLint, Prettier
+- **Code Quality:** ESLint, Prettier
+- **Scheduling:** NestJS Schedule for cron jobs
 
 ---
 

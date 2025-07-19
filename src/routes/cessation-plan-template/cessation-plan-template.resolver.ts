@@ -15,6 +15,7 @@ import { UpdateCessationPlanTemplateInput } from './dto/request/update-cessation
 import { CessationPlanTemplateFiltersInput } from './dto/request/cessation-plan-template-filters.input'
 import { TemplateUsageStatsResponse } from './dto/response/template-usage-stats.response'
 import { TemplateUsageFiltersInput } from './dto/request/template-usage-filters.input'
+import * as Sentry from '@sentry/nestjs'
 
 @Resolver(() => CessationPlanTemplate)
 export class CessationPlanTemplateResolver {
@@ -85,5 +86,38 @@ export class CessationPlanTemplateResolver {
   @Mutation(() => CessationPlanTemplate)
   async removeCessationPlanTemplate(@Args('id') id: string) {
     return this.cessationPlanTemplateService.remove(id)
+  }
+  @Query(() => PaginatedCessationPlanTemplatesResponse, { name: 'searchCessationPlanTemplates' })
+  async searchCessationPlanTemplates(
+    @Args('keyword', { nullable: true }) keyword?: string,
+    @Args('params', { nullable: true }) params?: PaginationParamsInput,
+    @Args('filters', { nullable: true, type: () => CessationPlanTemplateFiltersInput }) filters?: CessationPlanTemplateFiltersInput,
+  ) {
+    const searchKeyword = keyword || '';
+    const { page = 1, limit = 20 } = params || {};
+    
+    // Console.log - chỉ hiện trong terminal
+    console.log('🔍 Console.log: User searching for:', searchKeyword);
+    
+    // Sentry breadcrumb - lưu vào Sentry dashboard
+    Sentry.addBreadcrumb({
+      message: 'Template search initiated',
+      category: 'search',
+      data: { 
+        keyword: searchKeyword, 
+        page, 
+        limit,
+        hasFilters: !!filters 
+      }
+    });
+    
+    const searchFilters = {
+      coach_id: filters?.coachId,
+      difficulty_level: filters?.difficultyLevel,
+      page,
+      limit,
+    };
+    
+    return this.cessationPlanTemplateService.searchTemplatesOptimized(searchKeyword, searchFilters);
   }
 }
