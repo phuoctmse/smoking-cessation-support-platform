@@ -17,6 +17,7 @@ import {
 import { PlanStageTemplateRepository } from '../plan-stage-template/plan-stage-template.repository'
 import { TemplateUsageFiltersInput } from './dto/request/template-usage-filters.input'
 import { TemplateUsageStatsResponse, TemplateUserDetail } from './dto/response/template-usage-stats.response'
+import { CustomElasticsearchService } from 'src/shared/services/elasticsearch.service'
 
 const CACHE_TTL = 60 * 5
 const CACHE_PREFIX = 'cessation-plan-template'
@@ -29,6 +30,7 @@ export class CessationPlanTemplateService {
     private readonly cessationPlanTemplateRepository: CessationPlanTemplateRepository,
     private readonly planStageTemplateRepository: PlanStageTemplateRepository,
     private readonly redisServices: RedisServices,
+    private readonly elasticsearchService: CustomElasticsearchService,
   ) {}
 
   async create(data: CreateCessationPlanTemplateType, user: UserType) {
@@ -47,6 +49,9 @@ export class CessationPlanTemplateService {
     })
 
     this.logger.log(`Cessation plan template created: ${template.id} by coach: ${user.id}`)
+
+    // Sync to Elasticsearch
+    await this.syncTemplateToElasticsearch(template.id);
 
     // Invalidate template caches
     await this.invalidateTemplateCaches()
@@ -317,6 +322,90 @@ export class CessationPlanTemplateService {
         user_name: plan.user.user_name,
         avatar_url: plan.user.avatar_url,
       },
+    }
+  }
+  private async syncTemplateToElasticsearch(templateId: string): Promise<void> {
+    try {
+      const template = await this.cessationPlanTemplateRepository.findOne(templateId);
+      
+      if (!template) {
+        this.logger.warn(`Template not found for Elasticsearch sync: ${templateId}`);
+        return;
+      }
+
+      const templateDocument = {
+        id: template.id,
+        title: template.name,
+        description: template.description,
+        duration_weeks: Math.ceil((template.estimated_duration_days || 0) / 7), // Convert days to weeks
+        difficulty_level: template.difficulty_level,
+        is_active: template.is_active,
+        created_at: template.created_at,
+        updated_at: template.updated_at,
+        average_rating: template.average_rating || 0,
+        total_reviews: template.total_reviews || 0,
+        price: 0, // Default price since not in schema
+      };
+
+      await this.elasticsearchService.indexCessationPlanTemplate(templateDocument);
+      this.logger.log(`Synced template to Elasticsearch: ${templateId}`);
+    } catch (error) {
+      this.logger.error(`Failed to sync template to Elasticsearch: ${templateId}`, error);
+      // Don't throw - ES sync failure shouldn't break the main operation
+    }
+  }
+
+  async searchTemplatesOptimized(keyword: string, filters: {
+    difficulty_level?: string;
+    min_rating?: number;
+    max_price?: number;
+    is_active?: boolean;
+    limit?: number;
+    page?: number;
+  } = {}) {
+    const { page = 1, limit = 20, ...searchFilters } = filters;
+    const offset = (page - 1) * limit;
+
+    try {
+      const esResult = await this.elasticsearchService.searchTemplatesByKeyword(keyword, {
+        ...searchFilters,
+        limit,
+        offset,
+      });
+
+      this.logger.log(`Retrieved templates from Elasticsearch: ${esResult.templates.length} results`);
+      
+      return {
+        data: esResult.templates.map(template => ({
+          id: template.id,
+          name: template.title,
+          description: template.description,
+          estimated_duration_days: template.duration_weeks * 7, // Convert back to days
+          difficulty_level: template.difficulty_level,
+          is_active: template.is_active,
+          created_at: template.created_at,
+          updated_at: template.updated_at,
+          average_rating: template.average_rating,
+          total_reviews: template.total_reviews,
+          target_addiction_level: template.category,
+          psychological_approach: template.tags?.filter(tag => tag.includes('psychological')) || [],
+          physical_approach: template.tags?.filter(tag => tag.includes('physical')) || [],
+        })),
+        total: esResult.total,
+        page: page,
+        limit: limit,
+        totalPages: Math.ceil(esResult.total / limit),
+      };
+    } catch (error) {
+      this.logger.warn(`Failed to search templates from Elasticsearch, falling back to PostgreSQL:`, error);
+      
+      // Fallback to PostgreSQL (existing findAll method)
+      return await this.findAll(
+        { page, limit, orderBy: 'created_at', sortOrder: 'desc' },
+        { 
+          difficultyLevel: searchFilters.difficulty_level as any,
+        }
+      );
     }
   }
 }
