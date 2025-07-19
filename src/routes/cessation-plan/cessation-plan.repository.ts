@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CessationPlanStatus, Prisma } from '@prisma/client'
 import { PrismaService } from '../../shared/services/prisma.service';
 import { PaginationParamsType } from '../../shared/models/pagination.model';
 import { UpdateCessationPlanType } from './schema/update-cessation-plan.schema'
@@ -19,7 +19,7 @@ export interface CessationPlanFilters {
 export class CessationPlanRepository {
   constructor(private readonly prisma: PrismaService) { }
 
-  async create(data: CreateCessationPlanType & { user_id: string }) {
+  async create(data: CreateCessationPlanType & { user_id: string; status: CessationPlanStatus }) {
     if (data.is_custom) {
       return this.prisma.$transaction(async (tx) => {
         const subscription = await tx.userSubscription.findFirst({
@@ -39,7 +39,7 @@ export class CessationPlanRepository {
             start_date: data.start_date,
             target_date: data.target_date,
             is_custom: data.is_custom,
-            status: 'PLANNING',
+            status: data.status,
           },
           include: this.getDefaultIncludes(),
         })
@@ -53,7 +53,7 @@ export class CessationPlanRepository {
           start_date: data.start_date,
           target_date: data.target_date,
           is_custom: data.is_custom,
-          status: 'PLANNING',
+          status: data.status,
         },
         include: this.getDefaultIncludes(),
       });
