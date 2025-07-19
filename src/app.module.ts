@@ -28,6 +28,8 @@ import { BadgeModule } from './routes/badge/badge.module';
 import { BadgeTypeModule } from './routes/badge-type/badge-type.module';
 import { TransactionModule } from './routes/transaction/transaction.module';
 import { PaymentModule } from './routes/payment/payment.module'
+import { SentryModule } from '@sentry/nestjs/setup';
+import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { SubscriptionModule } from './routes/subscription/subscription.module'
 import { UserBadgeModule } from './routes/user-badge/user-badge.module';
 import { BadgeAwardModule } from './routes/badge-award/badge-award.module';
@@ -46,9 +48,11 @@ import { QuizResponseModule } from './routes/quiz-response/quiz-reponse.module'
 import { HealthScoreCriteriaModule } from './routes/health-score-criteria/health-score-criteria.module'
 import { NotificationTemplateModule } from './routes/notification-template/notification-template.module';
 import { NotificationModule } from './routes/notification/notification.module';
+import { CustomElasticsearchModule } from './shared/modules/elasticsearch.module';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ScheduleModule.forRoot(),
     SharedModule,
     ConfigModule.forRoot({
@@ -124,12 +128,17 @@ import { NotificationModule } from './routes/notification/notification.module';
     ScheduleModule.forRoot(),
     HealthScoreCriteriaModule,
     NotificationTemplateModule,
-    NotificationModule
+    NotificationModule,
+    CustomElasticsearchModule
   ],
   controllers: [AppController],
   providers: [
     UploadScalar,
     AppService,
+    {
+      provide: APP_FILTER,
+      useClass: SentryGlobalFilter,
+    },
     {
       provide: APP_PIPE,
       useClass: CustomZodValidationPipe,
