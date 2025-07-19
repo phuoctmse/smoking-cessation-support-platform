@@ -2,6 +2,7 @@ import { Controller, Get, Post, Param } from '@nestjs/common';
 import { CustomElasticsearchService } from '../services/elasticsearch.service';
 import { DataSyncService } from '../services/data-sync.service';
 import { CronJobManagementService } from '../services/cronjob-management.service';
+import { SentryService } from '../services/sentry.service';
 
 @Controller('health')
 export class HealthController {
@@ -9,7 +10,19 @@ export class HealthController {
     private readonly elasticsearchService: CustomElasticsearchService,
     private readonly dataSyncService: DataSyncService,
     private readonly cronJobManagementService: CronJobManagementService,
+    private readonly sentryService: SentryService,
   ) {}
+
+  @Get('sentry')
+  checkSentry() {
+    const status = this.sentryService.checkSentryHealth();
+    
+    return {
+      service: 'Sentry',
+      timestamp: new Date().toISOString(),
+      ...status,
+    };
+  }
 
   @Get('elasticsearch')
   async checkElasticsearch() {
@@ -25,10 +38,12 @@ export class HealthController {
   @Get('all')
   async checkAll() {
     const elasticsearch = await this.elasticsearchService.getConnectionStatus();
+    const sentry = this.sentryService.checkSentryHealth();
     
     return {
       services: {
         elasticsearch,
+        sentry,
       },
       timestamp: new Date().toISOString(),
       overall_status: elasticsearch.connected ? 'healthy' : 'unhealthy',

@@ -14,6 +14,7 @@ import { HealthController } from './controllers/health.controller'
 import { DataSyncService } from './services/data-sync.service'
 import { CronJobService } from './services/cronjob.service'
 import { CronJobManagementService } from './services/cronjob-management.service'
+import { SentryService } from './services/sentry.service'
 import { ScheduleModule } from '@nestjs/schedule'
 
 const sharedService = [
@@ -26,7 +27,8 @@ const sharedService = [
   CustomElasticsearchService,
   DataSyncService,
   CronJobService,
-  CronJobManagementService
+  CronJobManagementService,
+  SentryService
 ]
 
 @Global()

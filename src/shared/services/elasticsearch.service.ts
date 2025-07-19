@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { ConfigService } from '@nestjs/config';
+import { SentryService } from './sentry.service';
 
 export interface CessationPlanDocument {
   id: string;
@@ -35,6 +36,7 @@ export class CustomElasticsearchService {
   constructor(
     private readonly elasticsearchService: ElasticsearchService,
     private readonly configService: ConfigService,
+    private readonly sentryService: SentryService,
   ) {
     this.indexPrefix = this.configService.get('ELASTICSEARCH_INDEX_PREFIX', 'smoking_cessation');
     
@@ -58,9 +60,14 @@ export class CustomElasticsearchService {
         await this.createIndicesIfNotExist();
       } else {
         this.logger.error('❌ Failed to connect to Elasticsearch');
+        this.sentryService.captureElasticsearchError(
+          new Error('Failed to connect to Elasticsearch'),
+          'connection'
+        );
       }
     } catch (error) {
       this.logger.error('❌ Elasticsearch connection error:', error.message);
+      this.sentryService.captureElasticsearchError(error, 'connection');
     }
   }
 
@@ -73,6 +80,7 @@ export class CustomElasticsearchService {
       this.logger.log('Elasticsearch indices created successfully');
     } catch (error) {
       this.logger.error('Failed to create Elasticsearch indices:', error);
+      this.sentryService.captureElasticsearchError(error, 'index_creation');
     }
   }
 
@@ -152,6 +160,7 @@ export class CustomElasticsearchService {
       this.logger.log(`Indexed cessation plan: ${plan.id}`);
     } catch (error) {
       this.logger.error(`Failed to index cessation plan:`, error);
+      this.sentryService.captureElasticsearchError(error, 'index_document', indexName);
       throw error;
     }
   }
@@ -168,6 +177,7 @@ export class CustomElasticsearchService {
       return response.hits.hits.map(hit => hit._source as CessationPlanDocument);
     } catch (error) {
       this.logger.error('Failed to search cessation plans:', error);
+      this.sentryService.captureElasticsearchError(error, 'search_documents', indexName);
       throw error;
     }
   }
@@ -186,6 +196,7 @@ export class CustomElasticsearchService {
       this.logger.log(`Indexed cessation plan template: ${template.id}`);
     } catch (error) {
       this.logger.error(`Failed to index cessation plan template:`, error);
+      this.sentryService.captureElasticsearchError(error, 'index_template', indexName);
       throw error;
     }
   }
@@ -202,6 +213,7 @@ export class CustomElasticsearchService {
       return response.hits.hits.map(hit => hit._source as CessationPlanTemplateDocument);
     } catch (error) {
       this.logger.error('Failed to search cessation plan templates:', error);
+      this.sentryService.captureElasticsearchError(error, 'search_templates', indexName);
       throw error;
     }
   }
@@ -221,6 +233,7 @@ export class CustomElasticsearchService {
         return null;
       }
       this.logger.error(`Failed to get cessation plan template:`, error);
+      this.sentryService.captureElasticsearchError(error, 'get_template', indexName);
       throw error;
     }
   }
@@ -296,6 +309,7 @@ export class CustomElasticsearchService {
       };
     } catch (error) {
       this.logger.error('Failed to search templates by keyword:', error);
+      this.sentryService.captureTemplateSearchError(error, keyword, filters);
       throw error;
     }
   }
@@ -308,6 +322,7 @@ export class CustomElasticsearchService {
       return true;
     } catch (error) {
       this.logger.error('Elasticsearch ping failed:', error);
+      this.sentryService.captureElasticsearchError(error, 'ping');
       return false;
     }
   }
@@ -318,6 +333,7 @@ export class CustomElasticsearchService {
       return response;
     } catch (error) {
       this.logger.error('Failed to get cluster health:', error);
+      this.sentryService.captureElasticsearchError(error, 'cluster_health');
       throw error;
     }
   }

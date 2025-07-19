@@ -61,8 +61,7 @@ export class CronJobService {
   }
 
   // Sync cessation plans every 2 hours
-  // @Cron('0 */2 * * *', {
-  @Cron('* * * * *', {
+  @Cron('0 */2 * * *', {
     name: 'plans-sync',
     timeZone: 'Asia/Ho_Chi_Minh',
   })

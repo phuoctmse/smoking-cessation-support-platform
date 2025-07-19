@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { CustomElasticsearchService } from './elasticsearch.service';
+import { SentryService } from './sentry.service';
 
 @Injectable()
 export class DataSyncService {
@@ -9,11 +10,9 @@ export class DataSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly elasticsearchService: CustomElasticsearchService,
+    private readonly sentryService: SentryService,
   ) {}
 
-  /**
-   * Sync tất cả cessation plans từ PostgreSQL sang Elasticsearch
-   */
   async syncAllCessationPlans(): Promise<void> {
     try {
       this.logger.log('🔄 Starting bulk sync of cessation plans...');
@@ -52,19 +51,19 @@ export class DataSyncService {
         } catch (error) {
           errorCount++;
           this.logger.error(`❌ Failed to sync plan ${plan.id}:`, error.message);
+          this.sentryService.captureDataSyncError(error, 'cessation-plans', syncedCount);
         }
       }
 
       this.logger.log(`🎉 Bulk sync completed: ${syncedCount} success, ${errorCount} errors`);
     } catch (error) {
       this.logger.error('❌ Bulk sync failed:', error);
+      this.sentryService.captureDataSyncError(error, 'cessation-plans-bulk');
       throw error;
     }
   }
 
-  /**
-   * Sync toàn bộ data
-   */
+
   async syncAllData(): Promise<void> {
     this.logger.log('🚀 Starting full data synchronization...');
     
@@ -74,9 +73,7 @@ export class DataSyncService {
     this.logger.log('✅ Full data synchronization completed!');
   }
 
-  /**
-   * Verify data consistency giữa PostgreSQL và Elasticsearch
-   */
+
   async verifyDataConsistency(): Promise<{
     postgres_plans: number;
     elasticsearch_plans: number;
@@ -91,8 +88,6 @@ export class DataSyncService {
           size: 0
         })
 
-      // Note: For actual count, we'd need to access the response.hits.total.value
-      // This is a simplified version
       const esPlanCount = esPlanResponse.length;
 
       const result = {
@@ -105,13 +100,11 @@ export class DataSyncService {
       return result;
     } catch (error) {
       this.logger.error('❌ Data consistency check failed:', error);
+      this.sentryService.captureDataSyncError(error, 'consistency-check');
       throw error;
     }
   }
 
-  /**
-   * Sync tất cả cessation plan templates từ PostgreSQL sang Elasticsearch
-   */
   async syncAllCessationPlanTemplates(): Promise<{ synced: number; errors: number }> {
     try {
       this.logger.log('🔄 Starting bulk sync of cessation plan templates...');
@@ -160,6 +153,7 @@ export class DataSyncService {
           }
         } catch (error) {
           this.logger.error(`Failed to sync template ${template.id}:`, error);
+          this.sentryService.captureDataSyncError(error, 'templates', syncedCount);
           errorCount++;
         }
       }
@@ -168,6 +162,7 @@ export class DataSyncService {
       return { synced: syncedCount, errors: errorCount };
     } catch (error) {
       this.logger.error('❌ Failed to sync cessation plan templates:', error);
+      this.sentryService.captureDataSyncError(error, 'templates-bulk');
       throw error;
     }
   }
