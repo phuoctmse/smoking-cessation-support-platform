@@ -1,3 +1,5 @@
+import { RoleName } from "src/shared/constants/role.constant"
+import { RoleNameEnum, StatusEnum } from "src/shared/enums/graphql-enums"
 import { z } from "zod"
 
 export const SignupBodySchema = z.object({
@@ -7,6 +9,8 @@ export const SignupBodySchema = z.object({
     username: z.string().min(3, 'Username is required').max(20, 'Username is too long'),
     name: z.string().min(2, 'Name is required').max(50, 'Name is too long'),
     phoneNumber: z.string().optional(),
+    role: z.nativeEnum(RoleNameEnum).default(RoleNameEnum.MEMBER),
+    status: z.nativeEnum(StatusEnum).default(StatusEnum.ACTIVE),
 })
     .strict()
     .superRefine(({ confirmPassword, password }, ctx) => {

@@ -34,20 +34,54 @@ import { BadgeAwardModule } from './routes/badge-award/badge-award.module';
 import { SharedPostModule } from './routes/shared-post/shared-post.module';
 import { PostLikeModule } from './routes/post-like/post-like.module';
 import { PostCommentModule } from './routes/post-comment/post-comment.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ChatModule } from './routes/chat/chat.module';
+import { createWebSocketContext } from './shared/config/websocket.config';
+import { PrismaService } from './shared/services/prisma.service';
+import { SupabaseModule } from './shared/modules/supabase.module';
+import { LeaderboardModule } from './routes/leaderboard/leaderboard.module'
+import { ProfileQuizModule } from './routes/profile-quiz/profile-quiz.module'
+import { QuizQuestionModule } from './routes/quiz-question/quiz-question.module'
+import { QuizResponseModule } from './routes/quiz-response/quiz-reponse.module'
+import { HealthScoreCriteriaModule } from './routes/health-score-criteria/health-score-criteria.module'
+import { NotificationTemplateModule } from './routes/notification-template/notification-template.module';
+import { NotificationModule } from './routes/notification/notification.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     SharedModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    GraphQLModule.forRoot<ApolloDriverConfig>({
+    GraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
-      playground: false,
-      plugins: [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })],
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
-      context: ({ req }) => ({ req }),
-      cache: 'bounded',
+      imports: [SupabaseModule],
+      inject: ['SUPABASE', PrismaService],
+      useFactory: (supabase, prisma) => {
+        const wsContext = createWebSocketContext(supabase, prisma);
+        return {
+          playground: false,
+          plugins: [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })],
+          autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+          context: ({ req }) => ({ req }),
+          cache: 'bounded',
+          subscriptions: {
+            'graphql-ws': {
+              onConnect: async (context: any) => {
+                const { connectionParams } = context;
+                const { user } = await wsContext.subscriptionContextBuilder(context);
+                console.log('Client connected');
+                return { user };
+              },
+              onDisconnect: () => {
+                console.log('Client disconnected');
+              },
+            },
+            'subscriptions-transport-ws': false,
+          },
+        };
+      },
     }),
     // ThrottlerModule.forRoot({
     //   throttlers: [
@@ -82,6 +116,15 @@ import { PostCommentModule } from './routes/post-comment/post-comment.module';
     SharedPostModule,
     PostLikeModule,
     PostCommentModule,
+    ChatModule,
+    LeaderboardModule,
+    ProfileQuizModule,
+    QuizQuestionModule,
+    QuizResponseModule,
+    ScheduleModule.forRoot(),
+    HealthScoreCriteriaModule,
+    NotificationTemplateModule,
+    NotificationModule
   ],
   controllers: [AppController],
   providers: [

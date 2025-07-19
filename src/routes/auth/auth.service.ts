@@ -26,14 +26,15 @@ export class AuthService {
     private readonly hashingService: HashingService,
     private readonly tokenService: TokenService,
     private readonly blacklistGuard: BlacklistGuard,
-  ) { }
+  ) {}
 
   async signup(body: SignupBodyType) {
     try {
       const { data, error } = await this.authRepository.signup(body)
       return {
         message: USER_MESSAGES.SIGNUP_SUCCESS,
-        data, error
+        data,
+        error,
       }
     } catch (error) {
       if (isUniqueConstraintPrismaError(error) && Array.isArray(error.meta?.target)) {
@@ -49,7 +50,8 @@ export class AuthService {
       const { data, error } = await this.authRepository.logIn(body)
 
       return {
-        data, error
+        data,
+        error,
       }
     } catch (error) {
       throw error
@@ -62,9 +64,9 @@ export class AuthService {
       if (error) {
         throw error
       }
-      
+
       return {
-        error: USER_MESSAGES.LOGOUT_SUCCESS
+        error: USER_MESSAGES.LOGOUT_SUCCESS,
       }
     } catch (error) {
       console.log(error)
@@ -75,19 +77,8 @@ export class AuthService {
     const { data, error } = await this.authRepository.refreshSession(refreshToken)
 
     return {
-      data, error
-    }
-  }
-
-  async verifyEmail(token: string) {
-    try {
-      const { data, error } = await this.authRepository.verifyEmail(token)
-      return {
-        message: USER_MESSAGES.VERIFY_EMAIL_SUCCESS,
-        data, error
-      }
-    } catch (error) {
-      throw error
+      data,
+      error,
     }
   }
 }

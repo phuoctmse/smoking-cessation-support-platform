@@ -4,7 +4,7 @@ import { SubscriptionSchema } from "../schema/subscription.schema";
 import { createZodDto } from "nestjs-zod";
 
 @ObjectType()
-export class Subscription extends createZodDto(SubscriptionSchema) {
+export class UserSubscription extends createZodDto(SubscriptionSchema) {
     @Field(() => ID)
     id: string
 

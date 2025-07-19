@@ -7,10 +7,11 @@ import { SubscriptionResolver } from "./subscription.resolver";
 import { JwtAuthGuard } from "src/shared/guards/jwt-auth.guard";
 import { SupabaseModule } from "src/shared/modules/supabase.module";
 import { MembershipModule } from "../membership-package/membership.module";
+import { SubscriptionCronService } from './subscription.cron';
 
 @Module({
     imports: [GuardModule, SupabaseModule, MembershipModule],
-    providers: [SubscriptionService, SubscriptionRepo, PrismaService, SubscriptionResolver],
+    providers: [SubscriptionService, SubscriptionRepo, PrismaService, SubscriptionResolver, SubscriptionCronService],
     exports: [SubscriptionService],
 })
 export class SubscriptionModule { }

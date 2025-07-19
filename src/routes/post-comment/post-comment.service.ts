@@ -5,7 +5,7 @@ import { PostComment } from './entities/post-comment.entity'
 import { PaginationParamsType } from 'src/shared/models/pagination.model'
 import { PaginatedPostCommentsResponse } from './dto/response/paginated-post-comment.response'
 import { RoleName } from 'src/shared/constants/role.constant'
-import { UserType } from 'src/shared/models/share-user.model';
+import { UserType } from '../user/schema/user.schema';
 import { PrismaService } from '../../shared/services/prisma.service'
 import { PostCommentRepository } from './post-comment.repository'
 import { SharedPostRepository } from '../shared-post/shared-post.repository'

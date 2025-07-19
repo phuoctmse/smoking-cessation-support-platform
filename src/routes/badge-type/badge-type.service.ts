@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common'
 import { CreateBadgeTypeType } from './schema/create-badge.schema'
 import { BadgeTypeRepository } from './badge-type.repository'
-import { UserType } from 'src/shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { BadgeType } from './entities/badge-type.entity'
 import { UpdateBadgeTypeType } from './schema/update-badge.schema'
 import {PaginationParamsType} from "../../shared/models/pagination.model";

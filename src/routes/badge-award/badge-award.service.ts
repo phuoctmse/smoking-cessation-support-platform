@@ -4,6 +4,7 @@ import { UserBadgeRepository } from '../user-badge/user-badge.repository'
 import { BadgeAwardEngine } from './badge-award.engine'
 import { BadgeEvaluationContext } from './interfaces/badge-criteria-evaluator.interface'
 import {Badge} from "../badge/entities/badge.entity";
+import { NotificationEventService } from '../notification/notification.event'
 
 @Injectable()
 export class BadgeAwardService {
@@ -13,6 +14,7 @@ export class BadgeAwardService {
     private readonly badgeRepository: BadgeRepository,
     private readonly userBadgeRepository: UserBadgeRepository,
     private readonly badgeAwardEngine: BadgeAwardEngine,
+    private readonly notificationEventService: NotificationEventService,
   ) {}
 
   async evaluateAndAwardBadges(context: BadgeEvaluationContext): Promise<void> {
@@ -56,6 +58,11 @@ export class BadgeAwardService {
         if (existingUserBadge.total === 0) {
           await this.userBadgeRepository.awardBadge(context.userId, badgeForEngine.id);
           this.logger.log(`Awarded badge "${badgeForEngine.name}" to user ${context.userId}.`);
+          await this.notificationEventService.sendBadgeEarnedNotification(
+            context.userId,
+            badgeForEngine.name,
+            badgeForEngine.description
+          );
         }
       }
     }
@@ -77,6 +84,10 @@ export class BadgeAwardService {
       currentStreak,
     };
     await this.evaluateAndAwardBadges(context);
+
+    if (this.isSignificantStreakMilestone(currentStreak)) {
+      await this.notificationEventService.sendStreakMilestoneNotification(userId, currentStreak);
+    }
   }
 
   async processStageCompletion(userId: string, planId: string, completedStagesInPlan: number): Promise<void> {
@@ -87,5 +98,19 @@ export class BadgeAwardService {
       completedStagesInPlan,
     };
     await this.evaluateAndAwardBadges(context);
+  }
+
+  async processPlanCompletion(userId: string, planId: string): Promise<void> {
+    const context: BadgeEvaluationContext = {
+      userId,
+      eventType: 'plan_completed',
+      planId,
+    }
+    await this.evaluateAndAwardBadges(context)
+  }
+
+  private isSignificantStreakMilestone(streakDays: number): boolean {
+    const milestones = [1, 3, 7, 14, 30, 60, 90, 180, 365];
+    return milestones.includes(streakDays);
   }
 }

@@ -15,16 +15,24 @@ export class JwtAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const ctx = GqlExecutionContext.create(context)
-    const request = ctx.getContext().req
+    const contextValue = ctx.getContext()
+
+    let accessToken: string | undefined
+
+    // Handle both HTTP and WebSocket contexts
+    if (contextValue.req?.connectionParams) {
+      // WebSocket Connection
+      accessToken = contextValue.req.connectionParams.Authorization?.replace('Bearer ', '')
+    } else if (contextValue.req) {
+      // HTTP Request
+      accessToken = extractAccessToken(contextValue.req)
+    }
+
+    if (!accessToken) {
+      throw new UnauthorizedException('Missing access token')
+    }
 
     try {
-      // Extract the access token from the Authorization header
-      const accessToken = extractAccessToken(request)
-
-      if (!accessToken) {
-        throw new UnauthorizedException('Missing access token')
-      }
-
       // Check if token is blacklisted
       const isBlacklisted = await this.blacklistGuard.isBlackList(accessToken)
 
@@ -58,14 +66,22 @@ export class JwtAuthGuard implements CanActivate {
         throw new UnauthorizedException('User not found in database')
       }
 
-      // Set user info in request for use by other guards and decorators
-      request.user = {
+      const userInfo = {
         user_id: user.id,
         email: user.email,
         role: userData.role,
         username: userData.user_name,
         name: userData.name,
         status: userData.status,
+      }
+
+      // Set user info in the appropriate context
+      if (contextValue.req?.connectionParams) {
+        // For WebSocket, set user directly in context
+        contextValue.user = userInfo
+      } else {
+        // For HTTP, set user in req object
+        contextValue.req.user = userInfo
       }
 
       return true

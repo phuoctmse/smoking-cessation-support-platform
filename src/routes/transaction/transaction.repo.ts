@@ -52,9 +52,16 @@ export class TransactionRepo {
             });
 
             //check content and total amount is match
-            const payment_id = body.content?.split(envConfig.PREFIX_PAYMENT_CODE)[1]
+            const rawPaymentId = body.content?.split(envConfig.PREFIX_PAYMENT_CODE)[1]?.split(' ')[0];
+            if (!rawPaymentId || rawPaymentId.length !== 32) {
+                throw new BadRequestException('Cannot get payment id from content');
+            }
+            
+            // Add hyphens back to make it a valid UUID
+            const payment_id = `${rawPaymentId.slice(0,8)}-${rawPaymentId.slice(8,12)}-${rawPaymentId.slice(12,16)}-${rawPaymentId.slice(16,20)}-${rawPaymentId.slice(20)}`;
+            
             if (!isUUID(payment_id)) {
-                throw new BadRequestException('Cannot get payment id from content')
+                throw new BadRequestException('Invalid payment id format');
             }
 
             const payment = await tx.payment.findUnique({
@@ -89,7 +96,7 @@ export class TransactionRepo {
                 }
             })
 
-            await tx.subscription.update({
+            await tx.userSubscription.update({
                 where: {
                     id: payment.subscription_id
                 },

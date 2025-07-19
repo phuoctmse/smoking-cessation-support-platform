@@ -9,8 +9,8 @@ export class MembershipPackage implements MembershipPackageType {
     @Field(() => String)
     name: string
 
-    @Field(() => String)
-    description: string
+    @Field(() => [String])
+    description: string[]
 
     @Field(() => Int)
     price: number

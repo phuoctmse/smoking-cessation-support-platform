@@ -7,6 +7,7 @@ import { FeedbackRepository } from './feedback.repository'
 import { SupabaseModule } from '../../shared/modules/supabase.module'
 import {CessationPlanModule} from "../cessation-plan/cessation-plan.module";
 import {PlanStageModule} from "../plan-stage/plan-stage.module";
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -14,7 +15,8 @@ import {PlanStageModule} from "../plan-stage/plan-stage.module";
     SupabaseModule,
     CessationPlanTemplateModule,
     CessationPlanModule,
-    PlanStageModule
+    PlanStageModule,
+    UserModule,
   ],
   providers: [FeedbackResolver, FeedbackService, FeedbackRepository],
   exports: [FeedbackService, FeedbackRepository],

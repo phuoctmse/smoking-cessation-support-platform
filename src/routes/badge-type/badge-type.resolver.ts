@@ -8,8 +8,8 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard'
 import { RolesGuard } from 'src/shared/guards/roles.guard'
 import { Roles } from 'src/shared/decorators/roles.decorator'
 import { RoleName } from 'src/shared/constants/role.constant';
-import {User} from "../../shared/decorators/current-user.decorator";
-import {UserType} from "../../shared/models/share-user.model";
+import {CurrentUser} from "../../shared/decorators/current-user.decorator";
+import {UserType} from "../user/schema/user.schema";
 import {PaginatedBadgeTypesResponse} from "./dto/response/paginated-badge-type.response";
 import {PaginationParamsInput} from "../../shared/models/dto/request/pagination-params.input";
 import {BadgeTypeFiltersInput} from "./dto/request/badge-type-filter.input";
@@ -24,7 +24,7 @@ export class BadgeTypeResolver {
   @Roles(RoleName.Admin)
   async createBadgeType(
     @Args('input') input: CreateBadgeTypeInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<BadgeType> {
     return this.badgeTypeService.create(input, user);
   }
@@ -48,7 +48,7 @@ export class BadgeTypeResolver {
     params: PaginationParamsInput,
     @Args('filters', { nullable: true, type: () => BadgeTypeFiltersInput })
     filters: BadgeTypeFiltersInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PaginatedBadgeTypesResponse> {
     return this.badgeTypeService.findAll(params, filters, user);
   }
@@ -56,7 +56,7 @@ export class BadgeTypeResolver {
   @Query(() => String, { description: 'Get badge type statistics for admin/coach' })
   @UseGuards(RolesGuard)
   @Roles(RoleName.Admin, RoleName.Coach)
-  async badgeTypeStatistics(@User() user: UserType): Promise<string> {
+  async badgeTypeStatistics(@CurrentUser() user: UserType): Promise<string> {
     const stats = await this.badgeTypeService.getStatistics(user);
     return JSON.stringify(stats);
   }
@@ -67,7 +67,7 @@ export class BadgeTypeResolver {
   async updateBadgeType(
     @Args('id', { type: () => ID }) id: string,
     @Args('input') input: UpdateBadgeTypeInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<BadgeType> {
     return this.badgeTypeService.update(id, input, user);
   }
@@ -77,7 +77,7 @@ export class BadgeTypeResolver {
   @Roles(RoleName.Admin)
   async removeBadgeType(
     @Args('id', { type: () => ID }) id: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<BadgeType> {
     return this.badgeTypeService.remove(id, user);
   }

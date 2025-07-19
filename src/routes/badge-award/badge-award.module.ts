@@ -4,12 +4,14 @@ import { BadgeModule } from '../badge/badge.module'
 import { UserBadgeModule } from '../user-badge/user-badge.module'
 import { BadgeAwardEngine } from './badge-award.engine'
 import { FirstPlanCreatedEvaluator } from './evaluators/first-plan-created.evaluator'
-import { StreakAchievedEvaluator } from './evaluators/streak-achieved.evaluator';
+import { StreakAchievedEvaluator } from './evaluators/streak-achieved.evaluator'
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
     BadgeModule,
     UserBadgeModule,
+    NotificationModule,
   ],
   providers: [
     BadgeAwardService,

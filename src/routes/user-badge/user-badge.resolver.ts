@@ -7,8 +7,8 @@ import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
 import { PaginatedUserBadgesResponse } from './dto/response/paginated-user-badge.response'
 import { PaginationParamsInput } from 'src/shared/models/dto/request/pagination-params.input';
 import { UserBadgeFiltersInput } from './dto/request/user-badge-filter.input'
-import { User } from '../../shared/decorators/current-user.decorator'
-import { UserType } from '../../shared/models/share-user.model'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
+import { UserType } from '../user/schema/user.schema'
 import { RolesGuard } from '../../shared/guards/roles.guard'
 import { Roles } from '../../shared/decorators/roles.decorator'
 
@@ -27,7 +27,7 @@ export class UserBadgeResolver {
     params: PaginationParamsInput,
     @Args('filters', { nullable: true, type: () => UserBadgeFiltersInput })
     filters: UserBadgeFiltersInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PaginatedUserBadgesResponse> {
     return this.userBadgeService.getMyBadges(params, filters, user);
   }
@@ -43,7 +43,7 @@ export class UserBadgeResolver {
     params: PaginationParamsInput,
     @Args('filters', { nullable: true, type: () => UserBadgeFiltersInput })
     filters: UserBadgeFiltersInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PaginatedUserBadgesResponse> {
     return this.userBadgeService.getUserBadges(userId, params, filters, user);
   }
@@ -60,7 +60,7 @@ export class UserBadgeResolver {
     params: PaginationParamsInput,
     @Args('filters', { nullable: true, type: () => UserBadgeFiltersInput })
     filters: UserBadgeFiltersInput,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<PaginatedUserBadgesResponse> {
     return this.userBadgeService.getAllUserBadges(params, filters, user);
   }
@@ -68,7 +68,7 @@ export class UserBadgeResolver {
   @Query(() => UserBadge, { nullable: true })
   async userBadge(
     @Args('id', { type: () => ID }) id: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<UserBadge | null> {
     try {
       return await this.userBadgeService.findOne(id, user);
@@ -78,7 +78,7 @@ export class UserBadgeResolver {
   }
 
   @Query(() => String, { description: 'Get my badge statistics' })
-  async myBadgeStats(@User() user: UserType): Promise<string> {
+  async myBadgeStats(@CurrentUser() user: UserType): Promise<string> {
     const stats = await this.userBadgeService.getMyBadgeStats(user);
     return JSON.stringify(stats);
   }
@@ -86,7 +86,7 @@ export class UserBadgeResolver {
   @Query(() => String, { description: 'Get badge statistics for a specific user' })
   async userBadgeStats(
     @Args('userId', { type: () => ID }) userId: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<string> {
     const stats = await this.userBadgeService.getUserBadgeStats(userId, user);
     return JSON.stringify(stats);
@@ -98,7 +98,7 @@ export class UserBadgeResolver {
   async awardBadge(
     @Args('userId', { type: () => ID }) userId: string,
     @Args('badgeId', { type: () => ID }) badgeId: string,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ): Promise<UserBadge> {
     return this.userBadgeService.awardBadge(userId, badgeId, user);
   }

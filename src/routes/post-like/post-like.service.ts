@@ -2,7 +2,7 @@ import { ConflictException, Injectable, Logger, NotFoundException } from '@nestj
 import { PrismaService } from 'src/shared/services/prisma.service'
 import { PostLikeRepository } from './post-like.repository'
 import { SharedPostRepository } from '../shared-post/shared-post.repository'
-import { UserType } from 'src/shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { PostLike } from './entities/post-like.entity';
 import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { PaginatedPostLikesResponse } from './dto/response/paginated-post-like.response'
