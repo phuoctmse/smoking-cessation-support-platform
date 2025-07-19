@@ -168,4 +168,50 @@ export class NotificationEventService {
       this.logger.error(`Failed to send plan completed notification to user ${userId}:`, error);
     }
   }
+
+  async sendPlanAbandonedDueToStageViolationsNotification(
+      userId: string,
+      planName: string,
+      violations: any[]
+  ) {
+    try {
+      const reason = 'không hoàn thành các giai đoạn theo kế hoạch'
+      let detailedReason: string
+
+      if (violations.length === 1) {
+        const violation = violations[0]
+        if (violation.violation_type === 'OVERDUE_NOT_COMPLETED') {
+          detailedReason = `Giai đoạn "${violation.stage_title}" đã quá hạn ${violation.days_overdue} ngày mà chưa hoàn thành`
+        } else {
+          detailedReason = `Giai đoạn "${violation.stage_title}" không có bản ghi tiến độ nào`
+        }
+      } else {
+        detailedReason = `${violations.length} giai đoạn không đạt yêu cầu về tiến độ`
+      }
+
+      await this.notificationService.sendNotification({
+        userId,
+        type: NotificationTypeEnum.SYSTEM_ANNOUNCEMENT,
+        channels: ['IN_APP'],
+        title: 'Kế hoạch đã bị tạm dừng do thiếu tiến độ',
+        content: `Kế hoạch "${planName}" đã được hệ thống tạm dừng do ${reason}. Chi tiết: ${detailedReason}. Bạn có thể tạo kế hoạch mới hoặc liên hệ coach để được hỗ trợ.`,
+        variables: {
+          plan_name: planName,
+          reason: reason,
+          detailed_reason: detailedReason,
+          violations_count: violations.length.toString()
+        },
+        metadata: {
+          plan_name: planName,
+          abandonment_reason: 'STAGE_VIOLATIONS',
+          violations: violations,
+          notification_type: 'plan_abandoned_stage_violations',
+        },
+      })
+
+      this.logger.log(`Sent stage violations abandonment notification to user ${userId}`)
+    } catch (error) {
+      this.logger.error(`Failed to send stage violations notification: ${error.message}`)
+    }
+  }
 }
