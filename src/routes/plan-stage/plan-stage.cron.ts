@@ -18,8 +18,8 @@ export class PlanStageCronService {
     private readonly redisServices: RedisServices,
   ) {}
 
-  //@Cron('0 0 * * *')
-  @Cron('* * * * *') // testing
+  @Cron('0 0 * * *')
+  //@Cron('* * * * *') // testing
   async activatePendingStages() {
     try {
       const now = new Date();
