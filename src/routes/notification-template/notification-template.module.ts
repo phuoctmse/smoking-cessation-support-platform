@@ -4,7 +4,6 @@ import { NotificationTemplateService } from './notification-template.service';
 import { NotificationTemplateRepository } from './notification-template.repository';
 import { GuardModule } from '../../shared/guards/guard.module';
 import { SupabaseModule } from '../../shared/modules/supabase.module';
-import { RedisServices } from '../../shared/services/redis.service';
 
 @Module({
   imports: [GuardModule, SupabaseModule],
@@ -12,7 +11,6 @@ import { RedisServices } from '../../shared/services/redis.service';
     NotificationTemplateResolver,
     NotificationTemplateService,
     NotificationTemplateRepository,
-    RedisServices,
   ],
   exports: [
     NotificationTemplateService,

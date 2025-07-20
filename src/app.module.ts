@@ -1,4 +1,5 @@
 import './shared/enums/graphql-enums'
+import './shared/constants/payment.constant'
 import { Module } from '@nestjs/common'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
@@ -49,6 +50,7 @@ import { HealthScoreCriteriaModule } from './routes/health-score-criteria/health
 import { NotificationTemplateModule } from './routes/notification-template/notification-template.module';
 import { NotificationModule } from './routes/notification/notification.module';
 import { CustomElasticsearchModule } from './shared/modules/elasticsearch.module';
+import { DashboardModule } from './routes/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -125,10 +127,10 @@ import { CustomElasticsearchModule } from './shared/modules/elasticsearch.module
     ProfileQuizModule,
     QuizQuestionModule,
     QuizResponseModule,
-    ScheduleModule.forRoot(),
     HealthScoreCriteriaModule,
     NotificationTemplateModule,
     NotificationModule,
+    DashboardModule,
     CustomElasticsearchModule
   ],
   controllers: [AppController],

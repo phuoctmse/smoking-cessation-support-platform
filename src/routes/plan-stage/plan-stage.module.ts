@@ -7,7 +7,6 @@ import { SupabaseModule } from '../../shared/modules/supabase.module'
 import { CessationPlanModule } from '../cessation-plan/cessation-plan.module'
 import { BadgeAwardModule } from '../badge-award/badge-award.module'
 import { PlanStageCronService } from './plan-stage.cron'
-import { RedisServices } from '../../shared/services/redis.service'
 import { NotificationModule } from '../notification/notification.module'
 import { CessationPlanTemplateModule } from '../cessation-plan-template/cessation-plan-template.module'
 
@@ -25,7 +24,6 @@ import { CessationPlanTemplateModule } from '../cessation-plan-template/cessatio
     PlanStageService,
     PlanStageRepository,
     PlanStageCronService,
-    RedisServices,
   ],
   exports: [PlanStageService, PlanStageRepository],
 })
