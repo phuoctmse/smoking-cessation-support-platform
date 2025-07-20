@@ -5,10 +5,13 @@ import { BlacklistGuard } from './blacklist.guard'
 import { JwtAuthGuard } from './jwt-auth.guard'
 import { SupabaseModule } from '../modules/supabase.module'
 import { PrismaService } from '../services/prisma.service'
+import { SubscriptionGuard } from './subscription.guard'
+import { SubscriptionModule } from 'src/routes/subscription/subscription.module'
+import { SubscriptionService } from 'src/routes/subscription/subscription.service'
 
 @Module({
   imports: [PassportModule, SupabaseModule],
-  providers: [JwtStrategy, BlacklistGuard, JwtAuthGuard, PrismaService],
-  exports: [JwtStrategy, BlacklistGuard, JwtAuthGuard],
+  providers: [JwtStrategy, BlacklistGuard, JwtAuthGuard, PrismaService, SubscriptionGuard],
+  exports: [JwtStrategy, BlacklistGuard, JwtAuthGuard, SubscriptionGuard],
 })
 export class GuardModule {}

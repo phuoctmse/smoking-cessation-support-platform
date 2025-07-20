@@ -53,12 +53,6 @@ export class PlanStage implements PlanStageType {
   @Field(() => Boolean, { defaultValue: false })
   is_overdue?: boolean;
 
-  @Field(() => Boolean, { defaultValue: false })
-  can_start?: boolean;
-
-  @Field(() => Boolean, { defaultValue: false })
-  can_complete?: boolean;
-
   @Field(() => PlanStageTemplate, { nullable: true })
   template_stage?: PlanStageTemplate;
 }

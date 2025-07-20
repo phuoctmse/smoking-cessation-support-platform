@@ -5,18 +5,27 @@ import { GuardModule } from 'src/shared/guards/guard.module'
 import { CessationPlanModule } from '../cessation-plan/cessation-plan.module'
 import { ProgressRecordRepository } from './progress-record.repository'
 import { SupabaseModule } from '../../shared/modules/supabase.module'
+import { BadgeAwardModule } from '../badge-award/badge-award.module'
+import { LeaderboardModule } from '../leaderboard/leaderboard.module'
+import { RedisServices } from '../../shared/services/redis.service'
 
 @Module({
   imports: [
     GuardModule,
     SupabaseModule,
-    forwardRef(() => CessationPlanModule)
+    forwardRef(() => CessationPlanModule),
+    BadgeAwardModule,
+    LeaderboardModule
   ],
   providers: [
     ProgressRecordResolver,
     ProgressRecordService,
+    ProgressRecordRepository,
+    RedisServices,
+  ],
+  exports: [
+    ProgressRecordService,
     ProgressRecordRepository
   ],
-  exports: [ProgressRecordService, ProgressRecordRepository],
 })
 export class ProgressRecordModule {}

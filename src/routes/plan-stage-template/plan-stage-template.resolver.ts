@@ -8,8 +8,8 @@ import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
 import { RolesGuard } from '../../shared/guards/roles.guard'
 import { RoleName } from '../../shared/constants/role.constant'
 import { Roles } from '../../shared/decorators/roles.decorator'
-import { User } from '../../shared/decorators/current-user.decorator'
-import { UserType } from '../../shared/models/share-user.model'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
+import { UserType } from '../user/schema/user.schema'
 import { CreatePlanStageTemplateInput } from './dto/requests/create-plan-stage-template.input'
 import { UpdatePlanStageTemplateInput } from './dto/requests/update-plan-stage-template.input'
 import {StageOrderInput} from "./dto/requests/stage-order.input";
@@ -39,7 +39,7 @@ export class PlanStageTemplateResolver {
   @Mutation(() => PlanStageTemplate)
   async createPlanStageTemplate(
       @Args('input') input: CreatePlanStageTemplateInput,
-      @User() user: UserType,
+      @CurrentUser() user: UserType,
   ) {
     return this.planStageTemplateService.create(input, user.role);
   }
@@ -49,7 +49,7 @@ export class PlanStageTemplateResolver {
   @Mutation(() => PlanStageTemplate)
   async updatePlanStageTemplate(
       @Args('input') input: UpdatePlanStageTemplateInput,
-      @User() user: UserType,
+      @CurrentUser() user: UserType,
   ) {
     const { id, ...updateData } = input;
     return this.planStageTemplateService.update(id, updateData, user.role);
@@ -58,7 +58,7 @@ export class PlanStageTemplateResolver {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Coach)
   @Mutation(() => PlanStageTemplate)
-  async removePlanStageTemplate(@Args('id') id: string, @User() user: UserType) {
+  async removePlanStageTemplate(@Args('id') id: string, @CurrentUser() user: UserType) {
     return this.planStageTemplateService.remove(id, user.role);
   }
 
@@ -68,7 +68,7 @@ export class PlanStageTemplateResolver {
   async reorderPlanStageTemplates(
       @Args('templateId') templateId: string,
       @Args('stageOrders', { type: () => [StageOrderInput] }) stageOrders: StageOrderInput[],
-      @User() user: UserType,
+      @CurrentUser() user: UserType,
   ) {
     return this.planStageTemplateService.reorderStages(
         templateId,

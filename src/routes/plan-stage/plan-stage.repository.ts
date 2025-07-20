@@ -37,28 +37,47 @@ export class PlanStageRepository {
     })
   }
 
-  async createStagesFromTemplate(planId: string, templateId: string) {
+  async createStagesFromTemplate(planId: string, templateId: string, planStartDate: Date) {
     const templateStages = await this.prisma.planStageTemplate.findMany({
       where: {
         template_id: templateId,
         is_active: true,
       },
       orderBy: { stage_order: 'asc' },
-    })
+    });
 
-    const createStagesData = templateStages.map((templateStage) => ({
-      plan_id: planId,
-      template_stage_id: templateStage.id,
-      stage_order: templateStage.stage_order,
-      title: templateStage.title,
-      description: templateStage.description,
-      actions: templateStage.recommended_actions,
-      status: 'PENDING' as const,
-    }))
+    if (templateStages.length === 0) {
+      return { count: 0 };
+    }
+
+    const createStagesData = [];
+    let currentDate = new Date(planStartDate);
+
+    for (const templateStage of templateStages) {
+      const stageStartDate = new Date(currentDate);
+
+      const stageEndDate = new Date(stageStartDate);
+      stageEndDate.setDate(stageEndDate.getDate() + templateStage.duration_days - 1);
+
+      createStagesData.push({
+        plan_id: planId,
+        template_stage_id: templateStage.id,
+        stage_order: templateStage.stage_order,
+        title: templateStage.title,
+        description: templateStage.description,
+        actions: templateStage.recommended_actions,
+        status: 'PENDING' as const,
+        start_date: stageStartDate,
+        end_date: stageEndDate,
+      });
+
+      currentDate = new Date(stageEndDate);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
 
     return this.prisma.planStage.createMany({
       data: createStagesData,
-    })
+    });
   }
 
   async findAll(params: PaginationParamsType, filters?: PlanStageFilters) {
@@ -211,7 +230,7 @@ export class PlanStageRepository {
   }
 
   async remove(id: string): Promise<PlanStage> {
-    return this.prisma.planStage.update({
+    return await this.prisma.planStage.update({
       where: { id },
       data: {
         stage_order: null,

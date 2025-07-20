@@ -16,20 +16,20 @@ export class MembershipResolver {
 
     @Query(() => [MembershipPackage])
     async getMembershipPackages() {
-        return this.membershipService.getMembershipPackages()
+        return this.membershipService.findAll()
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(RoleName.Admin)
     @Mutation(() => MembershipPackage)
     async createMembershipPackage(@Args('input') input: CreateMembershipPackageInput) {
-        return this.membershipService.createMembershipPackage(input)
+        return this.membershipService.create(input)
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(RoleName.Admin)
     @Mutation(() => MembershipPackage)
     async updateMembershipPackage(@Args('input') input: UpdateMembershipPackageInput) {
-        return this.membershipService.updateMembershipPackage(input)
+        return this.membershipService.update(input.id, input)
     }
 }

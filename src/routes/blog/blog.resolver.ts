@@ -4,12 +4,12 @@ import { Blog } from './entities/blog.entity'
 import { CreateBlogInput } from './dto/requests/create-blog.input'
 import { UpdateBlogInput } from './dto/requests/update-blog.input'
 import { PaginatedBlogsResponse } from './dto/responses/paginated-blog.response'
-import { UserType } from '../../shared/models/share-user.model'
+import { UserType } from '../user/schema/user.schema'
 import { UseGuards } from '@nestjs/common'
 import { Roles } from '../../shared/decorators/roles.decorator'
 import { RoleName } from '../../shared/constants/role.constant'
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
-import { User } from '../../shared/decorators/current-user.decorator'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { UploadScalar } from '../../shared/scalars/upload.scalar'
 import { PaginationParamsInput } from '../../shared/models/dto/request/pagination-params.input'
@@ -26,7 +26,7 @@ export class BlogResolver {
   async createBlog(
     @Args('input') input: CreateBlogInput,
     @Args({ name: 'coverImage', type: () => UploadScalar, nullable: true }) coverImage: Promise<FileUpload>,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ) {
     return this.blogService.create(input, coverImage, user.id)
   }
@@ -62,7 +62,7 @@ export class BlogResolver {
   async updateBlog(
     @Args('input') input: UpdateBlogInput,
     @Args({ name: 'coverImage', type: () => UploadScalar, nullable: true }) coverImage: Promise<FileUpload>,
-    @User() user: UserType,
+    @CurrentUser() user: UserType,
   ) {
     const { id, ...updateData } = input
     return this.blogService.update(id, updateData, coverImage, user.id, user.role)
@@ -71,7 +71,7 @@ export class BlogResolver {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.Coach, RoleName.Admin)
   @Mutation(() => Blog)
-  async removeBlog(@Args('id') id: string, @User() user: UserType) {
+  async removeBlog(@Args('id') id: string, @CurrentUser() user: UserType) {
     return this.blogService.remove(id, user.id, user.role)
   }
 }
