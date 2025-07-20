@@ -10,7 +10,6 @@ import { SubscriptionGuard } from 'src/shared/guards/subscription.guard'
 import { CustomAIRecommendationService } from '../../shared/services/custom-ai-recommendation.service';
 import { CessationPlanTemplateModule } from '../cessation-plan-template/cessation-plan-template.module'
 import { CessationPlanCronService } from './cessation-plan.cron'
-import { RedisServices } from 'src/shared/services/redis.service'
 import { NotificationModule } from '../notification/notification.module'
 import { UserModule } from '../user/user.module'
 
@@ -31,7 +30,6 @@ import { UserModule } from '../user/user.module'
     SubscriptionGuard,
     CustomAIRecommendationService,
     CessationPlanCronService,
-    RedisServices,
   ],
   exports: [CessationPlanService, CessationPlanRepository],
 })

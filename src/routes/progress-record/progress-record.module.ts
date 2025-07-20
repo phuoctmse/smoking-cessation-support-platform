@@ -7,7 +7,6 @@ import { ProgressRecordRepository } from './progress-record.repository'
 import { SupabaseModule } from '../../shared/modules/supabase.module'
 import { BadgeAwardModule } from '../badge-award/badge-award.module'
 import { LeaderboardModule } from '../leaderboard/leaderboard.module'
-import { RedisServices } from '../../shared/services/redis.service'
 
 @Module({
   imports: [
@@ -21,7 +20,6 @@ import { RedisServices } from '../../shared/services/redis.service'
     ProgressRecordResolver,
     ProgressRecordService,
     ProgressRecordRepository,
-    RedisServices,
   ],
   exports: [
     ProgressRecordService,
