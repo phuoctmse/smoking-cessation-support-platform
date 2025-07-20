@@ -349,7 +349,7 @@ model MembershipPackage {
   created_at    DateTime           @default(now())
   updated_at    DateTime           @updatedAt
   subscriptions UserSubscription[]
-
+  is_active     Boolean            @default(true)
   @@map("membership_package")
 }
 
