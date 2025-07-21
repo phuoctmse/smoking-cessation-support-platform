@@ -193,6 +193,109 @@ export class PlanStageRepository {
     }
   }
 
+  async getPlanStageChartsData(
+    planId: string,
+    filters?: { from_date?: string; to_date?: string; stage_ids?: string[] }
+  ) {
+    const stages = await this.prisma.planStage.findMany({
+      where: {
+        plan_id: planId,
+        is_deleted: false,
+        ...(filters?.stage_ids && { id: { in: filters.stage_ids } }),
+      },
+      select: {
+        id: true,
+        title: true,
+        max_cigarettes_per_day: true,
+        start_date: true,
+        end_date: true,
+        stage_order: true,
+        status: true,
+      },
+      orderBy: { stage_order: 'asc' },
+    });
+
+    if (stages.length === 0) {
+      return [];
+    }
+
+    const progressRecords = await this.prisma.progressRecord.findMany({
+      where: {
+        plan_id: planId,
+        is_deleted: false,
+        ...(filters?.from_date && { record_date: { gte: new Date(filters.from_date) } }),
+        ...(filters?.to_date && { record_date: { lte: new Date(filters.to_date) } }),
+      },
+      select: {
+        record_date: true,
+        cigarettes_smoked: true,
+      },
+      orderBy: { record_date: 'asc' },
+    });
+
+    const progressMap = new Map<string, number>();
+    progressRecords.forEach(record => {
+      const dateKey = record.record_date.toISOString().split('T')[0];
+      progressMap.set(dateKey, record.cigarettes_smoked);
+    });
+
+    return stages.map(stage => {
+      const stageStartDate = stage.start_date ? new Date(stage.start_date) : null;
+      const stageEndDate = stage.end_date ? new Date(stage.end_date) : null;
+
+      let fromDate = stageStartDate;
+      let toDate = stageEndDate;
+
+      if (filters?.from_date) {
+        const filterFromDate = new Date(filters.from_date);
+        fromDate = fromDate ? (filterFromDate > fromDate ? filterFromDate : fromDate) : filterFromDate;
+      }
+
+      if (filters?.to_date) {
+        const filterToDate = new Date(filters.to_date);
+        toDate = toDate ? (filterToDate < toDate ? filterToDate : toDate) : filterToDate;
+      }
+
+      const chartData: Array<{
+        date: string;
+        cigarettes_smoked: number;
+        exceeded_limit: boolean;
+      }> = [];
+
+      if (fromDate && toDate) {
+        const currentDate = new Date(fromDate);
+        while (currentDate <= toDate) {
+          const dateKey = currentDate.toISOString().split('T')[0];
+          const cigarettesSmoked = progressMap.get(dateKey) || 0;
+          const exceededLimit = stage.max_cigarettes_per_day !== null &&
+            cigarettesSmoked > stage.max_cigarettes_per_day;
+
+          chartData.push({
+            date: dateKey,
+            cigarettes_smoked: cigarettesSmoked,
+            exceeded_limit: exceededLimit,
+          });
+
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
+
+      const totalDays = chartData.length;
+
+      return {
+        stage_id: stage.id,
+        title: stage.title,
+        max_cigarettes_per_day: stage.max_cigarettes_per_day,
+        start_date: stage.start_date?.toISOString().split('T')[0],
+        end_date: stage.end_date?.toISOString().split('T')[0],
+        stage_order: stage.stage_order,
+        status: stage.status,
+        chart_data: chartData,
+        total_days: totalDays,
+      };
+    });
+  }
+
   async update(id: string, data: Omit<UpdatePlanStageType, 'id'>) {
     return this.prisma.planStage.update({
       where: { id, is_deleted: false },

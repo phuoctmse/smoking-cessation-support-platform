@@ -13,6 +13,8 @@ import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import { RoleName } from '../../shared/constants/role.constant';
 import { UserType } from '../user/schema/user.schema';
 import { PlanStageOrderInput } from './dto/request/plan-stage-order.input'
+import { PlanStageChartsResponse } from './dto/response/plan-stage-chart.response'
+import { PlanStageChartFiltersInput } from './dto/request/plan-stage-chart-filters.input';
 
 @Resolver(() => PlanStage)
 export class PlanStageResolver {
@@ -34,6 +36,21 @@ export class PlanStageResolver {
     @CurrentUser() user: UserType,
   ): Promise<PlanStage[]> {
     return this.planStageService.createStagesFromTemplate(planId, user.role, user.id);
+  }
+
+  @Query(() => PlanStageChartsResponse)
+  @UseGuards(JwtAuthGuard)
+  async planStageChartsData(
+    @Args('planId') planId: string,
+    @Args('filters', { nullable: true }) filters?: PlanStageChartFiltersInput,
+    @CurrentUser() user?: UserType,
+  ): Promise<PlanStageChartsResponse> {
+    return this.planStageService.getPlanStageChartsData(
+      planId,
+      filters || {},
+      user.role,
+      user.id
+    );
   }
 
   @Query(() => [PlanStage])
