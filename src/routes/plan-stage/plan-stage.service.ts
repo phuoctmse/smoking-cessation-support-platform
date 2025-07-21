@@ -53,14 +53,42 @@ export class PlanStageService {
 
     await this.validateCreateRules(data)
 
+    const initialStatus = this.determineInitialStageStatus(data.start_date, plan.status)
+
     try {
-      const stage = await this.planStageRepository.create(data)
-      this.logger.log(`Plan stage created: ${stage.id} for plan: ${stage.plan_id}`)
+      const stage = await this.planStageRepository.create({
+        ...data,
+        status: initialStatus,
+      })
+
+      this.logger.log(`Plan stage created: ${stage.id} for plan: ${stage.plan_id} with status: ${initialStatus}`)
       await this.invalidateAllStageCaches('create', data.plan_id, plan.user_id, plan.template_id)
       return this.enrichWithComputedFields(stage)
     } catch (error) {
       this.handleDatabaseError(error)
     }
+  }
+
+  private determineInitialStageStatus(startDate: Date | undefined, planStatus: string): PlanStageStatus {
+    if (planStatus !== CessationPlanStatus.ACTIVE) {
+      return PlanStageStatus.PENDING
+    }
+
+    if (!startDate) {
+      return PlanStageStatus.PENDING
+    }
+
+    const now = new Date()
+    const today = new Date(now)
+    today.setHours(0, 0, 0, 0)
+
+    const stageStartDate = new Date(startDate)
+    stageStartDate.setHours(0, 0, 0, 0)
+
+    if (stageStartDate.getTime() <= today.getTime()) {
+      return PlanStageStatus.ACTIVE
+    }
+    return PlanStageStatus.PENDING
   }
 
   async createStagesFromTemplate(planId: string, userRole: string, userId: string) {
