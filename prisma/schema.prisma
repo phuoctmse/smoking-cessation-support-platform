@@ -9,32 +9,32 @@ datasource db {
 }
 
 model User {
-  id                        String                   @id @default(uuid())
-  name                      String
-  avatar_url                String?
-  role                      Role                     @default(MEMBER)
-  status                    Status                   @default(ACTIVE)
-  created_at                DateTime                 @default(now())
-  updated_at                DateTime                 @updatedAt
-  user_name                 String                   @unique
-  blogs                     Blog[]
-  created_plan_templates    CessationPlanTemplate[]
-  cessation_plans           CessationPlan[]
-  feedbacks                 Feedback[]
-  user_subscriptions        UserSubscription[]
-  user_badges               UserBadge[]
-  post_likes                PostLike[]
-  post_comments             PostComment[]
-  Payment                   Payment[]
-  MemberProfile             MemberProfile[]
-  CoachProfile              CoachProfile[]
-  ChatRoomCreator           ChatRoom[]               @relation("ChatRoomCreator")
-  ChatRoomReceiver          ChatRoom[]               @relation("ChatRoomReceiver")
-  ChatMessage               ChatMessage[]
+  id                     String                  @id @default(uuid())
+  name                   String
+  avatar_url             String?
+  role                   Role                    @default(MEMBER)
+  status                 Status                  @default(ACTIVE)
+  created_at             DateTime                @default(now())
+  updated_at             DateTime                @updatedAt
+  user_name              String                  @unique
+  blogs                  Blog[]
+  created_plan_templates CessationPlanTemplate[]
+  cessation_plans        CessationPlan[]
+  feedbacks              Feedback[]
+  user_subscriptions     UserSubscription[]
+  user_badges            UserBadge[]
+  post_likes             PostLike[]
+  post_comments          PostComment[]
+  Payment                Payment[]
+  MemberProfile          MemberProfile[]
+  CoachProfile           CoachProfile[]
+  ChatRoomCreator        ChatRoom[]              @relation("ChatRoomCreator")
+  ChatRoomReceiver       ChatRoom[]              @relation("ChatRoomReceiver")
+  ChatMessage            ChatMessage[]
   // template_matching_results TemplateMatchingResult[]
-  HealthScoreCriteria       HealthScoreCriteria[]
-  quiz_attempts             QuizAttempt[]
-  Notification              Notification[]
+  HealthScoreCriteria    HealthScoreCriteria[]
+  quiz_attempts          QuizAttempt[]
+  Notification           Notification[]
 
   @@map("user")
 }
@@ -92,7 +92,7 @@ model CoachProfile {
 
   // Thông tin bổ sung
   approach_description String? // Mô tả phương pháp tiếp cận
-  created_at           DateTime @default(now())
+  created_at           DateTime  @default(now())
   updated_at           DateTime? @updatedAt
 
   @@map("coach_profile")
@@ -115,19 +115,19 @@ model Blog {
 }
 
 model CessationPlanTemplate {
-  id                      String                   @id @default(uuid())
-  name                    String                   @unique @db.VarChar(100)
+  id                      String              @id @default(uuid())
+  name                    String              @unique @db.VarChar(100)
   description             String?
-  difficulty_level        DifficultyLevel          @default(MEDIUM)
+  difficulty_level        DifficultyLevel     @default(MEDIUM)
   estimated_duration_days Int
-  average_rating          Float?                   @default(0)
-  total_reviews           Int                      @default(0)
-  success_rate            Float?                   @default(0)
-  is_active               Boolean                  @default(true)
-  created_at              DateTime                 @default(now())
-  updated_at              DateTime                 @updatedAt
+  average_rating          Float?              @default(0)
+  total_reviews           Int                 @default(0)
+  success_rate            Float?              @default(0)
+  is_active               Boolean             @default(true)
+  created_at              DateTime            @default(now())
+  updated_at              DateTime            @updatedAt
   coach_id                String?
-  coach                   User?                    @relation(fields: [coach_id], references: [id])
+  coach                   User?               @relation(fields: [coach_id], references: [id])
   plans                   CessationPlan[]
   feedbacks               Feedback[]
   stages                  PlanStageTemplate[]
@@ -137,18 +137,19 @@ model CessationPlanTemplate {
 }
 
 model PlanStageTemplate {
-  id                  String                @id @default(uuid())
-  template_id         String
-  stage_order         Int
-  title               String                @db.VarChar(100)
-  duration_days       Int
-  description         String?
-  recommended_actions String?
-  created_at          DateTime              @default(now())
-  updated_at          DateTime              @updatedAt
-  is_active           Boolean               @default(true)
-  plan_stages         PlanStage[]
-  template            CessationPlanTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  id                     String                @id @default(uuid())
+  template_id            String
+  stage_order            Int
+  title                  String                @db.VarChar(100)
+  duration_days          Int
+  description            String?
+  recommended_actions    String?
+  max_cigarettes_per_day Int?
+  created_at             DateTime              @default(now())
+  updated_at             DateTime              @updatedAt
+  is_active              Boolean               @default(true)
+  plan_stages            PlanStage[]
+  template               CessationPlanTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
 
   @@unique([template_id, stage_order])
   @@map("plan_stage_template")
@@ -175,21 +176,22 @@ model CessationPlan {
 }
 
 model PlanStage {
-  id                String             @id @default(uuid())
-  plan_id           String
-  template_stage_id String?
-  stage_order       Int?
-  title             String             @db.VarChar(100)
-  start_date        DateTime?
-  end_date          DateTime?
-  description       String?
-  actions           String?
-  status            PlanStageStatus    @default(PENDING)
-  is_deleted        Boolean            @default(false)
-  created_at        DateTime           @default(now())
-  updated_at        DateTime           @updatedAt
-  plan              CessationPlan      @relation(fields: [plan_id], references: [id], onDelete: Cascade)
-  template_stage    PlanStageTemplate? @relation(fields: [template_stage_id], references: [id])
+  id                     String             @id @default(uuid())
+  plan_id                String
+  template_stage_id      String?
+  stage_order            Int?
+  title                  String             @db.VarChar(100)
+  start_date             DateTime?
+  end_date               DateTime?
+  description            String?
+  actions                String?
+  max_cigarettes_per_day Int?
+  status                 PlanStageStatus    @default(PENDING)
+  is_deleted             Boolean            @default(false)
+  created_at             DateTime           @default(now())
+  updated_at             DateTime           @updatedAt
+  plan                   CessationPlan      @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  template_stage         PlanStageTemplate? @relation(fields: [template_stage_id], references: [id])
 
   @@unique([plan_id, stage_order])
   @@map("plan_stage")
@@ -350,6 +352,7 @@ model MembershipPackage {
   updated_at    DateTime           @updatedAt
   subscriptions UserSubscription[]
   is_active     Boolean            @default(true)
+
   @@map("membership_package")
 }
 
@@ -600,7 +603,7 @@ model QuizResponse {
   question    QuizQuestion @relation(fields: [question_id], references: [id])
   attempt_id  String
   attempt     QuizAttempt  @relation(fields: [attempt_id], references: [id])
-  answer      Json 
+  answer      Json
   order       Int?
   created_at  DateTime     @default(now())
   updated_at  DateTime     @updatedAt
