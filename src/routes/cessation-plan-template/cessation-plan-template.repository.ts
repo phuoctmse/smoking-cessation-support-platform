@@ -89,9 +89,9 @@ export class CessationPlanTemplateRepository {
     } else {
       if (!orderBy || orderBy === 'created_at') {
         orderByClause = [
+          { created_at: sortOrder || 'desc' },
           { average_rating: 'desc' },
           { success_rate: 'desc' },
-          { created_at: sortOrder || 'desc' },
         ]
       } else {
         orderByClause = [
@@ -119,6 +119,7 @@ export class CessationPlanTemplateRepository {
               duration_days: true,
               description: true,
               recommended_actions: true,
+              max_cigarettes_per_day: true
             },
             orderBy: { stage_order: 'asc' },
           },
@@ -161,6 +162,7 @@ export class CessationPlanTemplateRepository {
             duration_days: true,
             description: true,
             recommended_actions: true,
+            max_cigarettes_per_day: true
           },
           orderBy: { stage_order: 'asc' },
         },

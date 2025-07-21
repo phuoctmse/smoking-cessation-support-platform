@@ -26,6 +26,11 @@ export const UpdatePlanStageSchema = z.object({
   actions: z.string()
     .max(2000, 'Actions must be less than 2000 characters')
     .optional(),
+  max_cigarettes_per_day: z.number()
+    .int('Max cigarettes must be an integer')
+    .min(0, 'Max cigarettes cannot be negative')
+    .max(100, 'Max cigarettes per day cannot exceed 100')
+    .optional(),
   status: z.nativeEnum(PlanStageStatus).optional(),
   completion_notes: z.string()
     .max(1000, 'Completion notes must be less than 1000 characters')

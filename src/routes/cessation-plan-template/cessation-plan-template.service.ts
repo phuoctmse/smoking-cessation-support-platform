@@ -49,13 +49,8 @@ export class CessationPlanTemplateService {
     })
 
     this.logger.log(`Cessation plan template created: ${template.id} by coach: ${user.id}`)
-
-    // Sync to Elasticsearch
     await this.syncTemplateToElasticsearch(template.id);
-
-    // Invalidate template caches
     await this.invalidateTemplateCaches()
-
     return template
   }
 
@@ -86,7 +81,6 @@ export class CessationPlanTemplateService {
       await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(result))
       const trackerKey = buildTrackerKey(CACHE_PREFIX, 'all-lists')
       await trackCacheKey(this.redisServices.getClient(), trackerKey, cacheKey)
-      this.logger.debug(`Cache set for templates: ${cacheKey}`)
     } catch (error) {
       this.logger.warn(`Cache set failed for templates: ${error.message}`)
     }
@@ -118,7 +112,6 @@ export class CessationPlanTemplateService {
       await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(template))
       const trackerKey = buildTrackerKey(CACHE_PREFIX, 'items')
       await trackCacheKey(this.redisServices.getClient(), trackerKey, cacheKey)
-      this.logger.debug(`Cache set for template: ${id}`)
     } catch (error) {
       this.logger.warn(`Cache set failed for template ${id}: ${error.message}`)
     }
@@ -141,8 +134,6 @@ export class CessationPlanTemplateService {
 
     const template = await this.cessationPlanTemplateRepository.update(id, data)
     this.logger.log(`Cessation plan template updated: ${template.id}`)
-
-    // Invalidate specific template and related caches
     await this.invalidateTemplateCaches(id)
 
     return template
@@ -153,10 +144,7 @@ export class CessationPlanTemplateService {
     await this.cessationPlanTemplateRepository.update(templateId, {
       estimated_duration_days: totalDuration,
     })
-
     this.logger.log(`Updated estimated duration for template ${templateId} to ${totalDuration} days`)
-
-    // Invalidate specific template and related caches
     await this.invalidateTemplateCaches(templateId)
   }
 
@@ -168,8 +156,6 @@ export class CessationPlanTemplateService {
 
     const template = await this.cessationPlanTemplateRepository.delete(id)
     this.logger.log(`Cessation plan template deleted: ${template.id}`)
-
-    // Invalidate specific template and related caches
     await this.invalidateTemplateCaches(id)
 
     return template
@@ -344,14 +330,13 @@ export class CessationPlanTemplateService {
         updated_at: template.updated_at,
         average_rating: template.average_rating || 0,
         total_reviews: template.total_reviews || 0,
-        price: 0, // Default price since not in schema
+        price: 0,
       };
 
       await this.elasticsearchService.indexCessationPlanTemplate(templateDocument);
       this.logger.log(`Synced template to Elasticsearch: ${templateId}`);
     } catch (error) {
       this.logger.error(`Failed to sync template to Elasticsearch: ${templateId}`, error);
-      // Don't throw - ES sync failure shouldn't break the main operation
     }
   }
 
@@ -398,8 +383,6 @@ export class CessationPlanTemplateService {
       };
     } catch (error) {
       this.logger.warn(`Failed to search templates from Elasticsearch, falling back to PostgreSQL:`, error);
-      
-      // Fallback to PostgreSQL (existing findAll method)
       return await this.findAll(
         { page, limit, orderBy: 'created_at', sortOrder: 'desc' },
         { 

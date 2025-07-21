@@ -24,4 +24,10 @@ export class UpdatePlanStageTemplateInput extends createZodDto(UpdatePlanStageTe
 
   @Field(() => String, { nullable: true })
   recommended_actions?: string;
+
+  @Field(() => Int, {
+    nullable: true,
+    description: 'Maximum number of cigarettes allowed per day in this stage'
+  })
+  max_cigarettes_per_day?: number;
 }

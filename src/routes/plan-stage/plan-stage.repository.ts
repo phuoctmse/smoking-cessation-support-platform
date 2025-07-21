@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { PlanStageStatus, Prisma } from '@prisma/client'
 import { PrismaService } from '../../shared/services/prisma.service';
 import { PaginationParamsType } from '../../shared/models/pagination.model';
 import { CreatePlanStageType } from './schema/create-plan-stage.schema';
@@ -19,7 +19,7 @@ export interface PlanStageFilters {
 export class PlanStageRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: CreatePlanStageType) {
+  async create(data: CreatePlanStageType & { status?: PlanStageStatus }) {
     return this.prisma.planStage.create({
       data: {
         plan_id: data.plan_id,
@@ -30,7 +30,8 @@ export class PlanStageRepository {
         end_date: data.end_date,
         description: data.description,
         actions: data.actions,
-        status: 'PENDING',
+        max_cigarettes_per_day: data.max_cigarettes_per_day,
+        status: data.status || PlanStageStatus.PENDING,
         is_deleted: false,
       },
       include: this.getDefaultIncludes(),
@@ -50,14 +51,32 @@ export class PlanStageRepository {
       return { count: 0 };
     }
 
+    const plan = await this.prisma.cessationPlan.findUnique({
+      where: { id: planId },
+      select: { status: true },
+    });
+
     const createStagesData = [];
     let currentDate = new Date(planStartDate);
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
 
     for (const templateStage of templateStages) {
       const stageStartDate = new Date(currentDate);
-
       const stageEndDate = new Date(stageStartDate);
       stageEndDate.setDate(stageEndDate.getDate() + templateStage.duration_days - 1);
+
+      let stageStatus: PlanStageStatus = PlanStageStatus.PENDING;
+
+      if (plan?.status === 'ACTIVE') {
+        const stageStartDateOnly = new Date(stageStartDate);
+        stageStartDateOnly.setHours(0, 0, 0, 0);
+
+        if (templateStage.stage_order === 1 && stageStartDateOnly.getTime() <= today.getTime()) {
+          stageStatus = PlanStageStatus.ACTIVE;
+        }
+      }
 
       createStagesData.push({
         plan_id: planId,
@@ -66,7 +85,8 @@ export class PlanStageRepository {
         title: templateStage.title,
         description: templateStage.description,
         actions: templateStage.recommended_actions,
-        status: 'PENDING' as const,
+        max_cigarettes_per_day: templateStage.max_cigarettes_per_day,
+        status: stageStatus,
         start_date: stageStartDate,
         end_date: stageEndDate,
       });
