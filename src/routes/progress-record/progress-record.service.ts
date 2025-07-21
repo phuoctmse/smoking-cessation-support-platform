@@ -19,7 +19,7 @@ import { LeaderboardService } from '../leaderboard/leaderboard.service'
 import { RedisServices } from '../../shared/services/redis.service'
 import {
   buildCacheKey,
-  buildOneCacheKey,
+  buildOneCacheKey, invalidateCacheForId,
   reviveDates,
 } from '../../shared/utils/cache-key.util'
 
@@ -75,7 +75,6 @@ export class ProgressRecordService {
             reviveDates(record, ['record_date', 'created_at', 'updated_at']);
           });
         }
-        this.logger.debug(`Cache hit for progress records: ${cacheKey}`);
         return parsed;
       }
     } catch (error) {
@@ -86,7 +85,6 @@ export class ProgressRecordService {
 
     try {
       await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(result));
-      this.logger.debug(`Cache set for progress records: ${cacheKey}`);
     } catch (error) {
       this.logger.warn(`Cache set failed: ${error.message}`);
     }
@@ -254,34 +252,47 @@ export class ProgressRecordService {
   private async invalidateAllRelatedCaches(planId: string, userId: string, recordId?: string): Promise<void> {
     try {
       const client = this.redisServices.getClient();
-
-      // Step 1: Clear specific record cache
       if (recordId) {
         const specificRecordKey = buildOneCacheKey(CACHE_PREFIX, recordId);
         await client.del(specificRecordKey);
-        this.logger.debug(`Cleared specific record cache: ${specificRecordKey}`);
       }
 
-      // Step 2: Clear all list caches with wildcard patterns
-      const cachePatterns = [
+      const progressCachePatterns = [
         `${CACHE_PREFIX}:all:*`,
         `${CACHE_PREFIX}:*:${planId}:*`,
         `${CACHE_PREFIX}:*:${userId}:*`,
       ];
 
-      for (const pattern of cachePatterns) {
+      for (const pattern of progressCachePatterns) {
         try {
           const keys = await client.keys(pattern);
           if (keys.length > 0) {
             await client.del(keys);
-            this.logger.debug(`Cleared ${keys.length} cache keys with pattern: ${pattern}`);
           }
         } catch (error) {
-          this.logger.warn(`Failed to clear cache pattern ${pattern}: ${error.message}`);
+          this.logger.warn(`Failed to clear progress cache pattern ${pattern}: ${error.message}`);
         }
       }
 
-      // Step 3: Clear related cessation plan caches
+      const planStageCachePatterns = [
+        `plan-stage:charts:${planId}:*`,
+        `plan-stage:charts:*`,
+        `plan-stage:byPlan:${planId}*`,
+        `plan-stage:activeByPlan:${planId}*`,
+        `plan-stage:statistics:*`,
+      ];
+
+      for (const pattern of planStageCachePatterns) {
+        try {
+          const keys = await client.keys(pattern);
+          if (keys.length > 0) {
+            await client.del(keys);
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to clear plan stage cache pattern ${pattern}: ${error.message}`);
+        }
+      }
+
       const planCachePatterns = [
         `cessation-plan:*:${planId}:*`,
         `cessation-plan:*:${userId}:*`,
@@ -293,14 +304,12 @@ export class ProgressRecordService {
           const keys = await client.keys(pattern);
           if (keys.length > 0) {
             await client.del(keys);
-            this.logger.debug(`Cleared ${keys.length} plan cache keys with pattern: ${pattern}`);
           }
         } catch (error) {
           this.logger.warn(`Failed to clear plan cache pattern ${pattern}: ${error.message}`);
         }
       }
 
-      // Step 4: Clear leaderboard related caches (if any)
       const leaderboardPatterns = [
         `leaderboard:*:${userId}:*`,
         `streak:*`,
@@ -311,14 +320,17 @@ export class ProgressRecordService {
           const keys = await client.keys(pattern);
           if (keys.length > 0) {
             await client.del(keys);
-            this.logger.debug(`Cleared ${keys.length} leaderboard cache keys with pattern: ${pattern}`);
           }
         } catch (error) {
           this.logger.warn(`Failed to clear leaderboard cache pattern ${pattern}: ${error.message}`);
         }
       }
 
-      this.logger.log(`Invalidated all progress record caches for plan: ${planId}, user: ${userId}`);
+      await invalidateCacheForId(client, 'plan-stage', planId);
+      await invalidateCacheForId(client, 'cessation-plan', userId);
+      await invalidateCacheForId(client, 'cessation-plan', 'stats-cache');
+
+      this.logger.log(`Invalidated all related caches for plan: ${planId}, user: ${userId}`);
     } catch (cacheError) {
       this.logger.error('Error invalidating progress record cache:', cacheError);
     }
