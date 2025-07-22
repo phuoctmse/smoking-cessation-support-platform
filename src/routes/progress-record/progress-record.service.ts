@@ -220,15 +220,18 @@ export class ProgressRecordService {
   }
 
   private async processStreakAndBadges(userId: string, planId: string, cigarettesSmoked: number): Promise<void> {
-    const currentStreak = await this.calculateUserStreak(planId);
-    const prevStreak = await this.leaderboardService.getUserStreak(userId) || 0;
+    try {
+      const currentStreak = await this.calculateUserStreak(planId);
+      const prevStreak = await this.leaderboardService.getUserStreak(userId) || 0;
 
-    if (currentStreak !== prevStreak) {
       await this.leaderboardService.updateUserStreak(userId, currentStreak);
-    }
 
-    if (cigarettesSmoked === 0) {
-      await this.badgeAwardService.processStreakUpdate(userId, currentStreak);
+      if (cigarettesSmoked === 0 && currentStreak > 0) {
+        await this.badgeAwardService.processStreakUpdate(userId, currentStreak);
+      }
+
+    } catch (error) {
+      this.logger.error(`Error processing streak and badges for user ${userId}: ${error.message}`);
     }
   }
 
@@ -238,10 +241,36 @@ export class ProgressRecordService {
       { planId }
     );
 
+    if (records.data.length === 0) {
+      return 0;
+    }
+
     let streak = 0;
+    let expectedDate = new Date();
+    expectedDate.setUTCHours(0, 0, 0, 0);
+
+    const mostRecentRecordDate = new Date(records.data[0].record_date);
+    mostRecentRecordDate.setUTCHours(0, 0, 0, 0);
+
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    yesterday.setUTCHours(0, 0, 0, 0);
+
+    if (mostRecentRecordDate.getTime() < yesterday.getTime()) {
+      return 0;
+    }
+
+    if (mostRecentRecordDate.getTime() !== expectedDate.getTime()) {
+      expectedDate = mostRecentRecordDate;
+    }
+
     for (const record of records.data) {
-      if (record.cigarettes_smoked === 0) {
+      const recordDate = new Date(record.record_date);
+      recordDate.setUTCHours(0, 0, 0, 0);
+
+      if (recordDate.getTime() === expectedDate.getTime() && record.cigarettes_smoked === 0) {
         streak++;
+        expectedDate.setUTCDate(expectedDate.getUTCDate() - 1);
       } else {
         break;
       }
