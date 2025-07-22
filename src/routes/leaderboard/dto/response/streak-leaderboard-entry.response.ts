@@ -8,11 +8,11 @@ export class StreakLeaderboardEntry {
   @Field()
   userId: string;
 
-  @Field()
-  userName: string;
-
   @Field({ nullable: true })
   avatarUrl?: string;
+
+  @Field()
+  name?: string;
 
   @Field(() => Int)
   streak: number;
