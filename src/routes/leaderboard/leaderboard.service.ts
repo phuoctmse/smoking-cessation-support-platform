@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common'
 import { RedisServices } from '../../shared/services/redis.service'
 import { LeaderboardStats } from './dto/response/leaderboard-stats.response'
-import { PrismaService } from 'src/shared/services/prisma.service'
 import { PaginatedStreakLeaderboard } from './dto/response/paginated-streak-leaderboard.response'
 import { StreakLeaderboardEntry } from './dto/response/streak-leaderboard-entry.response'
+import { LeaderboardRepository, UserData } from './leaderboard.repository'
 
 export const LEADERBOARD_KEYS = {
   MAIN_SCORE: 'leaderboard:main',
@@ -23,13 +23,11 @@ interface GetStreakLeaderboardParams {
 @Injectable()
 export class LeaderboardService {
   private readonly logger = new Logger(LeaderboardService.name);
-  private readonly CACHE_TTL = 300;
-  private readonly DEFAULT_LIMIT = 10;
   private readonly MAX_LIMIT = 100;
 
   constructor(
     private readonly redisServices: RedisServices,
-    private readonly prisma: PrismaService,
+    private readonly leaderboardRepository: LeaderboardRepository,
   ) {}
 
   async getStreakLeaderboard(params: GetStreakLeaderboardParams): Promise<PaginatedStreakLeaderboard> {
@@ -69,10 +67,7 @@ export class LeaderboardService {
         return null;
       }
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId, status: 'ACTIVE' },
-        select: { id: true, user_name: true, avatar_url: true },
-      });
+      const user = await this.leaderboardRepository.findActiveUserById(userId);
 
       if (!user) {
         return null;
@@ -81,7 +76,7 @@ export class LeaderboardService {
       return {
         rank: streakData.rank,
         userId: user.id,
-        userName: user.user_name,
+        name: user.name,
         avatarUrl: user.avatar_url,
         streak: streakData.streak,
       };
@@ -173,19 +168,6 @@ export class LeaderboardService {
     }
   }
 
-  async removeUserFromLeaderboard(userId: string): Promise<void> {
-    if (!userId?.trim()) {
-      return;
-    }
-
-    try {
-      const client = this.redisServices.getClient();
-      await client.zRem(LEADERBOARD_KEYS.STREAK, userId);
-    } catch (error) {
-      this.logger.error(`Failed to remove user ${userId} from leaderboard: ${error.message}`);
-    }
-  }
-
   private validatePaginationParams(limit: number, offset: number): void {
     if (!Number.isInteger(limit) || limit <= 0 || limit > this.MAX_LIMIT) {
       throw new BadRequestException(`Limit must be between 1 and ${this.MAX_LIMIT}`);
@@ -205,7 +187,7 @@ export class LeaderboardService {
     }
 
     const userIds = rawLeaderboard.map(entry => entry.userId);
-    const users = await this.fetchActiveUsers(userIds);
+    const users = await this.leaderboardRepository.findActiveUsersByIds(userIds);
     const userMap = this.createUserMap(users);
 
     return rawLeaderboard.map((entry, index) => {
@@ -213,24 +195,14 @@ export class LeaderboardService {
       return {
         rank: offset + index + 1,
         userId: entry.userId,
-        userName: user?.user_name || 'Unknown User',
+        name: user?.name || 'Unknown User',
         avatarUrl: user?.avatar_url || null,
         streak: entry.score,
       };
     });
   }
 
-  private async fetchActiveUsers(userIds: string[]) {
-    return this.prisma.user.findMany({
-      where: {
-        id: { in: userIds },
-        status: 'ACTIVE'
-      },
-      select: { id: true, user_name: true, avatar_url: true },
-    });
-  }
-
-  private createUserMap(users: any[]): Map<string, any> {
+  private createUserMap(users: UserData[]): Map<string, UserData> {
     return new Map(users.map(u => [u.id, u]));
   }
 
@@ -310,43 +282,6 @@ export class LeaderboardService {
     } catch (error) {
       this.logger.error(`Redis zCard failed for ${key}: ${error.message}`);
       return 0;
-    }
-  }
-
-  async clearLeaderboard(key: LeaderboardKey): Promise<void> {
-    try {
-      const client = this.redisServices.getClient();
-      await client.del(key);
-      this.logger.log(`Cleared leaderboard: ${key}`);
-    } catch (error) {
-      this.logger.error(`Failed to clear leaderboard ${key}: ${error.message}`);
-      throw error;
-    }
-  }
-
-  async getLeaderboardSize(key: LeaderboardKey): Promise<number> {
-    return this.getTotalUsers(key);
-  }
-
-  async batchUpdateScores(key: LeaderboardKey, scoreUpdates: { userId: string; score: number }[]): Promise<void> {
-    if (scoreUpdates.length === 0) {
-      return;
-    }
-
-    try {
-      const client = this.redisServices.getClient();
-      const multi = client.multi();
-
-      scoreUpdates.forEach(({ userId, score }) => {
-        if (userId?.trim() && score >= 0) {
-          multi.zAdd(key, { score, value: userId });
-        }
-      });
-
-      await multi.exec();
-    } catch (error) {
-      this.logger.error(`Batch update failed for ${key}: ${error.message}`);
-      throw error;
     }
   }
 }
