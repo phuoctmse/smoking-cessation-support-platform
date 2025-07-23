@@ -1,70 +1,131 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger } from '@nestjs/common'
 import { RedisServices } from '../../shared/services/redis.service'
+import { LeaderboardStats } from './dto/response/leaderboard-stats.response'
+import { PaginatedStreakLeaderboard } from './dto/response/paginated-streak-leaderboard.response'
+import { StreakLeaderboardEntry } from './dto/response/streak-leaderboard-entry.response'
+import { LeaderboardRepository, UserData } from './leaderboard.repository'
 
 export const LEADERBOARD_KEYS = {
   MAIN_SCORE: 'leaderboard:main',
   STREAK: 'leaderboard:streak',
-  // STAGES_COMPLETED: 'leaderboard:stages',
-  // BADGES_EARNED: 'leaderboard:badges',
+  STAGES_COMPLETED: 'leaderboard:stages',
+  BADGES_EARNED: 'leaderboard:badges',
 } as const;
 
 type LeaderboardKey = typeof LEADERBOARD_KEYS[keyof typeof LEADERBOARD_KEYS];
 
+interface GetStreakLeaderboardParams {
+  limit: number;
+  offset: number;
+  currentUserId: string;
+}
+
 @Injectable()
 export class LeaderboardService {
   private readonly logger = new Logger(LeaderboardService.name);
+  private readonly MAX_LIMIT = 100;
 
-  constructor(private readonly redisServices: RedisServices) {}
+  constructor(
+    private readonly redisServices: RedisServices,
+    private readonly leaderboardRepository: LeaderboardRepository,
+  ) {}
 
-  private async updateScore(key: LeaderboardKey, userId: string, score: number): Promise<void> {
-    const startTime = Date.now();
-
+  async getStreakLeaderboard(params: GetStreakLeaderboardParams): Promise<PaginatedStreakLeaderboard> {
     try {
-      await this.redisServices.getClient().zAdd(key, [{ score, value: userId }]);
+      this.validatePaginationParams(params.limit, params.offset);
+      const rawLeaderboard = await this.getTopStreaks(params.limit, params.offset);
 
-      const duration = Date.now() - startTime;
-      this.logger.log(`Updated ${key} for user ${userId}: ${score} (${duration}ms)`);
-
-      // Log milestone achievements
-      if (key === LEADERBOARD_KEYS.STREAK && score > 0 && score % 7 === 0) {
-        this.logger.log(`🎉 User ${userId} reached ${score}-day streak milestone!`);
+      if (rawLeaderboard.length === 0) {
+        return { data: [], total: 0 };
       }
+
+      const enrichedData = await this.enrichLeaderboardWithUserData(rawLeaderboard, params.offset);
+      const myRank = await this.getCurrentUserRank(params.currentUserId);
+      const stats = await this.getStreakLeaderboardStats();
+
+      return {
+        data: enrichedData,
+        total: stats.totalUsers,
+        myRank
+      };
+
     } catch (error) {
-      this.logger.error(`Failed to update ${key} for user ${userId}:`, error);
+      this.logger.error(`Error fetching streak leaderboard: ${error.message}`, error.stack);
       throw error;
     }
   }
 
-  private async getTop(key: LeaderboardKey, limit: number, offset = 0): Promise<{ userId: string; score: number }[]> {
-    const result = await this.redisServices.getClient().zRangeWithScores(
-      key,
-      offset,
-      offset + limit - 1,
-      { REV: true }
-    );
-    return result.map((entry) => ({
-      userId: entry.value,
-      score: entry.score,
-    }));
+  async getCurrentUserRank(userId: string): Promise<StreakLeaderboardEntry | null> {
+    try {
+      if (!userId?.trim()) {
+        return null;
+      }
+
+      const streakData = await this.getUserStreakWithRank(userId);
+
+      if (!streakData) {
+        return null;
+      }
+
+      const user = await this.leaderboardRepository.findActiveUserById(userId);
+
+      if (!user) {
+        return null;
+      }
+
+      return {
+        rank: streakData.rank,
+        userId: user.id,
+        name: user.name,
+        avatarUrl: user.avatar_url,
+        streak: streakData.streak,
+      };
+
+    } catch (error) {
+      this.logger.error(`Error fetching user streak rank for ${userId}: ${error.message}`)
+      return null;
+    }
   }
 
-  private async getRank(key: LeaderboardKey, userId: string): Promise<number | null> {
-    const rank = await this.redisServices.getClient().zRevRank(key, userId);
-    return typeof rank === 'number' ? rank + 1 : null;
+  async getStreakLeaderboardStats(): Promise<LeaderboardStats> {
+    try {
+      const totalUsers = await this.getTotalUsers(LEADERBOARD_KEYS.STREAK);
+
+      if (totalUsers === 0) {
+        return this.getEmptyStats();
+      }
+
+      const topUsers = await this.getTopStreaks(1, 0);
+      const topStreak = topUsers.length > 0 ? topUsers[0].score : 0;
+
+      const sampleSize = Math.min(100, totalUsers);
+      const topSample = await this.getTopStreaks(sampleSize, 0);
+      const averageStreak = this.calculateAverageStreak(topSample);
+
+      return {
+        totalUsers,
+        averageStreak: parseFloat(averageStreak.toFixed(2)),
+        topStreak,
+      };
+
+    } catch (error) {
+      this.logger.error(`Error calculating leaderboard stats: ${error.message}`);
+      return this.getEmptyStats();
+    }
   }
 
-  private async getScore(key: LeaderboardKey, userId: string): Promise<number | null> {
-    const score = await this.redisServices.getClient().zScore(key, userId);
-    return score !== null ? score : null;
-  }
-
-  private async getTotalUsers(key: LeaderboardKey): Promise<number> {
-    return this.redisServices.getClient().zCard(key);
-  }
-
-  // --- API công khai cho Streak Leaderboard ---
   async updateUserStreak(userId: string, streak: number): Promise<void> {
-    await this.updateScore(LEADERBOARD_KEYS.STREAK, userId, streak);
+    if (!userId?.trim() || streak < 0) {
+      this.logger.warn(`Invalid parameters for updateUserStreak: userId=${userId}, streak=${streak}`);
+      return;
+    }
+
+    try {
+      await this.updateScore(LEADERBOARD_KEYS.STREAK, userId, streak);
+    } catch (error) {
+      this.logger.error(`Failed to update streak for user ${userId}: ${error.message}`);
+      throw error;
+    }
   }
 
   async getTopStreaks(limit: number, offset = 0): Promise<{ userId: string; score: number }[]> {
@@ -72,83 +133,155 @@ export class LeaderboardService {
   }
 
   async getUserStreakRank(userId: string): Promise<number | null> {
+    if (!userId?.trim()) {
+      return null;
+    }
     return this.getRank(LEADERBOARD_KEYS.STREAK, userId);
   }
 
   async getUserStreak(userId: string): Promise<number | null> {
+    if (!userId?.trim()) {
+      return null;
+    }
     return this.getScore(LEADERBOARD_KEYS.STREAK, userId);
   }
 
-  async getStreakLeaderboardStats(): Promise<{
-    totalUsers: number;
-    averageStreak: number;
-    topStreak: number;
-  }> {
-    const key = LEADERBOARD_KEYS.STREAK;
-    const client = this.redisServices.getClient();
-
-    const [totalUsers, topResult] = await Promise.all([
-      this.getTotalUsers(key),
-      client.zRangeWithScores(key, 0, 0, { REV: true })
-    ]);
-
-    const topStreak = topResult.length > 0 ? topResult[0].score : 0;
-
-    let averageStreak = 0;
-    if (totalUsers > 0) {
-      const allScores = await client.zRangeWithScores(key, 0, -1);
-      const sumScores = allScores.reduce((sum, entry) => sum + entry.score, 0);
-      averageStreak = sumScores / totalUsers;
+  async getUserStreakWithRank(userId: string): Promise<{ streak: number; rank: number } | null> {
+    if (!userId?.trim()) {
+      return null;
     }
 
+    try {
+      const [streak, rank] = await Promise.all([
+        this.getUserStreak(userId),
+        this.getUserStreakRank(userId)
+      ]);
+
+      if (streak === null || rank === null) {
+        return null;
+      }
+
+      return { streak, rank };
+    } catch (error) {
+      this.logger.error(`Error getting user streak with rank for ${userId}: ${error.message}`);
+      return null;
+    }
+  }
+
+  private validatePaginationParams(limit: number, offset: number): void {
+    if (!Number.isInteger(limit) || limit <= 0 || limit > this.MAX_LIMIT) {
+      throw new BadRequestException(`Limit must be between 1 and ${this.MAX_LIMIT}`);
+    }
+
+    if (!Number.isInteger(offset) || offset < 0) {
+      throw new BadRequestException('Offset must be non-negative integer');
+    }
+  }
+
+  private async enrichLeaderboardWithUserData(
+    rawLeaderboard: { userId: string; score: number }[],
+    offset: number
+  ): Promise<StreakLeaderboardEntry[]> {
+    if (rawLeaderboard.length === 0) {
+      return [];
+    }
+
+    const userIds = rawLeaderboard.map(entry => entry.userId);
+    const users = await this.leaderboardRepository.findActiveUsersByIds(userIds);
+    const userMap = this.createUserMap(users);
+
+    return rawLeaderboard.map((entry, index) => {
+      const user = userMap.get(entry.userId);
+      return {
+        rank: offset + index + 1,
+        userId: entry.userId,
+        name: user?.name || 'Unknown User',
+        avatarUrl: user?.avatar_url || null,
+        streak: entry.score,
+      };
+    });
+  }
+
+  private createUserMap(users: UserData[]): Map<string, UserData> {
+    return new Map(users.map(u => [u.id, u]));
+  }
+
+  private calculateAverageStreak(streakData: { userId: string; score: number }[]): number {
+    if (streakData.length === 0) {
+      return 0;
+    }
+
+    const totalStreak = streakData.reduce((sum, user) => sum + user.score, 0);
+    return totalStreak / streakData.length;
+  }
+
+  private getEmptyStats(): LeaderboardStats {
     return {
-      totalUsers,
-      averageStreak: Math.round(averageStreak * 100) / 100,
-      topStreak
+      totalUsers: 0,
+      averageStreak: 0,
+      topStreak: 0,
     };
   }
 
-  // --- API công khai cho Main Score Leaderboard---
-  // async updateUserMainScore(userId: string, score: number): Promise<void> {
-  //   await this.updateScore(LEADERBOARD_KEYS.MAIN_SCORE, userId, score);
-  // }
-
-  // async getTopMainScores(limit: number, offset = 0): Promise<{ userId: string; score: number }[]> {
-  //   return this.getTop(LEADERBOARD_KEYS.MAIN_SCORE, limit, offset);
-  // }
-
-  // async getUserMainScoreRank(userId: string): Promise<number | null> {
-  //   return this.getRank(LEADERBOARD_KEYS.MAIN_SCORE, userId);
-  // }
-
-  // async getUserMainScore(userId: string): Promise<number | null> {
-  //   return this.getScore(LEADERBOARD_KEYS.MAIN_SCORE, userId);
-  // }
-
-  // --- Batch operations ---
-  async batchUpdateStreaks(updates: { userId: string; streak: number }[]): Promise<void> {
-    if (updates.length === 0) return;
-
-    const client = this.redisServices.getClient();
-    const pipeline = client.multi();
-
-    updates.forEach(({ userId, streak }) => {
-      pipeline.zAdd(LEADERBOARD_KEYS.STREAK, [{ score: streak, value: userId }]);
-    });
-
-    await pipeline.exec();
-    this.logger.log(`Batch updated ${updates.length} streak scores`);
+  private async updateScore(key: LeaderboardKey, userId: string, score: number): Promise<void> {
+    try {
+      const client = this.redisServices.getClient();
+      await client.zAdd(key, { score, value: userId });
+    } catch (error) {
+      this.logger.error(`Redis zAdd failed for ${key}: ${error.message}`);
+      throw error;
+    }
   }
 
-  // --- Utility methods ---
-  async getUserStreakWithRank(userId: string): Promise<{ streak: number; rank: number } | null> {
-    const [streak, rank] = await Promise.all([
-      this.getUserStreak(userId),
-      this.getUserStreakRank(userId)
-    ]);
+  private async getTop(key: LeaderboardKey, limit: number, offset = 0): Promise<{ userId: string; score: number }[]> {
+    try {
+      const client = this.redisServices.getClient();
+      const start = offset;
+      const end = offset + limit - 1;
 
-    if (streak === null || rank === null) return null;
+      const results = await client.zRangeWithScores(key, start, end, { REV: true });
 
-    return { streak, rank };
+      return results.map(result => ({
+        userId: result.value,
+        score: typeof result.score === 'number' ? result.score : 0
+      }));
+
+    } catch (error) {
+      this.logger.error(`Redis zRangeWithScores failed for ${key}: ${error.message}`);
+      return [];
+    }
+  }
+
+  private async getRank(key: LeaderboardKey, userId: string): Promise<number | null> {
+    try {
+      const client = this.redisServices.getClient();
+      const rank = await client.zRevRank(key, userId);
+      return typeof rank === 'number' ? rank + 1 : null;
+    } catch (error) {
+      this.logger.error(`Redis zRevRank failed for ${key}: ${error.message}`);
+      return null;
+    }
+  }
+
+  private async getScore(key: LeaderboardKey, userId: string): Promise<number | null> {
+    try {
+      const client = this.redisServices.getClient();
+      const score = await client.zScore(key, userId);
+      return typeof score === 'number' ? score : null;
+    } catch (error) {
+      this.logger.error(`Redis zScore failed for ${key}: ${error.message}`);
+      return null;
+    }
+  }
+
+  private async getTotalUsers(key: LeaderboardKey): Promise<number> {
+    try {
+      const client = this.redisServices.getClient();
+      const count = await client.zCard(key);
+      return typeof count === 'number' ? count : 0;
+    } catch (error) {
+      this.logger.error(`Redis zCard failed for ${key}: ${error.message}`);
+      return 0;
+    }
   }
 }

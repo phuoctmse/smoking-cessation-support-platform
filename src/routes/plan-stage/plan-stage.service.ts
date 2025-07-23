@@ -26,6 +26,8 @@ import {
 } from '../../shared/utils/cache-key.util'
 import { NotificationEventService } from '../notification/notification.event'
 import { CessationPlanTemplateRepository } from '../cessation-plan-template/cessation-plan-template.repository'
+import { PlanStageChartsResponse } from './dto/response/plan-stage-chart.response'
+import { PlanStageChartFiltersInput } from './dto/request/plan-stage-chart-filters.input'
 
 const CACHE_TTL = 60 * 5
 const CACHE_PREFIX = 'plan-stage'
@@ -110,6 +112,54 @@ export class PlanStageService {
 
     const createdStages = await this.planStageRepository.findByPlanId(planId)
     return createdStages.map((stage) => this.enrichWithComputedFields(stage))
+  }
+
+  async getPlanStageChartsData(
+    planId: string,
+    filters: PlanStageChartFiltersInput,
+    userRole: string,
+    userId: string
+  ): Promise<PlanStageChartsResponse> {
+    const plan = await this.validateAccessAndGetPlan(planId, userId, userRole);
+
+    const cacheKey = buildCacheKey(CACHE_PREFIX, 'charts', planId, filters);
+
+    try {
+      const cached = await this.redisServices.getClient().get(cacheKey);
+      if (typeof cached === 'string') {
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      this.logger.warn(`Cache get failed for plan stage charts ${planId}: ${error.message}`);
+    }
+
+    const repoFilters = {
+      from_date: filters.from_date,
+      to_date: filters.to_date,
+      stage_ids: filters.stage_ids,
+    };
+
+    const stagesData = await this.planStageRepository.getPlanStageChartsData(
+      planId,
+      repoFilters
+    );
+
+    const response: PlanStageChartsResponse = {
+      plan_id: planId,
+      plan_name: this.getPlanDisplayName(plan),
+      stages: stagesData,
+      total_stages: stagesData.length,
+    };
+
+    try {
+      await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(response));
+      const trackerKey = buildTrackerKey(CACHE_PREFIX, planId);
+      await trackCacheKey(this.redisServices.getClient(), trackerKey, cacheKey);
+    } catch (error) {
+      this.logger.warn(`Cache set failed for plan stage charts ${planId}: ${error.message}`);
+    }
+
+    return response;
   }
 
   async findOne(id: string, userRole: string, userId: string) {
@@ -356,17 +406,14 @@ export class PlanStageService {
         `user-notifications:${userId}:*`,
       ]
 
-      // Add template usage patterns if templateId exists
       if (templateId) {
         cachePatterns.push(`cessation-plan-template:usage-stats:${templateId}:*`)
       }
 
-      // Clear all patterns
       for (const pattern of cachePatterns) {
         await this.clearCachePattern(client, pattern)
       }
 
-      // Clear specific cache keys
       const specificCacheKeys = [
         buildOneCacheKey('cessation-plan', planId),
         buildCacheKey('cessation-plan', 'byUser', userId),
@@ -386,7 +433,6 @@ export class PlanStageService {
     }
   }
 
-  // Utility method to clear cache patterns
   private async clearCachePattern(client: any, pattern: string): Promise<void> {
     try {
       const keys = await client.keys(pattern)
