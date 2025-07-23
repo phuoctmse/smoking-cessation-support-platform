@@ -19,6 +19,7 @@ export interface MemberProfileData {
   cigarettes_per_day: number;
   sessions_per_day: number;
   price_per_pack: number;
+  cigarettes_per_pack: number;
   smoking_years: number;
   brand_preference: string;
   nicotine_level: number;
@@ -57,25 +58,26 @@ Bạn là một chuyên gia phân tích dữ liệu cho nền tảng cai thuốc
 
 CẤU TRÚC HỒ SƠ THÀNH VIÊN (TẤT CẢ FIELD ĐỀU BẮT BUỘC):
 {
-  cigarettes_per_day: number,              // Số điếu thuốc mỗi ngày (mặc định: 0)
-  sessions_per_day: number,                // Số lần hút mỗi ngày (mặc định: 0)
-  price_per_pack: number,                  // Giá tiền mỗi gói VND (mặc định: 0)
-  smoking_years: number,                   // Số năm hút thuốc (mặc định: 0)
-  brand_preference: string,                // Thương hiệu ưa thích (mặc định: "")
-  nicotine_level: number,                  // Nồng độ nicotine mg (mặc định: 0.0)
+  cigarettes_per_day: number,              // Số điếu thuốc mỗi ngày (có trong quiz)
+  sessions_per_day: number,                // Số lần hút mỗi ngày (có trong quiz)
+  price_per_pack: number,                  // Giá tiền mỗi gói VND (có trong quiz)
+  cigarettes_per_pack: number,             // Số điếu trong 1 gói thuốc lá (có trong quiz)
+  smoking_years: number,                   // Số năm hút thuốc (có trong quiz)
+  brand_preference: string,                // Thương hiệu ưa thích (mặc định: "Không xác định")
+  nicotine_level: number,                  // Nồng độ nicotine mg (mặc định: 1.0)
   health_conditions: string[],             // Tình trạng sức khỏe (mặc định: [])
   allergies: string[],                     // Dị ứng (mặc định: [])
   medications: string[],                   // Thuốc đang dùng (mặc định: [])
-  quit_motivation: "HIGH" | "MEDIUM" | "LOW",  // Động lực cai thuốc (mặc định: "MEDIUM")
-  previous_attempts: number,               // Số lần cai thuốc trước đây (mặc định: 0)
-  preferred_support: string[],             // Phương pháp hỗ trợ ưa thích (mặc định: [])
-  stress_level: number,                    // Mức độ căng thẳng 1-5 (mặc định: 3)
-  social_support: boolean,                 // Có hỗ trợ từ gia đình/bạn bè (mặc định: false)
-  trigger_factors: string[],               // Yếu tố kích thích hút thuốc (mặc định: [])
+  quit_motivation: "HIGH" | "MEDIUM" | "LOW",  // Động lực cai thuốc (có trong quiz)
+  previous_attempts: number,               // Số lần cai thuốc trước đây (có trong quiz)
+  preferred_support: string[],             // Phương pháp hỗ trợ ưa thích (mặc định: ["Ứng dụng theo dõi tiến độ"])
+  stress_level: number,                    // Mức độ căng thẳng 1-5 (có trong quiz)
+  social_support: boolean,                 // Có hỗ trợ từ gia đình/bạn bè (có trong quiz)
+  trigger_factors: string[],               // Yếu tố kích thích hút thuốc (có trong quiz)
   daily_routine: {
-    wake_time: string,                     // Giờ thức dậy HH:MM (mặc định: "07:00")
-    sleep_time: string,                    // Giờ đi ngủ HH:MM (mặc định: "23:00")
-    work_type: string                      // Loại công việc (mặc định: "")
+    wake_time: string,                     // Giờ thức dậy HH:MM (có trong quiz)
+    sleep_time: string,                    // Giờ đi ngủ HH:MM (có trong quiz)
+    work_type: string                      // Loại công việc (mặc định: "Không xác định")
   }
 }
 
@@ -214,18 +216,26 @@ Chỉ trả về một đối tượng JSON hợp lệ khớp với cấu trúc 
       }
     });
 
-    // Validate and set nicotine_level (default to 0.0)
+    // Validate cigarettes_per_pack separately (default to 20)
+    if (data.cigarettes_per_pack === null || data.cigarettes_per_pack === undefined || isNaN(Number(data.cigarettes_per_pack))) {
+      this.logger.warn(`Setting cigarettes_per_pack to 20 (was ${data.cigarettes_per_pack})`);
+      data.cigarettes_per_pack = 20;
+    } else {
+      data.cigarettes_per_pack = Number(data.cigarettes_per_pack);
+    }
+
+    // Validate and set nicotine_level (default to 1.0)
     if (data.nicotine_level === null || data.nicotine_level === undefined || isNaN(Number(data.nicotine_level))) {
-      this.logger.warn(`Setting nicotine_level to 0.0 (was ${data.nicotine_level})`);
-      data.nicotine_level = 0.0;
+      this.logger.warn(`Setting nicotine_level to 1.0 (was ${data.nicotine_level})`);
+      data.nicotine_level = 1.0;
     } else {
       data.nicotine_level = Number(data.nicotine_level);
     }
 
-    // Validate and set brand_preference (default to empty string)
+    // Validate and set brand_preference (default to "Không xác định")
     if (!data.brand_preference || typeof data.brand_preference !== 'string') {
-      this.logger.warn(`Setting brand_preference to empty string (was ${data.brand_preference})`);
-      data.brand_preference = '';
+      this.logger.warn(`Setting brand_preference to "Không xác định" (was ${data.brand_preference})`);
+      data.brand_preference = 'Không xác định';
     }
 
     // Validate quit_motivation enum (default to MEDIUM)
@@ -259,8 +269,8 @@ Chỉ trả về một đối tượng JSON hợp lệ khớp với cấu trúc 
       }
     }
 
-    // Ensure arrays are properly formatted (default to empty arrays)
-    const arrayFields = ['health_conditions', 'allergies', 'medications', 'preferred_support', 'trigger_factors'];
+    // Ensure arrays are properly formatted
+    const arrayFields = ['health_conditions', 'allergies', 'medications', 'trigger_factors'];
     arrayFields.forEach(field => {
       if (!data[field] || !Array.isArray(data[field])) {
         if (typeof data[field] === 'string' && data[field].trim() !== '') {
@@ -272,12 +282,22 @@ Chỉ trả về một đối tượng JSON hợp lệ khớp với cấu trúc 
       }
     });
 
+    // Handle preferred_support separately (default to app tracking)
+    if (!data.preferred_support || !Array.isArray(data.preferred_support)) {
+      if (typeof data.preferred_support === 'string' && data.preferred_support.trim() !== '') {
+        data.preferred_support = [data.preferred_support];
+      } else {
+        this.logger.warn(`Setting preferred_support to default (was ${data.preferred_support})`);
+        data.preferred_support = ['Ứng dụng theo dõi tiến độ'];
+      }
+    }
+
     // Validate daily_routine object
     if (!data.daily_routine || typeof data.daily_routine !== 'object') {
       data.daily_routine = {
         wake_time: '07:00',
         sleep_time: '23:00',
-        work_type: ''
+        work_type: 'Không xác định'
       };
     } else {
       // Validate time format and set defaults
@@ -288,7 +308,7 @@ Chỉ trả về một đối tượng JSON hợp lệ khớp với cấu trúc 
         data.daily_routine.sleep_time = '23:00';
       }
       if (!data.daily_routine.work_type || typeof data.daily_routine.work_type !== 'string') {
-        data.daily_routine.work_type = '';
+        data.daily_routine.work_type = 'Không xác định';
       }
     }
   }
@@ -309,22 +329,23 @@ Chỉ trả về một đối tượng JSON hợp lệ khớp với cấu trúc 
       cigarettes_per_day: 0,
       sessions_per_day: 0,
       price_per_pack: 0,
+      cigarettes_per_pack: 20,
       smoking_years: 0,
-      brand_preference: '',
-      nicotine_level: 0.0,
+      brand_preference: 'Không xác định',
+      nicotine_level: 1.0,
       health_conditions: [],
       allergies: [],
       medications: [],
       quit_motivation: 'MEDIUM',
       previous_attempts: 0,
-      preferred_support: [],
+      preferred_support: ['Ứng dụng theo dõi tiến độ'],
       stress_level: 3,
       social_support: false,
       trigger_factors: [],
       daily_routine: {
         wake_time: '07:00',
         sleep_time: '23:00',
-        work_type: ''
+        work_type: 'Không xác định'
       }
     };
   }
