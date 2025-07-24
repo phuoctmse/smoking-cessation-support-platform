@@ -20,6 +20,7 @@ export const MemberProfileSchema = z.object({
   
   // Thông tin về thói quen hút thuốc
   cigarettes_per_day: z.number().nullable(),
+  cigarettes_per_pack: z.number().nullable(),
   sessions_per_day: z.number().nullable(),
   price_per_pack: z.number().nullable(),
   smoking_years: z.number().nullable(),
