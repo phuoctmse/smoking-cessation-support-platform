@@ -14,6 +14,9 @@ export class MemberProfile {
   cigarettes_per_day?: number
 
   @Field(() => Int, { nullable: true })
+  cigarettes_per_pack?: number
+
+  @Field(() => Int, { nullable: true })
   sessions_per_day?: number
 
   @Field(() => Int, { nullable: true })
