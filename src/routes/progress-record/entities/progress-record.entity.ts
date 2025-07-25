@@ -33,4 +33,9 @@ export class ProgressRecord implements ProgressRecordType {
 
   @Field(() => CessationPlan, { nullable: true })
   plan?: CessationPlan;
+
+  @Field(() => Int, {
+    nullable: true,
+  })
+  money_saved_this_day?: number;
 }
