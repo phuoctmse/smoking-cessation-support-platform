@@ -53,6 +53,18 @@ export class ChatResolver {
     @Args('input') input: CreateChatMessageInput,
     @CurrentUser() user: any,
   ) {
+    // Get chat room info để verify permission trước khi gửi tin nhắn
+    const chatRoom = await this.chatRepository.getChatRoom(input.chat_room_id, user.id);
+    if (!chatRoom) {
+      throw new Error('Chat room not found or you do not have permission to access this room');
+    }
+
+    // Verify user is participant (creator or receiver) of this chat room
+    const senderId = user.id;
+    if (chatRoom.creator_id !== senderId && chatRoom.receiver_id !== senderId) {
+      throw new Error('You are not authorized to send messages in this chat room');
+    }
+
     const message = await this.chatRepository.createMessage(user.id, input);
 
     // Publish to room-specific channel
@@ -60,8 +72,7 @@ export class ChatResolver {
       chatRoomMessages: message,
     });
 
-    // Get chat room info để xác định tất cả participants
-    const chatRoom = await this.chatRepository.getChatRoom(input.chat_room_id, user.id);
+    // Use the chatRoom info already retrieved for authorization
     if (chatRoom) {
       const senderId = user.id;
       const receiverId = chatRoom.creator_id === senderId ? chatRoom.receiver_id : chatRoom.creator_id;
@@ -123,6 +134,26 @@ export class ChatResolver {
     
     // Handle both HTTP and WebSocket context user formats
     const userId = user.id || user.user_id;
+    
+    // Verify user has permission to access this chat room
+    const chatRoom = await this.chatRepository.getChatRoom(roomId, userId);
+    if (!chatRoom) {
+      throw new Error('Chat room not found or you do not have permission to access this room');
+    }
+
+    // Verify user is participant (creator or receiver) of this chat room
+    if (chatRoom.creator_id !== userId && chatRoom.receiver_id !== userId) {
+      throw new Error('You are not authorized to subscribe to messages in this chat room');
+    }
+
+    console.log(`[TEMP DEBUG] Subscription validation passed for user ${userId} in room ${roomId}:`, {
+      chatRoom: {
+        id: chatRoom.id,
+        creator_id: chatRoom.creator_id,
+        receiver_id: chatRoom.receiver_id
+      },
+      subscriber: userId
+    });
     
     // Track active subscription
     if (!this.activeSubscriptions.has(roomId)) {
