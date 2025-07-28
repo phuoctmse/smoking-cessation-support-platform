@@ -55,4 +55,14 @@ export class MembershipRepo {
             }
         })
     }
+
+    async checkUsersUsingPackage(packageId: string): Promise<number> {
+        const count = await this.prisma.userSubscription.count({
+            where: {
+                package_id: packageId,
+                status: 'ACTIVE' 
+            }
+        })
+        return count
+    }
 }

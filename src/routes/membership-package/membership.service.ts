@@ -68,6 +68,13 @@ export class MembershipService {
       throw new Error('Membership package không tồn tại.')
     }
 
+    // Kiểm tra xem có user nào đang sử dụng package này không
+    const usersUsingPackage = await this.membershipRepo.checkUsersUsingPackage(id)
+    if (usersUsingPackage > 0) {
+      throw new Error(`Không thể cập nhật membership package này. Hiện có ${usersUsingPackage} user đang sử dụng package này.`)
+    }
+
+    // Kiểm tra nếu đang cố gắng set is_active = true
     if (data.is_active === true && !existingPackage.is_active) {
       const activePackages = await this.membershipRepo.findActivePackages()
       
@@ -95,11 +102,17 @@ export class MembershipService {
       }
 
       if (existingMembership.is_active) {
-        const activePackages = await this.membershipRepo.findActivePackages()
-        
-        if (activePackages.length <= 1) {
-          throw new Error('Không thể xóa package này. Hệ thống phải có ít nhất 1 gói active.')
-        }
+        throw new Error('Không thể xóa membership package đang active. Vui lòng deactivate trước khi xóa.')
+      }
+
+      const activePackages = await this.membershipRepo.findActivePackages()
+      if (activePackages.length <= 1) {
+        throw new Error('Không thể xóa package này. Hệ thống phải có ít nhất 1 gói active.')
+      }
+
+      const usersUsingPackage = await this.membershipRepo.checkUsersUsingPackage(id)
+      if (usersUsingPackage > 0) {
+        throw new Error(`Không thể xóa membership package này. Hiện có ${usersUsingPackage} user đang sử dụng package này.`)
       }
 
       await this.membershipRepo.delete(id)
