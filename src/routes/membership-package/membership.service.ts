@@ -46,6 +46,13 @@ export class MembershipService {
     }
 
     async create(data: any) {
+        // Kiểm tra số lượng membership packages hiện tại
+        const existingPackages = await this.membershipRepo.findMany();
+        
+        if (existingPackages.length >= 3) {
+            throw new Error('Không thể tạo thêm membership package. Hệ thống chỉ cho phép tối đa 3 gói.');
+        }
+        
         const membership = await this.membershipRepo.create(data);
 
         const cacheKey = `membership_${membership.id}`;
