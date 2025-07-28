@@ -39,4 +39,20 @@ export class MembershipRepo {
             data: input
         })
     }
+
+    async delete(id: string): Promise<MembershipPackageType> {
+        return this.prisma.membershipPackage.delete({
+            where: {
+                id
+            }
+        })
+    }
+
+    async findActivePackages(): Promise<MembershipPackageType[]> {
+        return this.prisma.membershipPackage.findMany({
+            where: {
+                is_active: true
+            }
+        })
+    }
 }

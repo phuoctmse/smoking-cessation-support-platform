@@ -46,10 +46,12 @@ export class MembershipService {
   }
 
   async create(data: any) {
-    const existingPackages = await this.membershipRepo.findMany()
+    if (data.is_active === true) {
+      const activePackages = await this.membershipRepo.findActivePackages()
 
-    if (existingPackages.length >= 3) {
-      throw new Error('Không thể tạo thêm membership package. Hệ thống chỉ cho phép tối đa 3 gói.')
+      if (activePackages.length >= 3) {
+        throw new Error('Không thể tạo thêm membership package active. Hệ thống chỉ cho phép tối đa 3 gói active.')
+      }
     }
 
     const membership = await this.membershipRepo.create(data)
@@ -61,6 +63,19 @@ export class MembershipService {
   }
 
   async update(id: string, data: any) {
+    const existingPackage = await this.membershipRepo.findById(id)
+    if (!existingPackage) {
+      throw new Error('Membership package không tồn tại.')
+    }
+
+    if (data.is_active === true && !existingPackage.is_active) {
+      const activePackages = await this.membershipRepo.findActivePackages()
+      
+      if (activePackages.length >= 3) {
+        throw new Error('Không thể kích hoạt package này. Hệ thống chỉ cho phép tối đa 3 gói active.')
+      }
+    }
+
     const membership = await this.membershipRepo.update(data)
 
     if (membership) {
@@ -70,5 +85,31 @@ export class MembershipService {
     }
 
     return membership
+  }
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      const existingMembership = await this.membershipRepo.findById(id)
+      if (!existingMembership) {
+        throw new Error('Membership package không tồn tại.')
+      }
+
+      if (existingMembership.is_active) {
+        const activePackages = await this.membershipRepo.findActivePackages()
+        
+        if (activePackages.length <= 1) {
+          throw new Error('Không thể xóa package này. Hệ thống phải có ít nhất 1 gói active.')
+        }
+      }
+
+      await this.membershipRepo.delete(id)
+
+      const cacheKey = `membership_${id}`
+      await this.cacheManager.del(cacheKey)
+
+      return true
+    } catch (error) {
+      throw new Error(`Không thể xóa membership package: ${error.message}`)
+    }
   }
 }
