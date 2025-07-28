@@ -2,7 +2,7 @@ import { UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
 import { PubSub } from 'graphql-subscriptions';
 import { ChatMessage } from './entities/chat-message.entity';
-import { ChatRoom } from './entities/chat-room.entity';
+import { ChatRoom, UnreadCountEvent } from './entities/chat-room.entity';
 import { CreateChatRoomInput } from './dto/request/create-chat-room.input';
 import { CreateChatMessageInput } from './dto/request/create-chat-message.input';
 import { ChatRepository } from './chat.repository';
@@ -14,6 +14,9 @@ import { UserType } from '../user/schema/user.schema';
 @Resolver(() => ChatRoom)
 @UseGuards(JwtAuthGuard)
 export class ChatResolver {
+  // Track active subscriptions: roomId -> Set of userIds
+  private activeSubscriptions = new Map<string, Set<string>>();
+
   constructor(
     private readonly chatRepository: ChatRepository,
     @Inject('PUB_SUB') private readonly pubSub: PubSub,
@@ -30,6 +33,11 @@ export class ChatResolver {
     @CurrentUser() user: any,
   ) {
     return this.chatRepository.getChatMessages(roomId, user.id);
+  }
+
+  @Query(() => Number, { description: 'Lấy tổng số tin nhắn chưa đọc từ tất cả chat rooms' })
+  async getTotalUnreadMessagesCount(@CurrentUser() user: any): Promise<number> {
+    return this.chatRepository.getTotalUnreadMessagesCount(user.id);
   }
 
   @Mutation(() => ChatRoom)
@@ -52,25 +60,47 @@ export class ChatResolver {
       chatRoomMessages: message,
     });
 
-    // Publish to global messages channel
-    await this.pubSub.publish('messageCreated', {
-      messageCreated: message,
-    });
+    // Get chat room info để xác định tất cả participants
+    const chatRoom = await this.chatRepository.getChatRoom(input.chat_room_id, user.id);
+    if (chatRoom) {
+      const senderId = user.id;
+      const receiverId = chatRoom.creator_id === senderId ? chatRoom.receiver_id : chatRoom.creator_id;
+      
+      // Check if receiver is actively subscribing to this room
+      const roomSubscribers = this.activeSubscriptions.get(input.chat_room_id);
+      const isReceiverActive = roomSubscribers?.has(receiverId) || false;
+      
+      // If receiver is actively subscribing, auto mark as read
+      if (isReceiverActive) {
+        await this.chatRepository.markMessagesAsRead(input.chat_room_id, receiverId);
+      }
+
+      // Always publish unread count update for RECEIVER (người nhận tin nhắn)
+      const receiverUnreadAfter = await this.chatRepository.hasUnreadMessages(input.chat_room_id, receiverId);
+      const receiverTotalAfter = await this.chatRepository.getTotalUnreadMessagesCount(receiverId);
+      
+      await this.pubSub.publish(`unreadCount:${receiverId}`, {
+        unreadCountChanged: {
+          roomId: input.chat_room_id,
+          hasUnread: receiverUnreadAfter,
+          totalCount: receiverTotalAfter,
+        },
+      });
+
+      // Also publish for SENDER (người gửi) để update UI của họ  
+      const senderHasUnread = await this.chatRepository.hasUnreadMessages(input.chat_room_id, senderId);
+      const senderTotalUnread = await this.chatRepository.getTotalUnreadMessagesCount(senderId);
+      
+      await this.pubSub.publish(`unreadCount:${senderId}`, {
+        unreadCountChanged: {
+          roomId: input.chat_room_id,
+          hasUnread: senderHasUnread,
+          totalCount: senderTotalUnread,
+        },
+      });
+    }
 
     return message;
-  }
-
-  //Use when:
-  // Khi người dùng mở một phòng chat
-  // Khi người dùng đang active trong phòng chat và nhận tin nhắn mới
-  // Khi người dùng scroll và đọc các tin nhắn cũ
-  @Mutation(() => Boolean)
-  async markMessagesAsRead(
-    @Args('roomId') roomId: string,
-    @CurrentUser() user: UserType,
-  ) {
-    await this.chatRepository.markMessagesAsRead(roomId, user.id);
-    return true;
   }
 
   @Subscription(() => ChatMessage, {
@@ -79,14 +109,88 @@ export class ChatResolver {
       if (!user) return false;
       return payload.chatRoomMessages.chat_room_id === variables.roomId;
     },
+    resolve: (payload, args, context) => {
+      // Handle cleanup when subscription ends
+      return payload.chatRoomMessages;
+    }
   })
-  chatRoomMessages(
+  async chatRoomMessages(
     @Args('roomId') roomId: string,
     @Context() context: any,
   ) {
     const user = context.user;
     if (!user) throw new Error('Unauthorized');
-    return this.pubSub.asyncIterableIterator(`chatRoom:${roomId}`);
+    
+    // Handle both HTTP and WebSocket context user formats
+    const userId = user.id || user.user_id;
+    
+    // Track active subscription
+    if (!this.activeSubscriptions.has(roomId)) {
+      this.activeSubscriptions.set(roomId, new Set());
+    }
+    const roomSubscribers = this.activeSubscriptions.get(roomId);
+    if (roomSubscribers) {
+      roomSubscribers.add(userId);
+    }
+    
+    // Auto mark existing messages as read when entering room (subscribing)
+    await this.chatRepository.markMessagesAsRead(roomId, userId);
+    
+    // Publish unread status update after marking as read
+    const hasUnread = await this.chatRepository.hasUnreadMessages(roomId, userId);
+    const totalUnreadCount = await this.chatRepository.getTotalUnreadMessagesCount(userId);
+    
+    
+    await this.pubSub.publish(`unreadCount:${userId}`, {
+      unreadCountChanged: {
+        roomId: roomId,
+        hasUnread: hasUnread,
+        totalCount: totalUnreadCount,
+      },
+    });
+    
+    // Create async iterator với cleanup khi unsubscribe
+    const asyncIterator = this.pubSub.asyncIterableIterator(`chatRoom:${roomId}`);
+    
+    // Override return để cleanup khi subscription ends
+    const originalReturn = asyncIterator.return?.bind(asyncIterator);
+    asyncIterator.return = (value?: any) => {
+      // Cleanup tracking
+      const roomSubscribers = this.activeSubscriptions.get(roomId);
+      if (roomSubscribers) {
+        roomSubscribers.delete(userId);
+        
+        if (roomSubscribers.size === 0) {
+          this.activeSubscriptions.delete(roomId);
+        }
+      }
+      
+      if (originalReturn) {
+        return originalReturn(value);
+      }
+      return Promise.resolve({ value, done: true });
+    };
+    
+    return asyncIterator;
+  }
+
+  @Subscription(() => UnreadCountEvent, {
+    filter: (payload, variables, context) => {
+      const user = context.user;
+      const userId = user?.id || user?.user_id;
+      return !!user;
+    },
+    resolve: (payload) => {
+      return payload.unreadCountChanged;
+    },
+  })
+  unreadCountChanged(@Context() context: any) {
+    const user = context.user;
+    const userId = user.id || user.user_id;
+    
+    if (!user) throw new Error('Unauthorized');
+    
+    return this.pubSub.asyncIterableIterator(`unreadCount:${userId}`);
   }
 
   // Plan for feature admin to see all messages created
