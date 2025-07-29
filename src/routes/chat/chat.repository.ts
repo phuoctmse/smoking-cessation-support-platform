@@ -47,7 +47,7 @@ export class ChatRepository {
   }
 
   async getChatRoom(roomId: string, userId: string) {
-    return this.prisma.chatRoom.findFirst({
+    const room = await this.prisma.chatRoom.findFirst({
       where: {
         id: roomId,
         OR: [{ creator_id: userId }, { receiver_id: userId }],
@@ -57,7 +57,76 @@ export class ChatRepository {
         creator: true,
         receiver: true,
       },
-    })
+    });
+
+    if (!room) return null;
+
+    const activeCessationPlan = await this.getActiveCessationPlan(userId, room);
+    
+    return {
+      ...room,
+      activeCessationPlan,
+    };
+  }
+
+  private async getActiveCessationPlan(userId: string, room: any) {
+    let memberId: string | null = null;
+    let coachId: string | null = null;
+
+    const [creator, receiver] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: room.creator_id },
+        select: { role: true }
+      }),
+      this.prisma.user.findUnique({
+        where: { id: room.receiver_id },
+        select: { role: true }
+      })
+    ]);
+
+    if (creator?.role === 'MEMBER' && receiver?.role === 'COACH') {
+      memberId = room.creator_id;
+      coachId = room.receiver_id;
+    } else if (creator?.role === 'COACH' && receiver?.role === 'MEMBER') {
+      memberId = room.receiver_id;
+      coachId = room.creator_id;
+    } else {
+      return null;
+    }
+
+    if (userId !== memberId && userId !== coachId) {
+      return null;
+    }
+
+    const activePlan = await this.prisma.cessationPlan.findFirst({
+      where: {
+        user_id: memberId,
+        status: 'ACTIVE',
+        is_deleted: false,
+        template: {
+          coach_id: coachId,
+          is_active: true,        
+        },
+      },
+      include: {
+        template: {
+          include: {
+            coach: true,
+          },
+        },
+        stages: {
+          where: { is_deleted: false },
+          orderBy: { stage_order: 'asc' },
+        },
+        progress_records: {
+          orderBy: { record_date: 'desc' },
+          take: 5,
+        },
+      },
+    });
+
+
+    return activePlan;
   }
 
   async createMessage(userId: string, input: CreateChatMessageInput) {

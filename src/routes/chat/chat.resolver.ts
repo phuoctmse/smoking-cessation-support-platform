@@ -2,7 +2,7 @@ import { UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
 import { PubSub } from 'graphql-subscriptions';
 import { ChatMessage } from './entities/chat-message.entity';
-import { ChatRoom, UnreadCountEvent } from './entities/chat-room.entity';
+import { ChatRoom, UnreadCountEvent, ChatMessagesWithPlan } from './entities/chat-room.entity';
 import { CreateChatRoomInput } from './dto/request/create-chat-room.input';
 import { CreateChatMessageInput } from './dto/request/create-chat-message.input';
 import { ChatRepository } from './chat.repository';
@@ -27,12 +27,24 @@ export class ChatResolver {
     return this.chatRepository.getChatRooms(user.id);
   }
 
-  @Query(() => [ChatMessage])
+  @Query(() => ChatMessagesWithPlan)
   async getChatMessagesByRoomId(
     @Args('roomId') roomId: string,
     @CurrentUser() user: any,
   ) {
-    return this.chatRepository.getChatMessages(roomId, user.id);
+    const messages = await this.chatRepository.getChatMessages(roomId, user.id);
+    
+    const chatRoomWithPlan = await this.chatRepository.getChatRoom(roomId, user.id);
+    
+    if (!chatRoomWithPlan) {
+      throw new Error('Chat room not found or you do not have permission to access this room');
+    }
+
+    return {
+      messages,
+      activeCessationPlan: (chatRoomWithPlan as any).activeCessationPlan,
+      chatRoom: chatRoomWithPlan,
+    };
   }
 
   @Query(() => Number, { description: 'Lấy tổng số tin nhắn chưa đọc từ tất cả chat rooms' })
@@ -53,13 +65,13 @@ export class ChatResolver {
     @Args('input') input: CreateChatMessageInput,
     @CurrentUser() user: any,
   ) {
-    // Get chat room info để verify permission trước khi gửi tin nhắn
+
     const chatRoom = await this.chatRepository.getChatRoom(input.chat_room_id, user.id);
     if (!chatRoom) {
       throw new Error('Chat room not found or you do not have permission to access this room');
     }
 
-    // Verify user is participant (creator or receiver) of this chat room
+
     const senderId = user.id;
     if (chatRoom.creator_id !== senderId && chatRoom.receiver_id !== senderId) {
       throw new Error('You are not authorized to send messages in this chat room');
@@ -67,26 +79,25 @@ export class ChatResolver {
 
     const message = await this.chatRepository.createMessage(user.id, input);
 
-    // Publish to room-specific channel
     await this.pubSub.publish(`chatRoom:${input.chat_room_id}`, {
       chatRoomMessages: message,
     });
 
-    // Use the chatRoom info already retrieved for authorization
+
     if (chatRoom) {
       const senderId = user.id;
       const receiverId = chatRoom.creator_id === senderId ? chatRoom.receiver_id : chatRoom.creator_id;
       
-      // Check if receiver is actively subscribing to this room
+
       const roomSubscribers = this.activeSubscriptions.get(input.chat_room_id);
       const isReceiverActive = roomSubscribers?.has(receiverId) || false;
       
-      // If receiver is actively subscribing, auto mark as read
+
       if (isReceiverActive) {
         await this.chatRepository.markMessagesAsRead(input.chat_room_id, receiverId);
       }
 
-      // Always publish unread count update for RECEIVER (người nhận tin nhắn)
+
       const receiverUnreadAfter = await this.chatRepository.hasUnreadMessages(input.chat_room_id, receiverId);
       const receiverTotalAfter = await this.chatRepository.getTotalUnreadMessagesCount(receiverId);
       
@@ -98,7 +109,7 @@ export class ChatResolver {
         },
       });
 
-      // Also publish for SENDER (người gửi) để update UI của họ  
+
       const senderHasUnread = await this.chatRepository.hasUnreadMessages(input.chat_room_id, senderId);
       const senderTotalUnread = await this.chatRepository.getTotalUnreadMessagesCount(senderId);
       

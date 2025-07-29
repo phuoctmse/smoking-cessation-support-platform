@@ -1,6 +1,7 @@
 import { Field, ID, ObjectType } from '@nestjs/graphql';
 import { User } from '../../user/entities/user.entity';
 import { ChatMessage } from './chat-message.entity';
+import { CessationPlan } from '../../cessation-plan/entities/cessation-plan.entity';
 
 @ObjectType()
 export class ChatRoom {
@@ -36,4 +37,16 @@ export class UnreadCountEvent {
 
   @Field(() => Number, { nullable: true, description: 'Tổng số tin nhắn chưa đọc từ tất cả rooms. Null khi chỉ update room cụ thể' })
   totalCount: number | null;
+}
+
+@ObjectType()
+export class ChatMessagesWithPlan {
+  @Field(() => [ChatMessage], { description: 'Danh sách tin nhắn trong room' })
+  messages: ChatMessage[];
+
+  @Field(() => CessationPlan, { nullable: true, description: 'CessationPlan mà member đang sử dụng từ coach này (nếu có)' })
+  activeCessationPlan?: CessationPlan;
+
+  @Field(() => ChatRoom, { description: 'Thông tin chat room' })
+  chatRoom: ChatRoom;
 } 
