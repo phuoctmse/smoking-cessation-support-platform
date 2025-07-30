@@ -49,6 +49,7 @@ import { QuizResponseModule } from './routes/quiz-response/quiz-reponse.module'
 import { HealthScoreCriteriaModule } from './routes/health-score-criteria/health-score-criteria.module'
 import { NotificationTemplateModule } from './routes/notification-template/notification-template.module';
 import { NotificationModule } from './routes/notification/notification.module';
+import { TemplateMatchingResultModule } from './routes/template-matching-result/template-matching-result.module';
 import { CustomElasticsearchModule } from './shared/modules/elasticsearch.module';
 import { DashboardModule } from './routes/dashboard/dashboard.module';
 
@@ -130,6 +131,7 @@ import { DashboardModule } from './routes/dashboard/dashboard.module';
     HealthScoreCriteriaModule,
     NotificationTemplateModule,
     NotificationModule,
+    TemplateMatchingResultModule,
     DashboardModule,
     CustomElasticsearchModule
   ],
