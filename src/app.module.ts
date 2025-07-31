@@ -67,11 +67,10 @@ import { DashboardModule } from './routes/dashboard/dashboard.module';
       inject: ['SUPABASE', PrismaService],
       useFactory: (supabase, prisma) => {
         const wsContext = createWebSocketContext(supabase, prisma);
-        const isDevelopment = process.env.NODE_ENV !== 'production';
         return {
-          playground: isDevelopment,
-          introspection: isDevelopment,
-          csrfPrevention: !isDevelopment,
+          playground: false,
+          introspection: true,
+          csrfPrevention: false,
           plugins: [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })],
           autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
           context: ({ req }) => ({ req }),
