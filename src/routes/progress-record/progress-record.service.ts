@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { CessationPlanRepository } from '../cessation-plan/cessation-plan.repository'
-import { ProgressRecordRepository } from './progress-record.repository'
+import { MemberProfileMoneySavingsData, ProgressRecordRepository } from './progress-record.repository'
 import { CreateProgressRecordType } from './schema/create-progress-record.schema'
 import { UserType } from '../user/schema/user.schema'
 import { ProgressRecord } from './entities/progress-record.entity'
@@ -20,15 +20,17 @@ import { RedisServices } from '../../shared/services/redis.service'
 import {
   buildCacheKey,
   buildOneCacheKey,
-  reviveDates,
+  invalidateCacheForId,
+  reviveDates
 } from '../../shared/utils/cache-key.util'
+import { PaginatedProgressRecordsResponse } from './dto/response/paginated-progress-records.response'
 
-const CACHE_TTL = 60 * 5;
-const CACHE_PREFIX = 'progress-record';
+const CACHE_TTL = 60 * 5
+const CACHE_PREFIX = 'progress-record'
 
 @Injectable()
 export class ProgressRecordService {
-  private readonly logger = new Logger(ProgressRecordService.name);
+  private readonly logger = new Logger(ProgressRecordService.name)
 
   constructor(
     private readonly progressRecordRepository: ProgressRecordRepository,
@@ -39,198 +41,324 @@ export class ProgressRecordService {
   ) {}
 
   async create(data: CreateProgressRecordType, user: UserType): Promise<ProgressRecord> {
-    await this.validatePlanOwnership(data.plan_id, user.id);
-    this.validateRecordDate(data.record_date);
+    await this.validateUserProfileCompleteness(user.id)
+    await this.validatePlanOwnership(data.plan_id, user.id)
+    this.validateRecordDate(data.record_date)
 
-    const existingRecord = await this.progressRecordRepository.findAnyByPlanIdAndDate(data.plan_id, data.record_date);
+    await this.handlePlanReactivation(data.plan_id, user.id)
+
+    const existingRecord = await this.progressRecordRepository.findAnyByPlanIdAndDate(
+      data.plan_id, data.record_date
+    )
 
     if (existingRecord) {
       if (existingRecord.is_deleted) {
-        const { id, ...updateData } = { ...data, id: existingRecord.id };
-        return this.update(id, updateData, user, true);
+        const { id, ...updateData } = { ...data, id: existingRecord.id }
+        return this.update(id, updateData, user, true)
       } else {
-        throw new ConflictException('A progress record for this date already exists for this plan.');
+        throw new ConflictException('A progress record for this date already exists for this plan.')
       }
     }
 
-    const record = await this.progressRecordRepository.create(data);
-    this.logger.log(`Progress record created: ${record.id} for plan: ${record.plan_id}`);
+    const record = await this.progressRecordRepository.create(data)
+    this.logger.log(`Progress record created: ${record.id} for plan: ${record.plan_id}`)
 
-    await this.processStreakAndBadges(user.id, record.plan_id, data.cigarettes_smoked);
-    await this.invalidateAllRelatedCaches(record.plan_id, user.id, record.id);
+    await this.processStreakAndBadges(user.id, record.plan_id, data.cigarettes_smoked)
+    await this.invalidateAllRelatedCaches(record.plan_id, user.id, record.id)
 
-    return record as ProgressRecord;
+    return await this.enrichRecordWithMoneySavings(record, user.id)
   }
 
-  async findAll(params: PaginationParamsType, filters: ProgressRecordFiltersInput | undefined, user: UserType) {
-    const effectiveFilters = this.validateAndBuildFilters(filters, user.id);
-    const cacheKey = buildCacheKey(CACHE_PREFIX, 'all', params, effectiveFilters, user.id);
+  async findAll(
+    params: PaginationParamsType,
+    filters: ProgressRecordFiltersInput | undefined,
+    user: UserType,
+  ): Promise<PaginatedProgressRecordsResponse> {
+    const cacheKey = buildCacheKey(CACHE_PREFIX, 'all', params, filters, user.id)
 
     try {
-      const cached = await this.redisServices.getClient().get(cacheKey);
+      const cached = await this.redisServices.getClient().get(cacheKey)
       if (typeof cached === 'string') {
-        const parsed = JSON.parse(cached);
+        const parsed = JSON.parse(cached)
         if (parsed && Array.isArray(parsed.data)) {
           parsed.data.forEach((record: any) => {
-            reviveDates(record, ['record_date', 'created_at', 'updated_at']);
-          });
+            reviveDates(record, ['record_date', 'created_at', 'updated_at'])
+          })
         }
-        this.logger.debug(`Cache hit for progress records: ${cacheKey}`);
-        return parsed;
+        return parsed
       }
     } catch (error) {
-      this.logger.warn(`Cache get failed: ${error.message}`);
+      this.logger.warn(`Cache get failed: ${error.message}`)
     }
 
-    const result = await this.progressRecordRepository.findAll(params, effectiveFilters);
+    const result = await this.progressRecordRepository.findAll(params, filters, user.id)
+    const enrichedResult = await this.enrichPaginatedResultWithMoneySavings(
+      result,
+      user.id,
+      filters?.planId
+    )
 
     try {
-      await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(result));
-      this.logger.debug(`Cache set for progress records: ${cacheKey}`);
+      await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(enrichedResult))
     } catch (error) {
-      this.logger.warn(`Cache set failed: ${error.message}`);
+      this.logger.warn(`Cache set failed: ${error.message}`)
     }
 
-    return result;
+    return enrichedResult
   }
 
   async findOne(id: string, user: UserType): Promise<ProgressRecord> {
-    const cacheKey = buildOneCacheKey(CACHE_PREFIX, id);
+    const cacheKey = buildOneCacheKey(CACHE_PREFIX, id)
 
     try {
-      const cached = await this.redisServices.getClient().get(cacheKey);
+      const cached = await this.redisServices.getClient().get(cacheKey)
       if (typeof cached === 'string') {
-        const parsed = JSON.parse(cached);
-        reviveDates(parsed, ['record_date', 'created_at', 'updated_at']);
-        await this.validateRecordOwnership(parsed, user.id);
-        return parsed as ProgressRecord;
+        const parsed = JSON.parse(cached)
+        reviveDates(parsed, ['record_date', 'created_at', 'updated_at'])
+        await this.validateRecordOwnership(parsed, user.id)
+        return parsed as ProgressRecord
       }
     } catch (error) {
-      this.logger.warn(`Cache get failed: ${error.message}`);
+      this.logger.warn(`Cache get failed: ${error.message}`)
     }
 
-    const record = await this.progressRecordRepository.findOne(id);
+    const record = await this.progressRecordRepository.findOne(id)
     if (!record) {
-      throw new NotFoundException('Progress record not found.');
+      throw new NotFoundException('Progress record not found.')
     }
 
-    await this.validateRecordOwnership(record, user.id);
+    await this.validateRecordOwnership(record, user.id)
+    const enrichedRecord = await this.enrichRecordWithMoneySavings(record, user.id)
 
     try {
-      await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(record));
+      await this.redisServices.getClient().setEx(cacheKey, CACHE_TTL, JSON.stringify(enrichedRecord))
     } catch (error) {
-      this.logger.warn(`Cache set failed: ${error.message}`);
+      this.logger.warn(`Cache set failed: ${error.message}`)
     }
 
-    return record as ProgressRecord;
+    return enrichedRecord
   }
 
-  async update(id: string, data: Omit<UpdateProgressRecordType, 'id' | 'plan_id'>, user: UserType, isReactivating = false): Promise<ProgressRecord> {
-    const record = await this.progressRecordRepository.findOneWithAnyStatus(id);
+  async update(
+    id: string,
+    data: Omit<UpdateProgressRecordType, 'id' | 'plan_id'>,
+    user: UserType,
+    isReactivating = false,
+  ): Promise<ProgressRecord> {
+    if (data.cigarettes_smoked !== undefined) {
+      await this.validateUserProfileCompleteness(user.id)
+    }
+
+    const record = await this.progressRecordRepository.findOneWithAnyStatus(id)
     if (!record) {
-      throw new NotFoundException('Progress record not found.');
+      throw new NotFoundException('Progress record not found.')
     }
 
-    await this.validateRecordOwnership(record, user.id);
-
-    if (data.record_date) {
-      this.validateRecordDate(data.record_date);
-      await this.validateUniqueRecordForUpdate(record.plan_id, data.record_date, id);
-    }
-
-    const updateData = { ...data };
-    if (isReactivating) {
-      (updateData as any).is_deleted = false;
-    }
-
-    const updatedRecord = await this.progressRecordRepository.update(id, updateData);
-    if (!updatedRecord) {
-      throw new NotFoundException('Progress record not found or already deleted.');
-    }
-
-    this.logger.log(`Progress record updated: ${updatedRecord.id}`);
+    await this.validateRecordOwnership(record, user.id)
 
     if (data.cigarettes_smoked !== undefined) {
-      await this.processStreakAndBadges(user.id, updatedRecord.plan_id, data.cigarettes_smoked);
+      await this.handlePlanReactivation(record.plan_id, user.id)
     }
 
-    await this.invalidateAllRelatedCaches(updatedRecord.plan_id, user.id, id);
+    if (data.record_date) {
+      this.validateRecordDate(data.record_date)
+      await this.validateUniqueRecordForUpdate(record.plan_id, data.record_date, id)
+    }
 
-    return updatedRecord as ProgressRecord;
+    const updateData = { ...data }
+    if (isReactivating) {
+      ;(updateData as any).is_deleted = false
+    }
+
+    const updatedRecord = await this.progressRecordRepository.update(id, updateData)
+    if (!updatedRecord) {
+      throw new NotFoundException('Progress record not found or already deleted.')
+    }
+
+    this.logger.log(`Progress record updated: ${updatedRecord.id}`)
+
+    if (data.cigarettes_smoked !== undefined) {
+      await this.processStreakAndBadges(user.id, updatedRecord.plan_id, data.cigarettes_smoked)
+    }
+
+    await this.invalidateAllRelatedCaches(updatedRecord.plan_id, user.id, id)
+    return await this.enrichRecordWithMoneySavings(updatedRecord, user.id)
   }
 
   async remove(id: string, user: UserType): Promise<ProgressRecord> {
-    const record = await this.progressRecordRepository.findOne(id);
+    const record = await this.progressRecordRepository.findOne(id)
     if (!record) {
-      throw new NotFoundException('Progress record not found.');
+      throw new NotFoundException('Progress record not found.')
     }
 
-    await this.validateRecordOwnership(record, user.id);
+    await this.validateRecordOwnership(record, user.id)
 
-    const removedRecord = await this.progressRecordRepository.remove(id);
+    const removedRecord = await this.progressRecordRepository.remove(id)
     if (!removedRecord) {
-      throw new NotFoundException('Progress record not found or already deleted.');
+      throw new NotFoundException('Progress record not found or already deleted.')
     }
 
-    this.logger.log(`Progress record removed: ${removedRecord.id}`);
-    await this.invalidateAllRelatedCaches(removedRecord.plan_id, user.id, id);
+    this.logger.log(`Progress record removed: ${removedRecord.id}`)
+    await this.invalidateAllRelatedCaches(removedRecord.plan_id, user.id, id)
 
-    return removedRecord as ProgressRecord;
+    return await this.enrichRecordWithMoneySavings(removedRecord, user.id)
+  }
+
+  private async handlePlanReactivation(planId: string, userId: string): Promise<void> {
+    try {
+      const plan = await this.cessationPlanRepository.findOne(planId)
+      if (!plan) {
+        return
+      }
+
+      if (plan.status === 'ABANDONED') {
+        await this.cessationPlanRepository.update(planId, {
+          status: 'ACTIVE'
+        })
+
+        this.logger.log(`Auto-reactivated ABANDONED plan ${planId} for user ${userId}`)
+        await this.invalidatePlanRelatedCaches(planId, userId)
+      }
+    } catch (error) {
+      this.logger.error(`Error handling plan reactivation for plan ${planId}: ${error.message}`)
+    }
+  }
+
+  private async validateUserProfileCompleteness(userId: string): Promise<void> {
+    const hasValidProfile = await this.progressRecordRepository.validateUserProfileForMoneySavings(userId)
+
+    if (!hasValidProfile) {
+      throw new BadRequestException(
+        'You must complete your member profile with price_per_pack, cigarettes_per_pack, and cigarettes_per_day before creating progress records.'
+      )
+    }
+  }
+
+  private calculateDailyMoneySaved(profile: MemberProfileMoneySavingsData, cigarettesSmoked: number): number {
+    const { price_per_pack, cigarettes_per_pack, cigarettes_per_day } = profile
+    const pricePerCigarette = price_per_pack / cigarettes_per_pack
+    const cigarettesNotSmoked = cigarettes_per_day - cigarettesSmoked
+    return Math.round(pricePerCigarette * cigarettesNotSmoked)
+  }
+
+  private async calculateTotalMoneySaved(userId: string, planId?: string): Promise<number> {
+    try {
+      const profile = await this.progressRecordRepository.getMemberProfileForMoneySavings(userId)
+      if (!profile) {
+        return 0
+      }
+
+      const progressRecords = await this.progressRecordRepository.getProgressRecordsForMoneySavings(userId, planId)
+      if (progressRecords.length === 0) {
+        return 0
+      }
+
+      return progressRecords.reduce((total, record) => {
+        const dailySaving = this.calculateDailyMoneySaved(profile, record.cigarettes_smoked)
+        return total + dailySaving
+      }, 0)
+    } catch (error) {
+      this.logger.error(`Error calculating total money saved for user ${userId}: ${error.message}`)
+      return 0
+    }
+  }
+
+  private async enrichRecordWithMoneySavings(record: any, userId: string): Promise<ProgressRecord> {
+    try {
+      const profile = await this.progressRecordRepository.getMemberProfileForMoneySavings(userId)
+
+      if (profile) {
+        record.money_saved_this_day = this.calculateDailyMoneySaved(profile, record.cigarettes_smoked)
+      } else {
+        record.money_saved_this_day = 0
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to calculate money saved for record ${record.id}: ${error.message}`)
+      record.money_saved_this_day = 0
+    }
+
+    return record as ProgressRecord
+  }
+
+  private async enrichPaginatedResultWithMoneySavings(
+    result: any,
+    userId: string,
+    planId?: string
+  ): Promise<PaginatedProgressRecordsResponse> {
+    try {
+      const totalMoneySaved = await this.calculateTotalMoneySaved(userId, planId)
+      const profile = await this.progressRecordRepository.getMemberProfileForMoneySavings(userId)
+
+      if (profile && result.data) {
+        result.data = result.data.map((record: any) => {
+          const moneySaved = this.calculateDailyMoneySaved(profile, record.cigarettes_smoked)
+          return {
+            ...record,
+            money_saved_this_day: moneySaved,
+          }
+        })
+      }
+
+      return {
+        ...result,
+        total_money_saved: totalMoneySaved,
+      } as PaginatedProgressRecordsResponse
+    } catch (error) {
+      this.logger.error(`Error enriching result with money savings: ${error.message}`)
+      return {
+        ...result,
+        total_money_saved: 0,
+      } as PaginatedProgressRecordsResponse
+    }
   }
 
   private async validatePlanOwnership(planId: string, userId: string): Promise<void> {
-    const plan = await this.cessationPlanRepository.findOne(planId);
+    const plan = await this.cessationPlanRepository.findOne(planId)
     if (!plan) {
-      throw new NotFoundException('Cessation plan not found.');
+      throw new NotFoundException('Cessation plan not found.')
     }
     if (plan.user_id !== userId) {
-      throw new ForbiddenException('You can only add progress records to your own plans.');
+      throw new ForbiddenException('You can only add progress records to your own plans.')
     }
   }
 
   private async validateRecordOwnership(record: any, userId: string): Promise<void> {
-    const plan = await this.cessationPlanRepository.findOne(record.plan_id);
+    const plan = await this.cessationPlanRepository.findOne(record.plan_id)
     if (!plan) {
-      throw new NotFoundException('Associated cessation plan not found.');
+      throw new NotFoundException('Associated cessation plan not found.')
     }
     if (plan.user_id !== userId) {
-      throw new ForbiddenException('You do not have permission to access this progress record.');
+      throw new ForbiddenException('You do not have permission to access this progress record.')
     }
   }
 
   private validateRecordDate(recordDate: Date): void {
     if (recordDate > new Date()) {
-      throw new BadRequestException('Record date cannot be in the future.');
+      throw new BadRequestException('Record date cannot be in the future.')
     }
   }
 
-  private async validateUniqueRecordForUpdate(planId: string, recordDate: Date, currentRecordId: string): Promise<void> {
-    const existingRecord = await this.progressRecordRepository.findByPlanIdAndDate(planId, recordDate);
+  private async validateUniqueRecordForUpdate(
+    planId: string,
+    recordDate: Date,
+    currentRecordId: string
+  ): Promise<void> {
+    const existingRecord = await this.progressRecordRepository.findByPlanIdAndDate(planId, recordDate)
     if (existingRecord && existingRecord.id !== currentRecordId) {
-      throw new ConflictException('A progress record for the new date already exists for this plan.');
+      throw new ConflictException('A progress record for the new date already exists for this plan.')
     }
-  }
-
-  private validateAndBuildFilters(filters: ProgressRecordFiltersInput | undefined, userId: string) {
-    const effectiveFilters = { ...filters };
-
-    if (!effectiveFilters.planId) {
-      throw new ForbiddenException('Members must specify a plan ID to view progress records.');
-    }
-
-    return effectiveFilters;
   }
 
   private async processStreakAndBadges(userId: string, planId: string, cigarettesSmoked: number): Promise<void> {
-    const currentStreak = await this.calculateUserStreak(planId);
-    const prevStreak = await this.leaderboardService.getUserStreak(userId) || 0;
+    try {
+      const currentStreak = await this.calculateUserStreak(planId)
+      await this.leaderboardService.updateUserStreak(userId, currentStreak)
 
-    if (currentStreak !== prevStreak) {
-      await this.leaderboardService.updateUserStreak(userId, currentStreak);
-    }
-
-    if (cigarettesSmoked === 0) {
-      await this.badgeAwardService.processStreakUpdate(userId, currentStreak);
+      if (cigarettesSmoked === 0 && currentStreak > 0) {
+        await this.badgeAwardService.processStreakUpdate(userId, currentStreak)
+      }
+    } catch (error) {
+      this.logger.error(`Error processing streak and badges for user ${userId}: ${error.message}`)
     }
   }
 
@@ -238,89 +366,133 @@ export class ProgressRecordService {
     const records = await this.progressRecordRepository.findAll(
       { page: 1, limit: 1000, orderBy: 'record_date', sortOrder: 'desc' },
       { planId }
-    );
+    )
 
-    let streak = 0;
+    if (records.data.length === 0) {
+      return 0
+    }
+
+    let streak = 0
+    let expectedDate = new Date()
+    expectedDate.setUTCHours(0, 0, 0, 0)
+
+    const mostRecentRecordDate = new Date(records.data[0].record_date)
+    mostRecentRecordDate.setUTCHours(0, 0, 0, 0)
+
+    const yesterday = new Date()
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+    yesterday.setUTCHours(0, 0, 0, 0)
+
+    if (mostRecentRecordDate.getTime() < yesterday.getTime()) {
+      return 0
+    }
+
+    if (mostRecentRecordDate.getTime() !== expectedDate.getTime()) {
+      expectedDate = mostRecentRecordDate
+    }
+
     for (const record of records.data) {
-      if (record.cigarettes_smoked === 0) {
-        streak++;
+      const recordDate = new Date(record.record_date)
+      recordDate.setUTCHours(0, 0, 0, 0)
+
+      if (recordDate.getTime() === expectedDate.getTime() && record.cigarettes_smoked === 0) {
+        streak++
+        expectedDate.setUTCDate(expectedDate.getUTCDate() - 1)
       } else {
-        break;
+        break
       }
     }
-    return streak;
+
+    return streak
+  }
+
+  private async invalidatePlanRelatedCaches(planId: string, userId: string): Promise<void> {
+    try {
+      const client = this.redisServices.getClient()
+
+      const planCachePatterns = [
+        `cessation-plan:*:${planId}:*`,
+        `cessation-plan:*:${userId}:*`,
+        `cessation-plan:all:*`
+      ]
+
+      for (const pattern of planCachePatterns) {
+        try {
+          const keys = await client.keys(pattern)
+          if (keys.length > 0) {
+            await client.del(keys)
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to clear plan cache pattern ${pattern}: ${error.message}`)
+        }
+      }
+
+      await invalidateCacheForId(client, 'cessation-plan', userId)
+      await invalidateCacheForId(client, 'cessation-plan', 'stats-cache')
+
+      this.logger.log(`Invalidated plan-related caches for plan: ${planId}, user: ${userId}`)
+    } catch (cacheError) {
+      this.logger.error('Error invalidating plan-related cache:', cacheError)
+    }
   }
 
   private async invalidateAllRelatedCaches(planId: string, userId: string, recordId?: string): Promise<void> {
     try {
-      const client = this.redisServices.getClient();
+      const client = this.redisServices.getClient()
 
-      // Step 1: Clear specific record cache
       if (recordId) {
-        const specificRecordKey = buildOneCacheKey(CACHE_PREFIX, recordId);
-        await client.del(specificRecordKey);
-        this.logger.debug(`Cleared specific record cache: ${specificRecordKey}`);
+        const specificRecordKey = buildOneCacheKey(CACHE_PREFIX, recordId)
+        await client.del(specificRecordKey)
       }
 
-      // Step 2: Clear all list caches with wildcard patterns
-      const cachePatterns = [
+      const progressCachePatterns = [
         `${CACHE_PREFIX}:all:*`,
         `${CACHE_PREFIX}:*:${planId}:*`,
         `${CACHE_PREFIX}:*:${userId}:*`,
-      ];
+      ]
 
-      for (const pattern of cachePatterns) {
-        try {
-          const keys = await client.keys(pattern);
-          if (keys.length > 0) {
-            await client.del(keys);
-            this.logger.debug(`Cleared ${keys.length} cache keys with pattern: ${pattern}`);
-          }
-        } catch (error) {
-          this.logger.warn(`Failed to clear cache pattern ${pattern}: ${error.message}`);
-        }
+      for (const pattern of progressCachePatterns) {
+        await this.clearCachePattern(client, pattern)
       }
 
-      // Step 3: Clear related cessation plan caches
-      const planCachePatterns = [
-        `cessation-plan:*:${planId}:*`,
-        `cessation-plan:*:${userId}:*`,
-        `cessation-plan:all:*`,
-      ];
+      const planStageCachePatterns = [
+        `plan-stage:charts:${planId}:*`,
+        `plan-stage:charts:*`,
+        `plan-stage:byPlan:${planId}*`,
+        `plan-stage:activeByPlan:${planId}*`,
+        `plan-stage:statistics:*`,
+      ]
 
-      for (const pattern of planCachePatterns) {
-        try {
-          const keys = await client.keys(pattern);
-          if (keys.length > 0) {
-            await client.del(keys);
-            this.logger.debug(`Cleared ${keys.length} plan cache keys with pattern: ${pattern}`);
-          }
-        } catch (error) {
-          this.logger.warn(`Failed to clear plan cache pattern ${pattern}: ${error.message}`);
-        }
+      for (const pattern of planStageCachePatterns) {
+        await this.clearCachePattern(client, pattern)
       }
 
-      // Step 4: Clear leaderboard related caches (if any)
-      const leaderboardPatterns = [
-        `leaderboard:*:${userId}:*`,
-        `streak:*`,
-      ];
+      await this.invalidatePlanRelatedCaches(planId, userId)
+
+      const leaderboardPatterns = [`leaderboard:*:${userId}:*`, `streak:*`]
 
       for (const pattern of leaderboardPatterns) {
-        try {
-          const keys = await client.keys(pattern);
-          if (keys.length > 0) {
-            await client.del(keys);
-            this.logger.debug(`Cleared ${keys.length} leaderboard cache keys with pattern: ${pattern}`);
-          }
-        } catch (error) {
-          this.logger.warn(`Failed to clear leaderboard cache pattern ${pattern}: ${error.message}`);
-        }
+        await this.clearCachePattern(client, pattern)
       }
 
-      this.logger.log(`Invalidated all progress record caches for plan: ${planId}, user: ${userId}`);
+      await invalidateCacheForId(client, 'plan-stage', planId)
+      await invalidateCacheForId(client, 'cessation-plan', userId)
+      await invalidateCacheForId(client, 'cessation-plan', 'stats-cache')
+
+      this.logger.log(`Invalidated all related caches for plan: ${planId}, user: ${userId}`)
     } catch (cacheError) {
-      this.logger.error('Error invalidating progress record cache:', cacheError);
+      this.logger.error('Error invalidating progress record cache:', cacheError)
+    }
+  }
+
+  private async clearCachePattern(client: any, pattern: string): Promise<void> {
+    try {
+      const keys = await client.keys(pattern)
+      if (keys.length > 0) {
+        await client.del(keys)
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to clear cache pattern ${pattern}: ${error.message}`)
     }
   }
 }

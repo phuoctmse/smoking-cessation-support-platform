@@ -9,6 +9,30 @@ import { UpdatePlanStageTemplateType } from './schema/update-plan-stage-template
 export class PlanStageTemplateRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async create(data: CreatePlanStageTemplateType) {
+    const createData: Prisma.PlanStageTemplateCreateInput = {
+      title: data.title,
+      description: data.description,
+      stage_order: data.stage_order,
+      duration_days: data.duration_days,
+      recommended_actions: data.recommended_actions,
+      max_cigarettes_per_day: data.max_cigarettes_per_day,
+      is_active: true,
+      template: {
+        connect: { id: data.template_id },
+      },
+    };
+
+    return this.prisma.planStageTemplate.create({
+      data: createData,
+      include: {
+        template: {
+          select: { id: true, name: true, difficulty_level: true },
+        },
+      },
+    });
+  }
+
   async findAll(params: PaginationParamsType, templateId: string) {
     const { page, limit, search, orderBy, sortOrder } = params;
     const skip = (page - 1) * limit;
@@ -92,29 +116,6 @@ export class PlanStageTemplateRepository {
     });
   }
 
-  async create(data: CreatePlanStageTemplateType) {
-    const createData: Prisma.PlanStageTemplateCreateInput = {
-      title: data.title,
-      description: data.description,
-      stage_order: data.stage_order,
-      duration_days: data.duration_days,
-      recommended_actions: data.recommended_actions,
-      is_active: true,
-      template: {
-        connect: { id: data.template_id },
-      },
-    };
-
-    return this.prisma.planStageTemplate.create({
-      data: createData,
-      include: {
-        template: {
-          select: { id: true, name: true, difficulty_level: true },
-        },
-      },
-    });
-  }
-
   async update(id: string, data: Omit<UpdatePlanStageTemplateType, 'id'>) {
     const updateData: Prisma.PlanStageTemplateUpdateInput = {};
 
@@ -123,6 +124,7 @@ export class PlanStageTemplateRepository {
     if (data.stage_order !== undefined) updateData.stage_order = data.stage_order;
     if (data.duration_days !== undefined) updateData.duration_days = data.duration_days;
     if (data.recommended_actions !== undefined) updateData.recommended_actions = data.recommended_actions;
+    if (data.max_cigarettes_per_day !== undefined) updateData.max_cigarettes_per_day = data.max_cigarettes_per_day;
 
     if (data.template_id !== undefined) {
       updateData.template = {

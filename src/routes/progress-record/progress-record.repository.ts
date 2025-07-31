@@ -6,6 +6,13 @@ import { UpdateProgressRecordType } from './schema/update-progress-record.schema
 import { PaginationParamsType } from '../../shared/models/pagination.model'
 import { ProgressRecordFiltersInput } from './dto/request/progress-record-filters.input'
 
+export interface MemberProfileMoneySavingsData {
+  id: string;
+  price_per_pack: number;
+  cigarettes_per_pack: number;
+  cigarettes_per_day: number;
+}
+
 @Injectable()
 export class ProgressRecordRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -24,7 +31,11 @@ export class ProgressRecordRepository {
     }) as unknown as ProgressRecord;
   }
 
-  async findAll(params: PaginationParamsType, filters?: ProgressRecordFiltersInput) {
+  async findAll(
+    params: PaginationParamsType,
+    filters?: ProgressRecordFiltersInput,
+    userId?: string
+  ) {
     const { page, limit, orderBy, sortOrder } = params;
     const skip = (page - 1) * limit;
 
@@ -32,9 +43,16 @@ export class ProgressRecordRepository {
       is_deleted: false,
     };
 
+    if (userId) {
+      where.plan = {
+        user_id: userId,
+      };
+    }
+
     if (filters?.planId) {
       where.plan_id = filters.planId;
     }
+
     if (filters?.startDate || filters?.endDate) {
       where.record_date = {};
       if (filters.startDate) {
@@ -132,6 +150,75 @@ export class ProgressRecordRepository {
       data: { is_deleted: true },
       include: this.getDefaultIncludes(),
     }) as unknown as ProgressRecord;
+  }
+
+  async getMemberProfileForMoneySavings(userId: string): Promise<MemberProfileMoneySavingsData | null> {
+    try {
+      return await this.prisma.memberProfile.findFirst({
+        where: { user_id: userId },
+        select: {
+          id: true,
+          price_per_pack: true,
+          cigarettes_per_pack: true,
+          cigarettes_per_day: true,
+        },
+      }) as MemberProfileMoneySavingsData | null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async getProgressRecordsForMoneySavings(
+    userId: string,
+    planId?: string
+  ): Promise<Array<{ cigarettes_smoked: number; record_date: Date }>> {
+    try {
+      const whereClause: any = {
+        plan: {
+          user_id: userId,
+        },
+        is_deleted: false,
+      };
+
+      if (planId) {
+        whereClause.plan_id = planId;
+      }
+
+      return await this.prisma.progressRecord.findMany({
+        where: whereClause,
+        select: {
+          cigarettes_smoked: true,
+          record_date: true,
+        },
+        orderBy: { record_date: 'desc' },
+      });
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async validateUserProfileForMoneySavings(userId: string): Promise<boolean> {
+    try {
+      const profile = await this.prisma.memberProfile.findFirst({
+        where: { user_id: userId },
+        select: {
+          price_per_pack: true,
+          cigarettes_per_pack: true,
+          cigarettes_per_day: true,
+        },
+      });
+
+      return !!(
+        profile?.price_per_pack &&
+        profile?.cigarettes_per_pack &&
+        profile?.cigarettes_per_day &&
+        profile.price_per_pack > 0 &&
+        profile.cigarettes_per_pack > 0 &&
+        profile.cigarettes_per_day > 0
+      );
+    } catch (error) {
+      return false;
+    }
   }
 
   private getDefaultIncludes(): Prisma.ProgressRecordInclude {

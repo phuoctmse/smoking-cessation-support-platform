@@ -31,7 +31,7 @@ model User {
   ChatRoomCreator           ChatRoom[]               @relation("ChatRoomCreator")
   ChatRoomReceiver          ChatRoom[]               @relation("ChatRoomReceiver")
   ChatMessage               ChatMessage[]
-  // template_matching_results TemplateMatchingResult[]
+  template_matching_results TemplateMatchingResult[]
   HealthScoreCriteria       HealthScoreCriteria[]
   quiz_attempts             QuizAttempt[]
   Notification              Notification[]
@@ -45,12 +45,13 @@ model MemberProfile {
   user    User   @relation(fields: [user_id], references: [id])
 
   // Thông tin về thói quen hút thuốc
-  cigarettes_per_day Int?
-  sessions_per_day   Int?
-  price_per_pack     Int?
-  smoking_years      Int? // Số năm đã hút thuốc
-  brand_preference   String? // Nhãn hiệu thuốc lá thường dùng
-  nicotine_level     Float? // Hàm lượng nicotine của thuốc lá thường dùng
+  cigarettes_per_day  Int?
+  sessions_per_day    Int?
+  price_per_pack      Int?
+  cigarettes_per_pack Int? // Số điếu trong 1 gói thuốc lá
+  smoking_years       Int? // Số năm đã hút thuốc
+  brand_preference    String? // Nhãn hiệu thuốc lá thường dùng
+  nicotine_level      Float? // Hàm lượng nicotine của thuốc lá thường dùng
 
   // Thông tin sức khỏe
   health_conditions String[] // Các vấn đề sức khỏe liên quan
@@ -92,7 +93,7 @@ model CoachProfile {
 
   // Thông tin bổ sung
   approach_description String? // Mô tả phương pháp tiếp cận
-  created_at           DateTime @default(now())
+  created_at           DateTime  @default(now())
   updated_at           DateTime? @updatedAt
 
   @@map("coach_profile")
@@ -131,24 +132,25 @@ model CessationPlanTemplate {
   plans                   CessationPlan[]
   feedbacks               Feedback[]
   stages                  PlanStageTemplate[]
-  // matching_results        TemplateMatchingResult[]
+  matching_results        TemplateMatchingResult[]
 
   @@map("cessation_plan_template")
 }
 
 model PlanStageTemplate {
-  id                  String                @id @default(uuid())
-  template_id         String
-  stage_order         Int
-  title               String                @db.VarChar(100)
-  duration_days       Int
-  description         String?
-  recommended_actions String?
-  created_at          DateTime              @default(now())
-  updated_at          DateTime              @updatedAt
-  is_active           Boolean               @default(true)
-  plan_stages         PlanStage[]
-  template            CessationPlanTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  id                     String                @id @default(uuid())
+  template_id            String
+  stage_order            Int
+  title                  String                @db.VarChar(100)
+  duration_days          Int
+  description            String?
+  recommended_actions    String?
+  max_cigarettes_per_day Int?
+  created_at             DateTime              @default(now())
+  updated_at             DateTime              @updatedAt
+  is_active              Boolean               @default(true)
+  plan_stages            PlanStage[]
+  template               CessationPlanTemplate @relation(fields: [template_id], references: [id], onDelete: Cascade)
 
   @@unique([template_id, stage_order])
   @@map("plan_stage_template")
@@ -175,21 +177,22 @@ model CessationPlan {
 }
 
 model PlanStage {
-  id                String             @id @default(uuid())
-  plan_id           String
-  template_stage_id String?
-  stage_order       Int?
-  title             String             @db.VarChar(100)
-  start_date        DateTime?
-  end_date          DateTime?
-  description       String?
-  actions           String?
-  status            PlanStageStatus    @default(PENDING)
-  is_deleted        Boolean            @default(false)
-  created_at        DateTime           @default(now())
-  updated_at        DateTime           @updatedAt
-  plan              CessationPlan      @relation(fields: [plan_id], references: [id], onDelete: Cascade)
-  template_stage    PlanStageTemplate? @relation(fields: [template_stage_id], references: [id])
+  id                     String             @id @default(uuid())
+  plan_id                String
+  template_stage_id      String?
+  stage_order            Int?
+  title                  String             @db.VarChar(100)
+  start_date             DateTime?
+  end_date               DateTime?
+  description            String?
+  actions                String?
+  max_cigarettes_per_day Int?
+  status                 PlanStageStatus    @default(PENDING)
+  is_deleted             Boolean            @default(false)
+  created_at             DateTime           @default(now())
+  updated_at             DateTime           @updatedAt
+  plan                   CessationPlan      @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  template_stage         PlanStageTemplate? @relation(fields: [template_stage_id], references: [id])
 
   @@unique([plan_id, stage_order])
   @@map("plan_stage")
@@ -350,6 +353,7 @@ model MembershipPackage {
   updated_at    DateTime           @updatedAt
   subscriptions UserSubscription[]
   is_active     Boolean            @default(true)
+
   @@map("membership_package")
 }
 
@@ -546,22 +550,21 @@ enum SubscriptionStatus {
   EXPIRED
 }
 
-// // Thêm model để lưu trữ kết quả matching
-// model TemplateMatchingResult {
-//   id                   String   @id @default(uuid())
-//   user_id              String
-//   template_id          String
-//   matching_score       Float // Điểm số matching từ AI (0-100)
-//   matching_factors     Json // Chi tiết các yếu tố matching và giải thích của AI
-//   recommendation_level String // HIGH, MEDIUM, LOW
-//   created_at           DateTime @default(now())
+model TemplateMatchingResult {
+  id                   String   @id @default(uuid())
+  user_id              String
+  template_id          String
+  matching_score       Float // Điểm số matching từ AI (0-100)
+  matching_factors     Json // Chi tiết các yếu tố matching và giải thích của AI
+  recommendation_level String // HIGH, MEDIUM, LOW
+  created_at           DateTime @default(now())
 
-//   user     User                  @relation(fields: [user_id], references: [id])
-//   template CessationPlanTemplate @relation(fields: [template_id], references: [id])
+  user     User                  @relation(fields: [user_id], references: [id])
+  template CessationPlanTemplate @relation(fields: [template_id], references: [id])
 
-//   @@unique([user_id, template_id])
-//   @@map("template_matching_result")
-// }
+  @@unique([user_id, template_id])
+  @@map("template_matching_result")
+}
 
 model ProfileQuiz {
   id          String         @id @default(uuid())
@@ -600,7 +603,7 @@ model QuizResponse {
   question    QuizQuestion @relation(fields: [question_id], references: [id])
   attempt_id  String
   attempt     QuizAttempt  @relation(fields: [attempt_id], references: [id])
-  answer      Json 
+  answer      Json
   order       Int?
   created_at  DateTime     @default(now())
   updated_at  DateTime     @updatedAt

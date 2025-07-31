@@ -21,6 +21,11 @@ export const CreatePlanStageTemplateSchema = z.object({
   recommended_actions: z.string()
       .max(2000, 'Recommended actions must be less than 2000 characters')
       .optional(),
+  max_cigarettes_per_day: z.number()
+    .int('Max cigarettes must be an integer')
+    .min(0, 'Max cigarettes cannot be negative')
+    .max(100, 'Max cigarettes per day cannot exceed 100')
+    .optional(),
 });
 
 export type CreatePlanStageTemplateType = z.infer<typeof CreatePlanStageTemplateSchema>;

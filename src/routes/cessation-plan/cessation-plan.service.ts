@@ -131,17 +131,6 @@ export class CessationPlanService {
     return planStartDate <= today
   }
 
-  private isStartDateToday(startDate: Date): boolean {
-    const now = new Date()
-    const today = new Date(now)
-    today.setHours(0, 0, 0, 0)
-
-    const planStartDate = new Date(startDate)
-    planStartDate.setHours(0, 0, 0, 0)
-
-    return planStartDate.getTime() === today.getTime()
-  }
-
   private async activateFirstStage(planId: string): Promise<void> {
     try {
       const firstStage = await this.planStageRepository.findByStageOrder(planId, 1)
@@ -178,10 +167,10 @@ export class CessationPlanService {
       throw new BadRequestException('Target date must be after start date')
     }
 
-    await this.validateStartDate(data.start_date)
+    this.validateStartDate(data.start_date)
   }
 
-  private async validateStartDate(startDate: Date): Promise<void> {
+  private validateStartDate(startDate: Date): void {
     const now = new Date()
     const today = new Date(now)
     today.setHours(0, 0, 0, 0)

@@ -1,7 +1,4 @@
-// Import this first!
 import './instrument';
-
-// Now import other modules
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
 import compression from 'compression'

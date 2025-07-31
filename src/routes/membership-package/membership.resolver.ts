@@ -32,4 +32,11 @@ export class MembershipResolver {
   async updateMembershipPackage(@Args('input') input: UpdateMembershipPackageInput) {
     return this.membershipService.update(input.id, input)
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.Admin)
+  @Mutation(() => Boolean)
+  async deleteMembershipPackage(@Args('id') id: string) {
+    return await this.membershipService.delete(id)
+  }
 }

@@ -10,19 +10,25 @@ export class DashboardService {
   async getDashboardMetrics(year?: number): Promise<DashboardMetrics> {
     const [stats, revenueByMonth] = await Promise.all([
       this.dashboardRepo.getDashboardStats(),
-      this.dashboardRepo.getRevenueByMonth(year)
+      this.dashboardRepo.getRevenueByMonth(year),
     ])
 
     return {
       stats,
-      revenueByMonth
+      revenueByMonth,
     }
   }
 
-  async getAllPaymentsWithTransactions(): Promise<PaymentWithTransaction[]> {
-    const payments = await this.dashboardRepo.getAllPaymentsWithTransactions()
-    
-    return payments.map(payment => ({
+  async getAllPaymentsWithTransactions(startDate?: Date, endDate?: Date): Promise<PaymentWithTransaction[]> {
+    if (startDate && endDate && startDate > endDate) {
+      throw new Error('Start date cannot be after end date')
+    }
+    if (endDate > new Date()) {
+      endDate = new Date()
+    }
+    const payments = await this.dashboardRepo.getAllPaymentsWithTransactions(startDate, endDate)
+
+    return payments.map((payment) => ({
       id: payment.id,
       user_id: payment.user_id,
       user: payment.user,
@@ -32,7 +38,7 @@ export class DashboardService {
       price: payment.price,
       status: payment.status,
       payment_transaction: payment.payment_transaction,
-      payment_transaction_id: payment.payment_transaction_id
+      payment_transaction_id: payment.payment_transaction_id,
     }))
   }
 
@@ -41,7 +47,7 @@ export class DashboardService {
     if (!payment) {
       throw new Error('Payment not found')
     }
-    
+
     return {
       id: payment.id,
       user_id: payment.user_id,
@@ -55,7 +61,50 @@ export class DashboardService {
       created_at: payment.payment_transaction?.transactionDate || new Date(),
       updated_at: payment.payment_transaction?.transactionDate || new Date(),
       payment_method: payment.payment_transaction?.gateway || null,
-      notes: null
+      notes: null,
+    }
+  }
+
+  async getMemberPaymentsWithTransactions(userId: string): Promise<PaymentWithTransaction[]> {
+    const payments = await this.dashboardRepo.getMemberPaymentsWithTransactions(userId)
+
+    return payments.map((payment) => ({
+      id: payment.id,
+      user_id: payment.user_id,
+      user: payment.user,
+      subscription_id: payment.subscription_id,
+      subscription: payment.subscription,
+      content: payment.content,
+      price: payment.price,
+      status: payment.status,
+      payment_transaction: payment.payment_transaction,
+      payment_transaction_id: payment.payment_transaction_id,
+    }))
+  }
+
+  async getMemberPaymentDetail(id: string, userId: string): Promise<PaymentDetail> {
+    if (!id) {
+      throw new Error('Payment ID is required')
+    }
+    const payment = await this.dashboardRepo.getMemberPaymentDetail(id, userId)
+    if (!payment) {
+      throw new Error('Payment not found or does not belong to the user')
+    }
+
+    return {
+      id: payment.id,
+      user_id: payment.user_id,
+      user: payment.user,
+      subscription_id: payment.subscription_id,
+      subscription: payment.subscription,
+      content: payment.content,
+      price: payment.price,
+      status: payment.status,
+      payment_transaction: payment.payment_transaction,
+      created_at: payment.payment_transaction?.transactionDate || new Date(),
+      updated_at: payment.payment_transaction?.transactionDate || new Date(),
+      payment_method: payment.payment_transaction?.gateway || null,
+      notes: null,
     }
   }
 }

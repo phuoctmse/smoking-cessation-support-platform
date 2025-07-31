@@ -21,6 +21,12 @@ export const CreatePlanStageSchema = z.object({
   actions: z.string()
     .max(2000, 'Actions must be less than 2000 characters')
     .optional(),
+  max_cigarettes_per_day: z.number()
+    .int('Max cigarettes must be an integer')
+    .min(0, 'Max cigarettes cannot be negative')
+    .max(100, 'Max cigarettes per day cannot exceed 100')
+    .optional(),
+  status: z.string().optional(),
 }).refine(data => {
   if (data.start_date && data.end_date) {
     return data.end_date > data.start_date;
