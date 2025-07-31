@@ -9,32 +9,32 @@ datasource db {
 }
 
 model User {
-  id                     String                  @id @default(uuid())
-  name                   String
-  avatar_url             String?
-  role                   Role                    @default(MEMBER)
-  status                 Status                  @default(ACTIVE)
-  created_at             DateTime                @default(now())
-  updated_at             DateTime                @updatedAt
-  user_name              String                  @unique
-  blogs                  Blog[]
-  created_plan_templates CessationPlanTemplate[]
-  cessation_plans        CessationPlan[]
-  feedbacks              Feedback[]
-  user_subscriptions     UserSubscription[]
-  user_badges            UserBadge[]
-  post_likes             PostLike[]
-  post_comments          PostComment[]
-  Payment                Payment[]
-  MemberProfile          MemberProfile[]
-  CoachProfile           CoachProfile[]
-  ChatRoomCreator        ChatRoom[]              @relation("ChatRoomCreator")
-  ChatRoomReceiver       ChatRoom[]              @relation("ChatRoomReceiver")
-  ChatMessage            ChatMessage[]
-  // template_matching_results TemplateMatchingResult[]
-  HealthScoreCriteria    HealthScoreCriteria[]
-  quiz_attempts          QuizAttempt[]
-  Notification           Notification[]
+  id                        String                   @id @default(uuid())
+  name                      String
+  avatar_url                String?
+  role                      Role                     @default(MEMBER)
+  status                    Status                   @default(ACTIVE)
+  created_at                DateTime                 @default(now())
+  updated_at                DateTime                 @updatedAt
+  user_name                 String                   @unique
+  blogs                     Blog[]
+  created_plan_templates    CessationPlanTemplate[]
+  cessation_plans           CessationPlan[]
+  feedbacks                 Feedback[]
+  user_subscriptions        UserSubscription[]
+  user_badges               UserBadge[]
+  post_likes                PostLike[]
+  post_comments             PostComment[]
+  Payment                   Payment[]
+  MemberProfile             MemberProfile[]
+  CoachProfile              CoachProfile[]
+  ChatRoomCreator           ChatRoom[]               @relation("ChatRoomCreator")
+  ChatRoomReceiver          ChatRoom[]               @relation("ChatRoomReceiver")
+  ChatMessage               ChatMessage[]
+  template_matching_results TemplateMatchingResult[]
+  HealthScoreCriteria       HealthScoreCriteria[]
+  quiz_attempts             QuizAttempt[]
+  Notification              Notification[]
 
   @@map("user")
 }
@@ -66,7 +66,6 @@ model MemberProfile {
   daily_routine     Json? // Thông tin về thói quen hàng ngày
   social_support    Boolean? // Có sự hỗ trợ từ gia đình/bạn bè
   trigger_factors   String[] // Các yếu tố kích thích hút thuốc
-  
 
   recorded_at   DateTime?
   quiz_attempts QuizAttempt[]
@@ -117,23 +116,23 @@ model Blog {
 }
 
 model CessationPlanTemplate {
-  id                      String              @id @default(uuid())
-  name                    String              @unique @db.VarChar(100)
+  id                      String                   @id @default(uuid())
+  name                    String                   @unique @db.VarChar(100)
   description             String?
-  difficulty_level        DifficultyLevel     @default(MEDIUM)
+  difficulty_level        DifficultyLevel          @default(MEDIUM)
   estimated_duration_days Int
-  average_rating          Float?              @default(0)
-  total_reviews           Int                 @default(0)
-  success_rate            Float?              @default(0)
-  is_active               Boolean             @default(true)
-  created_at              DateTime            @default(now())
-  updated_at              DateTime            @updatedAt
+  average_rating          Float?                   @default(0)
+  total_reviews           Int                      @default(0)
+  success_rate            Float?                   @default(0)
+  is_active               Boolean                  @default(true)
+  created_at              DateTime                 @default(now())
+  updated_at              DateTime                 @updatedAt
   coach_id                String?
-  coach                   User?               @relation(fields: [coach_id], references: [id])
+  coach                   User?                    @relation(fields: [coach_id], references: [id])
   plans                   CessationPlan[]
   feedbacks               Feedback[]
   stages                  PlanStageTemplate[]
-  // matching_results        TemplateMatchingResult[]
+  matching_results        TemplateMatchingResult[]
 
   @@map("cessation_plan_template")
 }
@@ -551,22 +550,21 @@ enum SubscriptionStatus {
   EXPIRED
 }
 
-// // Thêm model để lưu trữ kết quả matching
-// model TemplateMatchingResult {
-//   id                   String   @id @default(uuid())
-//   user_id              String
-//   template_id          String
-//   matching_score       Float // Điểm số matching từ AI (0-100)
-//   matching_factors     Json // Chi tiết các yếu tố matching và giải thích của AI
-//   recommendation_level String // HIGH, MEDIUM, LOW
-//   created_at           DateTime @default(now())
+model TemplateMatchingResult {
+  id                   String   @id @default(uuid())
+  user_id              String
+  template_id          String
+  matching_score       Float // Điểm số matching từ AI (0-100)
+  matching_factors     Json // Chi tiết các yếu tố matching và giải thích của AI
+  recommendation_level String // HIGH, MEDIUM, LOW
+  created_at           DateTime @default(now())
 
-//   user     User                  @relation(fields: [user_id], references: [id])
-//   template CessationPlanTemplate @relation(fields: [template_id], references: [id])
+  user     User                  @relation(fields: [user_id], references: [id])
+  template CessationPlanTemplate @relation(fields: [template_id], references: [id])
 
-//   @@unique([user_id, template_id])
-//   @@map("template_matching_result")
-// }
+  @@unique([user_id, template_id])
+  @@map("template_matching_result")
+}
 
 model ProfileQuiz {
   id          String         @id @default(uuid())
