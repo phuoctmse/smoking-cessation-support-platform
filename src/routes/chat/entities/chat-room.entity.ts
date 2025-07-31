@@ -25,6 +25,9 @@ export class ChatRoom {
 
   @Field(() => [ChatMessage], { nullable: true })
   messages?: ChatMessage[];
+
+  @Field(() => Boolean, { nullable: true, description: 'Có tin nhắn chưa đọc trong room này hay không' })
+  hasUnread?: boolean;
 }
 
 @ObjectType()

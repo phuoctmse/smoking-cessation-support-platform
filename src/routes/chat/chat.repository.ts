@@ -43,7 +43,18 @@ export class ChatRepository {
       orderBy: { updated_at: 'desc' },
     })
 
-    return chatRooms
+    const roomsWithUnreadStatus = await Promise.all(
+      chatRooms.map(async (room) => {
+        const hasUnread = await this.hasUnreadMessages(room.id, userId)
+        return {
+          ...room,
+          messages: room.ChatMessage || [],
+          hasUnread,
+        }
+      })
+    )
+
+    return roomsWithUnreadStatus
   }
 
   async getChatRoom(roomId: string, userId: string) {
@@ -57,45 +68,45 @@ export class ChatRepository {
         creator: true,
         receiver: true,
       },
-    });
+    })
 
-    if (!room) return null;
+    if (!room) return null
 
-    const activeCessationPlan = await this.getActiveCessationPlan(userId, room);
-    
+    const activeCessationPlan = await this.getActiveCessationPlan(userId, room)
+
     return {
       ...room,
       activeCessationPlan,
-    };
+    }
   }
 
   private async getActiveCessationPlan(userId: string, room: any) {
-    let memberId: string | null = null;
-    let coachId: string | null = null;
+    let memberId: string | null = null
+    let coachId: string | null = null
 
     const [creator, receiver] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: room.creator_id },
-        select: { role: true }
+        select: { role: true },
       }),
       this.prisma.user.findUnique({
         where: { id: room.receiver_id },
-        select: { role: true }
-      })
-    ]);
+        select: { role: true },
+      }),
+    ])
 
     if (creator?.role === 'MEMBER' && receiver?.role === 'COACH') {
-      memberId = room.creator_id;
-      coachId = room.receiver_id;
+      memberId = room.creator_id
+      coachId = room.receiver_id
     } else if (creator?.role === 'COACH' && receiver?.role === 'MEMBER') {
-      memberId = room.receiver_id;
-      coachId = room.creator_id;
+      memberId = room.receiver_id
+      coachId = room.creator_id
     } else {
-      return null;
+      return null
     }
 
     if (userId !== memberId && userId !== coachId) {
-      return null;
+      return null
     }
 
     const activePlan = await this.prisma.cessationPlan.findFirst({
@@ -105,7 +116,7 @@ export class ChatRepository {
         is_deleted: false,
         template: {
           coach_id: coachId,
-          is_active: true,        
+          is_active: true,
         },
       },
       include: {
@@ -123,10 +134,9 @@ export class ChatRepository {
           take: 5,
         },
       },
-    });
+    })
 
-
-    return activePlan;
+    return activePlan
   }
 
   async createMessage(userId: string, input: CreateChatMessageInput) {
@@ -193,7 +203,7 @@ export class ChatRepository {
         is_read: false,
       },
     })
-    
+
     return count > 0
   }
 
