@@ -68,7 +68,7 @@ import { DashboardModule } from './routes/dashboard/dashboard.module';
       useFactory: (supabase, prisma) => {
         const wsContext = createWebSocketContext(supabase, prisma);
         return {
-          playground: true,
+          playground: false,
           introspection: true,
           csrfPrevention: false,
           plugins: [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })],
