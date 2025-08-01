@@ -12,6 +12,7 @@ import { CessationPlanTemplateModule } from '../cessation-plan-template/cessatio
 import { CessationPlanCronService } from './cessation-plan.cron'
 import { NotificationModule } from '../notification/notification.module'
 import { UserModule } from '../user/user.module'
+import { TemplateMatchingResultModule } from '../template-matching-result/template-matching-result.module'
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UserModule } from '../user/user.module'
     CessationPlanTemplateModule,
     NotificationModule,
     UserModule,
+    TemplateMatchingResultModule,
   ],
   providers: [
     CessationPlanResolver,

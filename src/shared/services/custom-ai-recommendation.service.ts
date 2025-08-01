@@ -8,6 +8,7 @@ import {
     AIPromptTemplate,
     AITrainingExample
 } from '../../ai/recommendation/model';
+import { TemplateMatchingResultService } from '../../routes/template-matching-result/template-matching-result.service';
 
 // Temporary interface for raw AI response before template mapping
 interface RawAIResponse {
@@ -72,7 +73,10 @@ YẾU TỐ TÂM LÝ:
 
 Trả về JSON theo định dạng yêu cầu.`;
 
-    constructor(private prisma: PrismaService) {
+    constructor(
+        private prisma: PrismaService,
+        private templateMatchingResultService: TemplateMatchingResultService
+    ) {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
             this.logger.error('GEMINI_API_KEY is not defined in environment variables');
@@ -218,6 +222,16 @@ Trả về JSON theo định dạng yêu cầu.`;
         }
     }
 
+    private getRecommendationLevel(confidence: number): string {
+        if (confidence >= 0.8) return 'HIGH';
+        if (confidence >= 0.6) return 'MEDIUM';
+        return 'LOW';
+    }
+
+    async getUserTemplateMatchingResults(userId: string): Promise<any[]> {
+        return this.templateMatchingResultService.getUserTemplateMatchingResultsByUserId(userId);
+    }
+
     async getRecommendation(memberProfile: MemberProfile): Promise<AIRecommendationOutput> {
         if (!memberProfile) {
             this.logger.error('Member profile is null or undefined');
@@ -276,6 +290,20 @@ Trả về JSON theo định dạng yêu cầu.`;
                 const fallbackTemplate = availableTemplates[0];
                 this.logger.warn(`Using fallback template: ${fallbackTemplate.name}`);
                 
+                // Save fallback recommendation to database
+                await this.templateMatchingResultService.saveTemplateMatchingResult(
+                    memberProfile.user_id,
+                    fallbackTemplate.id,
+                    0.3,
+                    {
+                        matchingFactors: ['Fallback recommendation due to AI parsing error'],
+                        considerations: ['AI recommendation system encountered an error'],
+                        risks: ['May not be optimally suited for user profile'],
+                        suggestions: ['Consider consulting with a healthcare professional']
+                    },
+                    'LOW'
+                );
+
                 return {
                     recommendedTemplate: fallbackTemplate,
                     confidence: 0.3,
@@ -293,6 +321,36 @@ Trả về JSON theo định dạng yêu cầu.`;
             const alternativeTemplates = recommendation.alternativeTemplates
                 .map(altName => availableTemplates.find(t => t.name === altName))
                 .filter((template): template is CessationPlanTemplate => template !== undefined);
+
+            // Save recommended template matching result to database
+            const recommendationLevel = this.getRecommendationLevel(recommendation.confidence);
+            await this.templateMatchingResultService.saveTemplateMatchingResult(
+                memberProfile.user_id,
+                recommendedTemplate.id,
+                recommendation.confidence,
+                recommendation.reasoning,
+                recommendationLevel
+            );
+
+            // Save alternative templates with lower scores
+            for (const altTemplate of alternativeTemplates) {
+                const altScore = recommendation.confidence * 0.7; // Alternative templates get 70% of main score
+                const altLevel = this.getRecommendationLevel(altScore);
+                await this.templateMatchingResultService.saveTemplateMatchingResult(
+                    memberProfile.user_id,
+                    altTemplate.id,
+                    altScore,
+                    {
+                        matchingFactors: ['Alternative recommendation'],
+                        considerations: recommendation.reasoning.considerations,
+                        risks: recommendation.reasoning.risks,
+                        suggestions: ['Consider this as alternative option']
+                    },
+                    altLevel
+                );
+            }
+
+            this.logger.log(`Successfully saved AI recommendation for user ${memberProfile.user_id} - Template: ${recommendedTemplate.name}, Confidence: ${recommendation.confidence}`);
 
             // Return the properly structured response
             return {
@@ -313,6 +371,21 @@ Trả về JSON theo định dạng yêu cầu.`;
                 
                 if (availableTemplates.length > 0) {
                     this.logger.warn('Using emergency fallback recommendation');
+                    
+                    // Save emergency fallback to database
+                    await this.templateMatchingResultService.saveTemplateMatchingResult(
+                        memberProfile.user_id,
+                        availableTemplates[0].id,
+                        0.2,
+                        {
+                            matchingFactors: ['Emergency fallback due to system error'],
+                            considerations: ['System error prevented AI analysis'],
+                            risks: ['Recommendation may not be suitable'],
+                            suggestions: ['Please try again later or consult a healthcare professional']
+                        },
+                        'LOW'
+                    );
+
                     return {
                         recommendedTemplate: availableTemplates[0],
                         confidence: 0.2,
